@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { signUp } from '@/services/auth';
+import { signUp, googleSignUp } from '@/services/auth';
 
 // Reactive properties for email and password
 const email = ref('');
@@ -14,13 +14,24 @@ const handleSignUp = async () => {
     console.log('Signing up with email:', email.value);
     console.log('Password:', password.value);
 
-    const user = await signUp(email.value, password.value);
+    const user = await signUp(email.value, password.value); // Calls signup from auth.ts
     console.log('User signed up:', user);
 
     // redirect to Login page
     router.push({ name: 'login' })
   } catch (error) {
     console.error(error.message);
+  }
+};
+
+// Google Sign-Up method
+const handleGoogleSignUp = async () => {
+  try {
+    const user = await googleSignUp(); // Calls googleSignUp from auth.ts
+    console.log('Google user signed up:', user);
+    router.push({ name: 'login' });
+  } catch (error) {
+    console.error('Error during Google sign-up:', error.message);
   }
 };
 </script>
@@ -49,7 +60,7 @@ const handleSignUp = async () => {
 
     <!-- Sign Up with Google Button -->
     <div class="google-signup">
-      <button @click="signUpWithGoogle" class="google-button">
+      <button @click="handleGoogleSignUp" class="google-button">
         Sign Up with Google
       </button>
     </div>

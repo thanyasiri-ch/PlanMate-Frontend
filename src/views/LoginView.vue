@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { signIn } from '@/services/auth'; // Assuming signIn method is defined in auth.ts
+import { signIn, googleSignIn } from '@/services/auth'; // Assuming signIn method is defined in auth.ts
 
 // Reactive properties for email and password
 const email = ref('');
 const password = ref('');
 
-// Get router instance for redirection
 const router = useRouter();
 
 const handleLogin = async () => {
@@ -19,9 +18,20 @@ const handleLogin = async () => {
     console.log('User logged in:', user);
 
     // Redirect to home page (or any other page after successful login)
-    router.push({ name: 'home' });  // You can adjust this to wherever you want to redirect
+    router.push({ name: 'home' });
   } catch (error) {
     console.error('Error during login:', error.message);
+  }
+};
+
+// Handle Google login
+const handleGoogleLogin = async () => {
+  try {
+    const user = await googleSignIn();  // Calls googleSignIn from auth.ts
+    console.log('Google user logged in:', user);
+    router.push({ name: 'home' });  // Redirect to home page after Google login
+  } catch (error) {
+    console.error('Error during Google login:', error.message);
   }
 };
 </script>
@@ -58,6 +68,13 @@ const handleLogin = async () => {
 
       <!-- Login Button -->
       <button type="submit" class="login-button">Log In</button>
+
+      <!-- Google Login Button -->
+      <div class="google-login">
+      <button @click="handleGoogleLogin" class="google-button">
+        Log In with Google
+      </button>
+    </div>
     </form>
 
     <!-- Link to Sign Up Page -->
@@ -112,6 +129,26 @@ h1 {
 
 .login-button:hover {
   background-color: #45a049;
+}
+
+.google-login {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.google-button {
+  width: 100%;
+  padding: 12px;
+  background-color: #db4437;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.google-button:hover {
+  background-color: #c1351d;
 }
 
 .signup-link {
