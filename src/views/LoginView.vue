@@ -27,9 +27,13 @@ const handleLogin = async () => {
 // Handle Google login
 const handleGoogleLogin = async () => {
   try {
-    const user = await googleSignIn();  // Calls googleSignIn from auth.ts
+    const { user, displayName, photoURL } = await googleSignIn(); // Calls googleSignIn from auth.ts
+
     console.log('Google user logged in:', user);
-    router.push({ name: 'home' });  // Redirect to home page after Google login
+    router.push({
+      name: 'home',
+      state: { displayName: displayName, profileImage: photoURL }
+    });  // Redirect to home page after Google login
   } catch (error) {
     console.error('Error during Google login:', error.message);
   }

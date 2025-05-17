@@ -1,31 +1,44 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { signOut } from 'firebase/auth';  // Import Firebase Authentication
-import { auth } from '@/firebase/firebase';  // Import the Firebase auth instance
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { signOut } from 'firebase/auth' // Import Firebase Authentication
+import { auth } from '@/firebase/firebase' // Import the Firebase auth instance
 
-// Get the router instance for navigation
-const router = useRouter();
+// Get the router instance for navigation and route instance to access state
+const router = useRouter()
+// Use useRoute to access the route's state
+const route = useRoute()
 
-// Reactive variable to hold user info (optional for displaying user's name or email)
-const user = ref<unknown>(null);
+// Reactive variables to hold user info
+const user = ref<unknown>(null)
+const displayName = ref(route.state?.displayName || 'Guest')
+const profileImage = ref(route.state?.profileImage || '')
 
-// Fetch the current user (optional: display user info)
-const currentUser = auth.currentUser;
-if (currentUser) {
-  user.value = currentUser;
-}
+const defaultImage = 'https://www.example.com/default-avatar.png'
 
+// Fetch the current user info when the component is mounted
+onMounted(() => {
+  const currentUser = auth.currentUser
+
+  if (currentUser) {
+    user.value = currentUser
+    displayName.value = currentUser.displayName || 'Guest'
+    profileImage.value = currentUser.photoURL || defaultImage
+    console.log('Show image: ', profileImage.value)
+  }
+})
+
+// Log out the user
 const handleLogout = async () => {
   try {
-    await signOut(auth);  // Firebase sign out
-    console.log('User logged out');
-    user.value = null; // Clear the user data after logging out
-    router.push({ name: 'login' });
+    await signOut(auth) 
+    console.log('User logged out')
+    user.value = null
+    router.push({ name: 'login' })
   } catch (error) {
-    console.error('Error logging out:', error.message);
+    console.error('Error logging out:', error.message)
   }
-};
+}
 </script>
 
 <template>
@@ -33,7 +46,10 @@ const handleLogout = async () => {
     <h1>Welcome to Home Page</h1>
 
     <!-- Display User Info (Optional) -->
-    <p v-if="user">Hello, {{ user.email }}!</p>
+    <div v-if="user">
+      <h2>Welcome, {{ displayName }}</h2>
+      <img :src="profileImage" alt="User's Profile Image" class="user-photo" />
+    </div>
 
     <!-- Log Out Button -->
     <button v-if="user" @click="handleLogout" class="logout-button">Log Out</button>
@@ -49,6 +65,13 @@ const handleLogout = async () => {
   border-radius: 8px;
   background-color: #f9f9f9;
   text-align: center;
+}
+
+.user-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin-top: 10px;
 }
 
 .logout-button {
