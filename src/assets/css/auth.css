@@ -1,0 +1,187 @@
+/* General Page Layout */
+.page-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #766BDE;
+}
+
+/* Left Panel Styling */
+.left-panel {
+  background-color: #766BDE; /* This was #f0f2f9 in previous good versions, you might want to revert this */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative; /* Establishes a stacking context */
+  z-index: 1; /* Places it below the right panel's overlapping part */
+}
+
+.main-logo-container {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+}
+
+.main-logo {
+  width: 40%;
+  margin-right: 12px;
+}
+
+.illustration-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Right Panel Styling */
+.right-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.form-container {
+  background-color: transparent;
+  padding: 30px 40px;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  color: #ffffff;
+}
+
+.form-container h1 {
+  font-size: 40px;
+  margin-bottom: 30px;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+/* Input Group Styling */
+.input-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 15px;
+  /* border: 1px solid #8c82d0; */
+  border: none;
+  border-radius: 25px;
+  background-color: #544BAA;
+  color: #ffffff;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.input-group input::placeholder {
+  color: #c0c0c0;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Button Styling */
+.primary-button,
+.secondary-button {
+  width: 100%;
+  padding: 12px 15px;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.primary-button {
+  background-color: #FFC54D;
+  color: #333333;
+  margin: 35px 0 15px 0;
+}
+
+.primary-button:hover {
+  background-color: #ffc44dea;
+}
+
+.secondary-button {
+  background-color: #ffffff;
+  color: #444444;
+  border: 1px solid #bbbaba;
+  margin-bottom: 25px;
+}
+
+.secondary-button:hover {
+  background-color: #f5f5f5;
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+/* Link Styling */
+.switch-form-link {
+  margin-top: 20px;
+  font-size: 14px;
+}
+
+.switch-form-link p {
+  color: #e0e0e0;
+}
+
+.switch-form-link a {
+  color: #ffffff;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.switch-form-link a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 900px) {
+  .left-panel {
+    display: none;
+  }
+  .right-panel {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .form-container {
+    padding: 20px;
+  }
+  /* Removed .top-right-logo responsive style as well
+  .top-right-logo {
+    top: 20px;
+    right: 20px;
+    width: 60px;
+  }
+  */
+}

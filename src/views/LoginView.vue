@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { signIn, googleSignIn } from '@/services/auth'; // Assuming signIn method is defined in auth.ts
+import '@/assets/css/auth.css';
 
 // Reactive properties for email and password
 const email = ref('');
@@ -41,127 +42,52 @@ const handleGoogleLogin = async () => {
 </script>
 
 <template>
-  <div class="login-container">
-    <h1>Log In</h1>
-
-    <!-- Login Form -->
-    <form @submit.prevent="handleLogin" class="login-form">
-      <!-- Email Input -->
-      <div class="input-group">
-        <label for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          v-model="email"
-          required
-          placeholder="Enter your email"
-        />
+  <div class="page-container">
+    <div class="left-panel">
+      <div class="main-logo-container">
+        <img src="/src/assets/images/logo.png" alt="PlanMate Logo" class="main-logo" />
       </div>
-
-      <!-- Password Input -->
-      <div class="input-group">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          v-model="password"
-          required
-          placeholder="Enter your password"
-        />
-      </div>
-
-      <!-- Login Button -->
-      <button type="submit" class="login-button">Log In</button>
-
-      <!-- Google Login Button -->
-      <div class="google-login">
-      <button @click="handleGoogleLogin" class="google-button">
-        Log In with Google
-      </button>
+      <img src="/src/assets/images/login_icon.png" alt="Login Illustration" class="illustration-image" />
     </div>
-    </form>
 
-    <!-- Link to Sign Up Page -->
-    <div class="signup-link">
-      <p>Don't have an account? <router-link to="/signup">Sign Up</router-link></p>
+    <div class="right-panel">
+      <div class="form-container">
+        <h1>Log In</h1>
+
+        <form @submit.prevent="handleLogin" class="login-form">
+          <div class="input-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              v-model="email"
+              required
+              placeholder="Enter your email"
+            />
+          </div>
+
+          <div class="input-group">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              v-model="password"
+              required
+              placeholder="Enter your password"
+            />
+          </div>
+
+          <button type="submit" class="login-button primary-button">Log In</button>
+
+          <button type="button" @click="handleGoogleLogin" class="google-button secondary-button">
+            <img src="/src/assets/images/google-icon.png" alt="Google Icon" class="google-icon" /> Log In with Google
+          </button>
+        </form>
+
+        <div class="switch-form-link">
+          <p>Don't have an account? <router-link to="/signup">Sign Up</router-link></p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
-
-<style scoped>
-.login-container {
-  width: 300px;
-  margin: 0 auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-}
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.login-form .input-group {
-  margin-bottom: 15px;
-}
-
-.login-form label {
-  display: block;
-  font-size: 14px;
-  margin-bottom: 5px;
-}
-
-.login-form input {
-  width: 100%;
-  padding: 10px;
-  font-size: 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-}
-
-.login-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.login-button:hover {
-  background-color: #45a049;
-}
-
-.google-login {
-  margin-top: 20px;
-  text-align: center;
-}
-
-.google-button {
-  width: 100%;
-  padding: 12px;
-  background-color: #db4437;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.google-button:hover {
-  background-color: #c1351d;
-}
-
-.signup-link {
-  margin-top: 20px;
-  text-align: center;
-}
-
-.signup-link a {
-  color: #4CAF50;
-  text-decoration: none;
-}
-</style>
