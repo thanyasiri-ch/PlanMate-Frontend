@@ -1,39 +1,38 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { signUp, googleSignUp } from '@/services/auth';
+import { googleSignIn } from '@/services/auth';
+import { useSignupStore } from '@/stores/signupStore';
 import '@/assets/css/auth.css';
 
-// Reactive properties for email and password
-const displayName = ref('')
+const displayName = ref('');
 const email = ref('');
 const password = ref('');
-
 const router = useRouter();
+const signupStore = useSignupStore();
 
-const handleSignUp = async () => {
-  try {
-    console.log('Signing up with email:', email.value);
-    console.log('Password:', password.value);
-
-    const user = await signUp(email.value, password.value); // Calls signup from auth.ts
-    console.log('User signed up:', user);
-
-    // redirect to Login page
-    router.push({ name: 'login' })
-  } catch (error) {
-    console.error(error.message);
+const handleNext = () => {
+  if (!displayName.value || !email.value || !password.value) {
+    alert('All fields are required.');
+    return;
   }
+
+  // Save signup info to store
+  signupStore.setUserData(displayName.value, email.value, password.value);
+
+  // Move to image upload step
+  router.push({ name: 'signupWithImage' });
 };
 
-// Google Sign-Up method
 const handleGoogleSignUp = async () => {
   try {
-    const user = await googleSignUp(); // Calls googleSignUp from auth.ts
+    const user = await googleSignIn();
     console.log('Google user signed up:', user);
     router.push({ name: 'login' });
   } catch (error) {
-    console.error('Error during Google sign-up:', error.message);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error during Google sign-up:', message);
+    alert('Google Sign-Up failed: ' + message);
   }
 };
 </script>
@@ -51,31 +50,25 @@ const handleGoogleSignUp = async () => {
       <div class="form-container">
         <h1>Sign Up</h1>
 
-        <!-- Sign Up Form -->
-        <form @submit.prevent="handleSignUp" class="signup-form">
-          <!-- Display Name Input -->
+        <form @submit.prevent="handleNext" class="signup-form">
           <div class="input-group">
             <label for="name">Display Name</label>
-            <input type="name" id="name" v-model="displayName" required placeholder="Enter your display name" />
+            <input type="text" id="name" v-model="displayName" required placeholder="Enter your display name" />
           </div>
 
-          <!-- Email Input -->
           <div class="input-group">
             <label for="email">Email</label>
             <input type="email" id="email" v-model="email" required placeholder="Enter your email" />
           </div>
 
-          <!-- Password Input -->
           <div class="input-group">
             <label for="password">Password</label>
             <input type="password" id="password" v-model="password" required placeholder="Enter your password" />
           </div>
 
-          <!-- Sign Up Button -->
           <button type="submit" class="signup-button primary-button">Sign Up</button>
 
-          <!-- Sign Up with Google Button -->
-          <button @click="handleGoogleSignUp" class="google-button secondary-button">
+          <button type="button" @click="handleGoogleSignUp" class="google-button secondary-button">
             <img src="/src/assets/images/google-icon.png" alt="Google Icon" class="google-icon" /> Sign Up with Google
           </button>
         </form>

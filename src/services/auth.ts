@@ -1,74 +1,62 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  GoogleAuthProvider,
   signInWithPopup,
-} from 'firebase/auth'
-import { auth } from '@/firebase/firebase'
-import apiClient from '@/services/AxiosClient' // Axios instance with interceptor
+  updateProfile,
+  GoogleAuthProvider,
+  type User as FirebaseUser,
+} from 'firebase/auth';
+import { auth } from '@/firebase/firebase';
+import type { User } from '@/types';
 
-const provider = new GoogleAuthProvider()
+const provider = new GoogleAuthProvider();
 
-// Common helper to store token and trigger backend user-saving
-const postLoginSetup = async (user: any) => {
-  const idToken = await user.getIdToken()
-  localStorage.setItem('access_token', idToken)
+// Converts Firebase user to your app's user shape
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const formatUser = (firebaseUser: FirebaseUser | any): User => {
+  return {
+    uid: firebaseUser.uid,
+    email: firebaseUser.email || '',
+    displayName: firebaseUser.displayName || 'Guest',
+    image: firebaseUser.photoURL || 'https://www.example.com/default-avatar.png',
+  };
+};
 
-  try {
-    await apiClient.get('/ping') // `/ping` or any lightweight endpoint
-  } catch (error) {
-    console.warn('Post-login backend sync failed:', error.message)
-  }
+// Step 1: Create user account with initial display name (photoURL will be set later)
+export async function createInitialUser(
+  email: string,
+  password: string,
+  displayName: string
+): Promise<FirebaseUser> {
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-  return { user, idToken }
+  // Set display name and image
+  await updateProfile(userCredential.user, {
+    displayName,
+    photoURL: null,
+  });
+
+  return userCredential.user;
 }
 
-// Google Sign-Up (same as sign-in)
-export const googleSignUp = async () => {
-  try {
-    const result = await signInWithPopup(auth, provider)
-    return await postLoginSetup(result.user)
-  } catch (error) {
-    console.error('Error during Google sign-up: ', error.message)
-    throw error
-  }
+// Step 2: Update user's photoURL (and optionally displayName if needed again)
+export async function updateUserPhoto(
+  user: FirebaseUser,
+  photoURL: string
+): Promise<void> {
+  await updateProfile(user, {
+    photoURL,
+  });
 }
 
-// Google Sign-In
-export const googleSignIn = async () => {
-  try {
-    const result = await signInWithPopup(auth, provider)
-    const user = result.user
-    const { idToken } = await postLoginSetup(user)
+// Log in with email and password
+export const login = async (email: string, password: string): Promise<User> => {
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return formatUser(userCredential.user);
+};
 
-    return {
-      user,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      idToken,
-    }
-  } catch (error) {
-    console.error('Error during Google login: ', error.message)
-    throw error
-  }
-}
-
-// Email/Password Sign-Up
-export const signUp = async (email: string, password: string) => {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-    return await postLoginSetup(userCredential.user)
-  } catch (error) {
-    throw new Error('Error signing up: ' + error.message)
-  }
-}
-
-// Email/Password Sign-In
-export const signIn = async (email: string, password: string) => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password)
-    return await postLoginSetup(userCredential.user)
-  } catch (error) {
-    throw new Error('Error signing in: ' + error.message)
-  }
-}
+// Google sign-in
+export const googleSignIn = async (): Promise<User> => {
+  const result = await signInWithPopup(auth, provider);
+  return formatUser(result.user);
+};

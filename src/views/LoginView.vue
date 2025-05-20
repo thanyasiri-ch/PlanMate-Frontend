@@ -1,41 +1,29 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { signIn, googleSignIn } from '@/services/auth'; // Assuming signIn method is defined in auth.ts
+import { useAuthStore } from '@/stores/auth';
 import '@/assets/css/auth.css';
 
-// Reactive properties for email and password
 const email = ref('');
 const password = ref('');
-
 const router = useRouter();
+const authStore = useAuthStore();
 
 const handleLogin = async () => {
   try {
-    console.log('Logging in with email:', email.value);
-    console.log('Password:', password.value);
-
-    const user = await signIn(email.value, password.value);
-    console.log('User logged in:', user);
-
-    // Redirect to home page (or any other page after successful login)
-    router.push({ name: 'home' });
-  } catch (error) {
+    await authStore.loginWithEmail(email.value, password.value);
+    router.push({ name: 'home' }); // Redirect after login success
+  } catch (error: any) {
     console.error('Error during login:', error.message);
   }
 };
 
-// Handle Google login
 const handleGoogleLogin = async () => {
   try {
-    const { user, displayName, photoURL } = await googleSignIn(); // Calls googleSignIn from auth.ts
-
-    console.log('Google user logged in:', user);
-    router.push({
-      name: 'home',
-      state: { displayName: displayName, profileImage: photoURL }
-    });  // Redirect to home page after Google login
-  } catch (error) {
+    await authStore.loginWithGoogle();
+    router.push({ name: 'home' }); // Redirect after Google login success
+  } catch (error: any) {
     console.error('Error during Google login:', error.message);
   }
 };

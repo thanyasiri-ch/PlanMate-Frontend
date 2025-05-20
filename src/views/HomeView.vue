@@ -1,58 +1,50 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { signOut } from 'firebase/auth' // Import Firebase Authentication
-import { auth } from '@/firebase/firebase' // Import the Firebase auth instance
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
-// Get the router instance for navigation and route instance to access state
+// Store and router
 const router = useRouter()
-// Use useRoute to access the route's state
-const route = useRoute()
+const authStore = useAuthStore()
 
-// Reactive variables to hold user info
-const user = ref<unknown>(null)
-const displayName = ref(route.state?.displayName || 'Guest')
-const profileImage = ref(route.state?.profileImage || '')
-
-const defaultImage = 'https://www.example.com/default-avatar.png'
-
-// Fetch the current user info when the component is mounted
+// Load user data from localStorage on first mount if available
 onMounted(() => {
-  const currentUser = auth.currentUser
+  if (!authStore.user) {
+    authStore.checkAuthStatus()
+  }
 
-  if (currentUser) {
-    user.value = currentUser
-    displayName.value = currentUser.displayName || 'Guest'
-    profileImage.value = currentUser.photoURL || defaultImage
-    console.log('Show image: ', profileImage.value)
+  // Optional: If user is still not found, redirect to login
+  if (!authStore.user) {
+    router.push({ name: 'login' })
   }
 })
 
-// Log out the user
+// Logout handler
 const handleLogout = async () => {
   try {
-    await signOut(auth) 
-    console.log('User logged out')
-    user.value = null
+    await authStore.logout()
     router.push({ name: 'login' })
   } catch (error) {
-    console.error('Error logging out:', error.message)
+    console.error('Error logging out:', (error as Error).message)
   }
 }
 </script>
 
+
 <template>
   <div class="home-container">
-    <h1>Welcome to Home Page</h1>
-
     <!-- Display User Info (Optional) -->
-    <div v-if="user">
-      <h2>Welcome, {{ displayName }}</h2>
-      <img :src="profileImage" alt="User's Profile Image" class="user-photo" />
+    <div>
+      <h2>Welcome, {{ authStore.displayName }}</h2>
+      <img
+        :src="authStore.image"
+        alt="Profile"
+        class="user-photo"
+      />
     </div>
 
     <!-- Log Out Button -->
-    <button v-if="user" @click="handleLogout" class="logout-button">Log Out</button>
+    <button @click="handleLogout" class="logout-button">Log Out</button>
   </div>
 </template>
 
