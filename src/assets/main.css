@@ -1,10 +1,11 @@
 @import './base.css';
+
 body {
   font-family: 'Nunito Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
                Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* You can also set a default color, background, line-height etc. for the whole app here */
+  /* Can also set a default color, background, line-height etc. for the whole app here */
   /* color: #2c3e50; */
   /* background-color: #ffffff; */
 }
@@ -14,4 +15,20 @@ button,
 textarea,
 select {
   font-family: inherit; /* This will make them inherit 'Nunito Sans' from the body */
+}
+
+.main-logo-container {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  display: flex;
+  align-items: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+}
+
+.main-logo {
+  width: 35%;
+  margin-right: 12px;
 }
