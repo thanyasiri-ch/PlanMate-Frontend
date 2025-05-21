@@ -30,6 +30,7 @@ export const useAuthStore = defineStore('auth', {
       if (auth.currentUser) {
         const idToken = await auth.currentUser.getIdToken();
         this.setAuth(user, idToken);
+        await apiClient.get('/ping');
       } else {
         console.error("Login successful but auth.currentUser is null.");
         throw new Error("Could not finalize login session.");
@@ -74,6 +75,7 @@ export const useAuthStore = defineStore('auth', {
 
       // Step 6: Set the authentication state in the store
       this.setAuth(appUser, idToken);
+      await apiClient.get('/ping');
     },
 
     async loginWithGoogle() {
@@ -81,6 +83,7 @@ export const useAuthStore = defineStore('auth', {
       if (auth.currentUser) {
         const idToken = await auth.currentUser.getIdToken();
         this.setAuth(user, idToken);
+        await apiClient.get('/ping');
       } else {
         console.error("Google sign-in successful but auth.currentUser is null.");
         throw new Error("Could not finalize Google login session.");
