@@ -35,10 +35,10 @@
 
   --section-gap: 160px;
 
-  --slider-connect-bg: #544BAA; /* Using your button green as an example */
+  --slider-connect-bg: #766BDE; /* Using your button green as an example */
   --slider-tooltip-bg: #544BAA;
-  --slider-handle-bg: #544BAA;
-  --slider-bg: #E5E7EB; /* A light gray for the track background */
+  --slider-handle-bg: #766BDE;
+  --slider-bg: #D7D3FA; /* A light gray for the track background */
 }
 
 @media (prefers-color-scheme: white) {

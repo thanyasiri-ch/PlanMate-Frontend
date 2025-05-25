@@ -28,7 +28,7 @@ const handleGoogleSignUp = async () => {
   try {
     const user = await googleSignIn();
     console.log('Google user signed up:', user);
-    router.push({ name: 'login' });
+    router.push({ name: 'question' });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error during Google sign-up:', message);

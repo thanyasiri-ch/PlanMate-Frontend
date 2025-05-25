@@ -58,7 +58,7 @@ const handleSignUp = async (customImageFile: File | null) => {
     )
 
     signupStore.clear()
-    router.push({ name: 'home' })
+    router.push({ name: 'question' })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Sign up failed:', error.message)

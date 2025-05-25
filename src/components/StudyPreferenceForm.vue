@@ -1,7 +1,6 @@
 <script lang="ts">
 import '@/assets/tailwind.css'
 import type { PreferredStudyTime, RevisionFrequency, BreakDuration, StudyPreference } from '@/types'
-import StudyPrefService from '@/services/StudyPrefServices'
 import '@vueform/slider/themes/default.css'
 import Slider from '@vueform/slider'
 
@@ -17,7 +16,7 @@ export default {
   },
   data() {
     return {
-      sessionRange: [30, 90],
+      sessionRange: [45, 90] as [number, number],
       preferredStudyTimeOptions: [
         'early morning',
         'late morning',
@@ -28,7 +27,7 @@ export default {
       ] as PreferredStudyTime[],
       selectedPreferredStudyTimes: [] as PreferredStudyTime[],
 
-      minSessionDuration: 30,
+      minSessionDuration: 45,
       maxSessionDuration: 90,
 
       revisionFrequencyOptions: [
@@ -41,10 +40,7 @@ export default {
       breakDurationOptions: [5, 10, 15, 20, 25, 30] as BreakDuration[],
       selectedBreakDuration: 0 as BreakDuration,
 
-      isSaving: false,
       showErrors: false,
-
-      sliderMarkValues: [30, 60, 90, 120, 150, 180] as number[],
     }
   },
   computed: {
@@ -83,32 +79,22 @@ export default {
     selectBreakDuration(duration: BreakDuration) {
       this.selectedBreakDuration = duration
     },
-    async submitPreferences() {
+    getValidatedPreferences(): StudyPreference | null {
       this.showErrors = !this.isFormValid
-      if (this.showErrors) return
+      if (this.showErrors) {
+        // Optionally, could emit an event here to notify the parent about validation failure
+        // e.g., this.$emit('validation-failed');
+        return null
+      }
 
       const studyPreferences: StudyPreference = {
-        preferredStudyTimes: this.selectedPreferredStudyTimes,
+        preferredStudyTimes: [...this.selectedPreferredStudyTimes], // Send a copy
         minSessionDuration: this.sessionRange[0],
         maxSessionDuration: this.sessionRange[1],
         revisionFrequency: this.selectedRevisionFrequency,
         breakDurations: this.selectedBreakDuration,
       }
-
-      this.isSaving = true
-      try {
-        if (this.isEditMode) {
-          await StudyPrefService.updatePref(studyPreferences)
-        } else {
-          await StudyPrefService.savePref(studyPreferences)
-        }
-        alert('Preferences saved successfully.')
-      } catch (error) {
-        console.error('Failed to save preferences', error)
-        alert('Something went wrong saving your preferences.')
-      } finally {
-        this.isSaving = false
-      }
+      return studyPreferences
     },
   },
 }
@@ -129,8 +115,8 @@ export default {
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm' /* Added text-sm for consistency if text-small is on parent */,
               selectedPreferredStudyTimes.includes(time)
-                ? 'bg-violet-500 text-white border-violet-500'
-                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100',
+                ? 'bg-[#766BDE] text-white border-[#766BDE]'
+                : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
             ]"
           >
             {{ time }}
@@ -152,7 +138,6 @@ export default {
             :tooltip="'always'"
             :lazy="true"
             :range="true"
-            :marks="sliderMarkValues"
           />
         </div>
         <div class="flex justify-between text-sm text-gray-500 mt-1">
@@ -172,8 +157,8 @@ export default {
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm',
               selectedRevisionFrequency === frequency
-                ? 'bg-violet-500 text-white border-violet-500'
-                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100',
+                ? 'bg-[#766BDE] text-white border-[#766BDE]'
+                : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
             ]"
           >
             {{ frequency }}
@@ -193,28 +178,14 @@ export default {
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm',
               selectedBreakDuration === duration
-                ? 'bg-violet-500 text-white border-violet-500'
-                : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-100',
+                ? 'bg-[#766BDE] text-white border-[#766BDE]'
+                : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
             ]"
           >
             {{ duration }} minutes
           </button>
         </div>
       </div>
-    </div>
-
-    <div class="mt-8 flex justify-end">
-      <button
-        @click="submitPreferences"
-        :disabled="isSaving"
-        class="px-7 py-2 text-white font-bold rounded-4xl transition-colors duration-150 ease-in-out shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-opacity-75"
-        :style="{
-          backgroundColor: '#57C490',
-          '--tw-ring-color': '#57C490',
-        }"
-      >
-        {{ isEditMode ? 'Update Preferences' : 'Save Preferences' }}
-      </button>
     </div>
   </div>
 </template>
