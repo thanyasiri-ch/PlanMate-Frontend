@@ -34,6 +34,11 @@
   --color-text: var(--vt-c-text-light-1);
 
   --section-gap: 160px;
+
+  --slider-connect-bg: #544BAA; /* Using your button green as an example */
+  --slider-tooltip-bg: #544BAA;
+  --slider-handle-bg: #544BAA;
+  --slider-bg: #E5E7EB; /* A light gray for the track background */
 }
 
 @media (prefers-color-scheme: white) {
@@ -48,14 +53,6 @@
     --color-heading: var(--vt-c-text-dark-1);
     --color-text: var(--vt-c-text-dark-2);
   }
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  font-weight: normal;
 }
 
 body {

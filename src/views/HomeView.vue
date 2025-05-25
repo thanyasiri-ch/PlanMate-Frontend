@@ -33,6 +33,7 @@ const handleLogout = async () => {
 
 <template>
   <div class="home-container">
+    <RouterLink to="/question-pref">Questionaire</RouterLink>
     <!-- Display User Info (Optional) -->
     <div>
       <h2>Welcome, {{ authStore.displayName }}</h2>
