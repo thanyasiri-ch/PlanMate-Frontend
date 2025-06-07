@@ -44,7 +44,7 @@ const handleSignUp = async (customImageFile: File | null) => {
     alert(
       'Essential user details (email, password, display name) are missing. Please go back to the previous step.',
     )
-    router.push({ name: 'signup' })
+    router.push({ name: 'question' })
     return
   }
 
@@ -291,7 +291,7 @@ div.button {
   align-items: center;
   justify-content: center;
   gap: 15px; /* Space between spinner and text */
-  background-color: #f0f2f5; 
+  background-color: #f0f2f5;
   font-size: 18px;
   color: #333;
   font-weight: bold;

@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
-// Placeholder data - in a real app, this would come from a store or API
-const user = ref({
-  name: 'Keerat113',
-  avatarUrl:
-    'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?ixlib=rb-1.2.1&q=80&fm=jpg&crop=faces&fit=crop&h=200&w=200&ixid=eyJhcHBfaWQiOjE3Nzg0fQ', // Placeholder avatar
-})
+const router = useRouter()
+const authStore = useAuthStore()
 
 const focusStats = ref({
   completion: '20 times',
@@ -55,8 +54,25 @@ const timeRangeOptions = ['Day', 'Week', 'Month', 'Year']
 const incrementYear = () => currentYear.value++
 const decrementYear = () => currentYear.value--
 
-// In a real application, you would use an icon library like Heroicons (https://heroicons.com/)
-// For this example, SVGs are inlined or represented as text.
+onMounted(() => {
+  if (!authStore.user) {
+    authStore.checkAuthStatus()
+  }
+
+  // Optional: If user is still not found, redirect to login
+  if (!authStore.user) {
+    router.push({ name: 'login' })
+  }
+})
+
+const handleLogout = async () => {
+  try {
+    await authStore.logout()
+    router.push({ name: 'login' })
+  } catch (error) {
+    console.error('Error logging out:', (error as Error).message)
+  }
+}
 </script>
 
 <template>
@@ -92,8 +108,8 @@ const decrementYear = () => currentYear.value--
             </svg>
           </button>
           <img
-            :src="user.avatarUrl"
-            alt="User Avatar"
+            :src="authStore.image"
+            alt="Profile"
             class="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover"
           />
         </div>
@@ -255,11 +271,11 @@ const decrementYear = () => currentYear.value--
             <section class="lg:col-span-1 flex flex-col gap-6 bg-white rounded-2xl p-5">
               <div class="bg-[#F1EFFF] p-3 rounded-xl text-center">
                 <img
-                  :src="user.avatarUrl"
-                  alt="User Avatar"
+                  :src="authStore.image"
+                  alt="Profile"
                   class="w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-2 object-cover border-4 border-white shadow-sm"
                 />
-                <h3 class="text-xl font-semibold text-gray-800">{{ user.name }}</h3>
+                <h3 class="text-xl font-semibold text-gray-800">{{ authStore.displayName }}</h3>
                 <button
                   class="mt-4 px-5 py-1 bg-[#FFC84A] text-black text-sm font-semibold rounded-4xl hover:bg-[#ffba4a] transition-colors"
                 >
@@ -309,6 +325,7 @@ const decrementYear = () => currentYear.value--
               </div>
 
               <button
+                @click="handleLogout"
                 class="w-full py-2.5 md:py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-75"
               >
                 Log out

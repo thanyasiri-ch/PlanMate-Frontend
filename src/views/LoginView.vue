@@ -13,7 +13,7 @@ const authStore = useAuthStore();
 const handleLogin = async () => {
   try {
     await authStore.loginWithEmail(email.value, password.value);
-    router.push({ name: 'home' }); // Redirect after login success
+    router.push({ name: 'profile' });
   } catch (error: any) {
     console.error('Error during login:', error.message);
   }
@@ -22,7 +22,7 @@ const handleLogin = async () => {
 const handleGoogleLogin = async () => {
   try {
     await authStore.loginWithGoogle();
-    router.push({ name: 'home' }); // Redirect after Google login success
+    router.push({ name: 'profile' });
   } catch (error: any) {
     console.error('Error during Google login:', error.message);
   }
