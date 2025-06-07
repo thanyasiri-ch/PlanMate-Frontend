@@ -141,6 +141,7 @@ onMounted(() => {
         </button>
 
         <button
+          v-if="imageFile"
           type="button"
           @click="triggerFileInput"
           class="change-picture-button"
