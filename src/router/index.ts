@@ -9,6 +9,15 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
+      path: '/',
+      redirect: '/login' 
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView
+    },
+    {
       path: '/signup',
       name: 'signup',
       component: SignupView,
@@ -17,11 +26,6 @@ const router = createRouter({
       path: '/signupWithImage',
       name: 'signupWithImage',
       component: SignupWithImage
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: LoginView,
     },
     {
       path: '/question-pref',
