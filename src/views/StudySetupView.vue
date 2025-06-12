@@ -8,25 +8,34 @@ const router = useRouter()
 const route = useRoute()
 
 const steps = ['term', 'course', 'topic', 'availability', 'generate']
-const stepIndex = computed(() => steps.indexOf(route.name as string))
 
+// Compute current step name directly from the route name
+const currentStepName = computed(() => route.name as string)
+
+// Move to next step
 function nextStep() {
-  if (stepIndex.value < steps.length - 1) {
-    router.push({ name: steps[stepIndex.value + 1] })
+  const currentIndex = steps.indexOf(currentStepName.value)
+  if (currentIndex < steps.length - 1) {
+    router.push({ name: steps[currentIndex + 1] })
   }
 }
 
+// Move to previous step
 function prevStep() {
-  if (stepIndex.value > 0) {
-    router.push({ name: steps[stepIndex.value - 1] })
+  const currentIndex = steps.indexOf(currentStepName.value)
+  if (currentIndex > 0) {
+    router.push({ name: steps[currentIndex - 1] })
   }
 }
 </script>
 
 <template>
   <DefaultLayout>
-    <div>
-      <StepIndicator :currentStep="stepIndex" />
+    <div class="w-full">
+      <div class="flex justify-center py-8">
+          <StepIndicator :activeStep="currentStepName" />
+      </div>
+
       <router-view @next="nextStep" @back="prevStep" />
     </div>
   </DefaultLayout>
