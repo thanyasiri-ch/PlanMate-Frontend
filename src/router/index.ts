@@ -4,18 +4,24 @@ import SignupView from '@/views/SignupView.vue'
 import SignupWithImage from '@/views/SignupWithImage.vue'
 import QuestionaireView from '@/views/QuestionaireView.vue'
 import ProfileView from '@/views/ProfileView.vue'
+import StudySetupView from '@/views/StudySetupView.vue'
+import TermSetup from '@/components/study-setup/TermSetup.vue'
+import CourseSetup from '@/components/study-setup/CourseSetup.vue'
+import TopicSetup from '@/components/study-setup/TopicSetup.vue'
+import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
+import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: '/login' 
+      redirect: '/login',
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: LoginView,
     },
     {
       path: '/signup',
@@ -25,18 +31,30 @@ const router = createRouter({
     {
       path: '/signupWithImage',
       name: 'signupWithImage',
-      component: SignupWithImage
+      component: SignupWithImage,
     },
     {
       path: '/question-pref',
       name: 'question',
-      component: QuestionaireView
+      component: QuestionaireView,
     },
     {
       path: '/profile',
       name: 'profile',
-      component: ProfileView
-    }
+      component: ProfileView,
+    },
+    {
+      path: '/study-setup',
+      component: StudySetupView,
+      children: [
+        { path: 'term', name: 'term', component: TermSetup },
+        { path: 'course', name: 'course', component: CourseSetup },
+        { path: 'topic', name: 'topic', component: TopicSetup },
+        { path: 'availability', name: 'availability', component: AvailabilitySetup },
+        { path: 'generate', name: 'generate', component: GeneratePlan },
+        { path: '', redirect: { name: 'term' } },
+      ],
+    },
   ],
 })
 
