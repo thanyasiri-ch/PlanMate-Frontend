@@ -24,7 +24,7 @@
       </header>
 
       <!-- Page content will render here -->
-      <div class="flex-1"> <!--overflow-auto-->
+      <div class="flex-1 overflow-auto"> <!--overflow-auto-->
         <slot />
       </div>
     </main>

@@ -3,35 +3,38 @@ import { computed } from 'vue'
 
 const props = defineProps<{ activeStep: string }>()
 
-const steps = ['term', 'course', 'topic', 'availability', 'generate']
+const steps = ['term', 'course', 'topic', 'availability', 'generate plan']
 
 const currentStepIndex = computed(() => steps.indexOf(props.activeStep))
 </script>
 
 <template>
-  <div class="w-full max-w-3xl px-4 sm:px-0">
+  <div class="w-1/2 max-w-3xl px-10 sm:px-0">
     <ol class="flex items-center w-full">
       <li
         v-for="(step, index) in steps"
         :key="step"
-        class="relative flex w-full items-center"
+        class="relative flex items-center"
         :class="{
-          'after:content-[\'\'] after:w-full after:h-1 after:border-b-6 after:inline-block': index < steps.length - 1,
-          'after:absolute after:left-0 after:top-5 lg:after:top-6': index < steps.length - 1,
+          // Apply `grow` ONLY to the items that are NOT the last one.
+          'grow': index < steps.length - 1,
+
+          'after:content-[\'\'] after:w-full after:h-1 after:border-b-4 after:inline-block': index < steps.length - 1,
+          'after:absolute after:left-0 after:top-4 lg:after:top-5': index < steps.length - 1,
           'after:border-[#766BDE]': index < currentStepIndex,
           'after:border-[#F1EFFF]': index >= currentStepIndex
         }"
       >
         <div class="relative z-10 shrink-0">
           <span
-            class="flex items-center justify-center w-10 h-10 rounded-full lg:h-12 lg:w-12"
+            class="flex items-center justify-center w-8 h-8 rounded-full lg:h-10 lg:w-10"
             :class="{
               'bg-[#766BDE]': index <= currentStepIndex,
-              'bg-[#F1EFFF] border-[#D9D4F6]': index > currentStepIndex
+              'bg-[#F1EFFF] border-2 border-[#D9D4F6]': index > currentStepIndex
             }"
           >
             <span
-              class="text-lg font-bold"
+              class="text-md font-bold"
               :class="{
                 'text-white': index <= currentStepIndex,
                 'text-[#766BDE]': index > currentStepIndex
