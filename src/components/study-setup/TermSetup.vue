@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useStudySetupStore } from '@/stores/studySetup'
 import type { TermDTO, CourseDTO } from '@/types'
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 
 const emit = defineEmits(['next'])
-
 const store = useStudySetupStore()
+const courseListRef = ref<HTMLElement | null>(null)
 
 // --- Component State ---
 const term = ref<TermDTO>({
@@ -26,22 +26,22 @@ const course = ref<CourseDTO>({
 
 // Methods
 function addCourse() {
-  // Basic validation
-  if (!course.value.id || !course.value.name) {
-    alert('Please provide a course ID and name.')
-    return
-  }
-  // Add the new course to the term's courses array
   term.value.courses.push({
     ...course.value,
-    credit: Number(course.value.credit), // Ensure credit is a number
-    // Initialize other required fields from CourseDTO
+    credit: Number(course.value.credit),
     topics: [],
     assignments: [],
     exams: [],
   })
-  // Reset the form for the next entry
+
   course.value = { id: '', name: '', credit: 0, topics: [], assignments: [], exams: [] }
+
+  // Scroll to bottom after DOM updates
+  nextTick(() => {
+    if (courseListRef.value) {
+      courseListRef.value.scrollTop = courseListRef.value.scrollHeight - courseListRef.value.clientHeight
+    }
+  })
 }
 
 function removeCourse(index: number) {
@@ -144,7 +144,7 @@ function submit(): boolean {
         </div>
 
         <!-- Scrollable Course List -->
-        <div class="flex-1 min-h-0 overflow-y-auto space-y-4 mb-4 rounded-xl">
+        <div ref="courseListRef" class="flex-1 min-h-0 overflow-y-auto space-y-4 mb-4 rounded-xl">
           <div
             v-for="(c, index) in term.courses"
             :key="index"
@@ -187,7 +187,7 @@ function submit(): boolean {
         <!-- Add Course Button -->
         <div class="flex justify-center">
           <button
-            @click="term.courses.push({ id: '', name: '', credit: 0, topics: [], assignments: [], exams: [] })"
+            @click="addCourse"
             type="button"
             class="inline-flex items-center gap-2 px-4 py-1 bg-[#5856D6] text-white font-bold rounded-xl shadow-md hover:bg-[#4b49b4] transition-colors"
           >
