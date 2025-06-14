@@ -61,8 +61,8 @@ function submit(): boolean {
 </script>
 
 <template>
-  <div class="bg-[#DCD7FF] flex flex-col items-center">
-    <div class="w-3xl flex flex-col flex-1 space-y-8 overflow-hidden">
+  <div class="flex flex-col items-center">
+    <div class="w-2/3 flex flex-col flex-1 space-y-8 overflow-hidden">
 
       <!-- Term Form -->
       <div class="bg-white rounded-2xl p-6 sm:p-8">

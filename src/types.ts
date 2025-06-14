@@ -44,6 +44,7 @@ export interface AssignmentDTO {
   dueTime: string
   estimatedTime: number
   associatedTopicTitles: string[]
+  completed: boolean
 }
 
 export interface ExamDTO {
