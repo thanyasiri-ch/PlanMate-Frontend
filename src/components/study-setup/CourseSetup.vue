@@ -6,6 +6,53 @@ import { ExamType } from '@/types'
 const selectedCourseId = ref<string>('955102') // Default selected course
 const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
 
+const customizeMode = ref(false)
+
+// New Topic Form
+const newTopicName = ref('')
+const newTopicDifficulty = ref(1)
+const newTopicConfidence = ref(1)
+const newTopicTime = ref(30)
+
+const addTopic = () => {
+  if (!selectedCourse.value) return
+  selectedCourse.value.topics.push({
+    name: newTopicName.value,
+    difficulty: newTopicDifficulty.value,
+    confidence: newTopicConfidence.value,
+    estimatedStudyTime: newTopicTime.value,
+    examType: selectedExamType.value,
+  })
+  newTopicName.value = ''
+  newTopicDifficulty.value = 1
+  newTopicConfidence.value = 1
+  newTopicTime.value = 30
+}
+
+// New Assignment Form
+const newAssignmentName = ref('')
+const newAssignmentDate = ref('2025-07-01')
+const newAssignmentTime = ref('12:00')
+const newAssignmentEstimate = ref(60)
+const newAssignmentCompleted = ref(false)
+
+const addAssignment = () => {
+  if (!selectedCourse.value) return
+  selectedCourse.value.assignments.push({
+    name: newAssignmentName.value,
+    dueDate: newAssignmentDate.value,
+    dueTime: newAssignmentTime.value,
+    estimatedTime: newAssignmentEstimate.value,
+    associatedTopicTitles: [], // Optional: can be improved
+    completed: newAssignmentCompleted.value,
+  })
+  newAssignmentName.value = ''
+  newAssignmentDate.value = '2025-07-01'
+  newAssignmentTime.value = '12:00'
+  newAssignmentEstimate.value = 60
+  newAssignmentCompleted.value = false
+}
+
 // --- MOCK DATA ---
 // This data would typically come from an API call
 const courses = ref<CourseDTO[]>([
@@ -215,14 +262,14 @@ const formatExamDate = (exam: ExamDTO): string => {
     <div class="w-4/5 flex flex-col flex-1 overflow-hidden">
       <div class="bg-white rounded-2xl p-6 sm:p-8 flex gap-6 flex-1 overflow-hidden">
         <div class="flex flex-col gap-2">
-          <div class="flex bg-gray-100 rounded-lg p-1 w-min mb-2">
+          <div class="flex bg-[#FFF1D1] rounded-full w-min mb-2">
             <button
               @click="selectedExamType = ExamType.MIDTERM"
               :class="[
-                'font-semibold py-1 px-6 rounded-md text-sm',
+                'py-1 px-6 rounded-full text-sm',
                 selectedExamType === ExamType.MIDTERM
-                  ? 'bg-yellow-400 text-yellow-800 shadow'
-                  : 'text-gray-500',
+                  ? 'bg-[#FFC84A] text-[#2F2159] shadow font-bold'
+                  : 'bg-[#FFF1D1] text-[#A3A3A3] font-md',
               ]"
             >
               Midterm
@@ -230,10 +277,10 @@ const formatExamDate = (exam: ExamDTO): string => {
             <button
               @click="selectedExamType = ExamType.FINAL"
               :class="[
-                'font-semibold py-1 px-6 rounded-md text-sm',
+                'py-1 px-6 rounded-full text-sm',
                 selectedExamType === ExamType.FINAL
-                  ? 'bg-yellow-400 text-yellow-800 shadow'
-                  : 'text-gray-500',
+                  ? 'bg-[#FFC84A] text-[#2F2159] shadow font-bold'
+                  : 'bg-[#FFF1D1] text-[#A3A3A3] font-md',
               ]"
             >
               Final
@@ -261,10 +308,13 @@ const formatExamDate = (exam: ExamDTO): string => {
               <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.id }}</h2>
               <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.name }}</h2>
             </div>
-            <button class="text-gray-400 hover:text-gray-600">
+            <button
+              @click="customizeMode = !customizeMode"
+              class="text-gray-400 hover:text-gray-600"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6"
+                class="h-4 w-4"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -281,23 +331,32 @@ const formatExamDate = (exam: ExamDTO): string => {
 
           <div
             v-if="selectedExamDetails"
-            class="flex items-center gap-2 text-md text-gray-500 mb-4 bg-amber-50"
+            class="p-2 rounded-xl bg-yellow-100 border border-yellow-300 mb-4 text-gray-800 flex items-center gap-4"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <span class="font-medium">{{ formatExamDate(selectedExamDetails) }}</span>
+            <div class="flex items-center justify-center w-8 h-8 bg-yellow-200 rounded-full">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 text-yellow-700"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <div>
+              <div class="text-sm font-semibold uppercase tracking-wide text-yellow-700">
+                {{ selectedExamType }}
+              </div>
+              <div class="text-sm font-medium">
+                {{ formatExamDate(selectedExamDetails) }}
+              </div>
+            </div>
           </div>
 
           <div class="space-y-2">
@@ -313,13 +372,23 @@ const formatExamDate = (exam: ExamDTO): string => {
               :key="topic.name"
               class="bg-purple-50 rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
             >
-              <div class="col-span-4 font-semibold text-gray-800">{{ topic.name }}</div>
+              <!-- Editable Topic Name -->
+              <div class="col-span-4">
+                <input
+                  v-model="topic.name"
+                  class="w-full bg-transparent font-semibold text-gray-800 focus:outline-none focus:border-b focus:border-purple-500"
+                  type="text"
+                />
+              </div>
+
+              <!-- Difficulty (clickable stars) -->
               <div class="col-span-3 flex">
                 <template v-for="i in 5" :key="i">
                   <svg
+                    @click="topic.difficulty = i"
+                    class="cursor-pointer w-5 h-5"
                     :class="[
-                      'w-5 h-5',
-                      i <= topic.difficulty ? 'text-yellow-400' : 'text-gray-300',
+                      i <= topic.difficulty ? 'text-[#FFC84A]' : 'text-[#FFC84A] opacity-[.4]',
                     ]"
                     fill="currentColor"
                     viewBox="0 0 20 20"
@@ -330,12 +399,16 @@ const formatExamDate = (exam: ExamDTO): string => {
                   </svg>
                 </template>
               </div>
+
+              <!-- Confidence (clickable stars) -->
               <div class="col-span-3 flex">
                 <template v-for="i in 5" :key="i">
                   <svg
+                    @click="topic.confidence = i"
+                    class="cursor-pointer w-5 h-5"
                     :class="[
                       'w-5 h-5',
-                      i <= topic.confidence ? 'text-yellow-400' : 'text-gray-300',
+                      i <= topic.confidence ? 'text-[#FFC84A]' : 'text-[#FFC84A] opacity-[.4]',
                     ]"
                     fill="currentColor"
                     viewBox="0 0 20 20"
@@ -346,8 +419,14 @@ const formatExamDate = (exam: ExamDTO): string => {
                   </svg>
                 </template>
               </div>
-              <div class="col-span-2 text-right font-semibold text-gray-800">
-                {{ topic.estimatedStudyTime }}
+
+              <!-- Editable Estimated Study Time -->
+              <div class="col-span-2 text-right">
+                <input
+                  v-model="topic.estimatedStudyTime"
+                  class="text-right bg-transparent font-semibold text-gray-800 focus:outline-none focus:border-b focus:border-purple-500 w-full"
+                  type="text"
+                />
               </div>
             </div>
 
@@ -358,7 +437,7 @@ const formatExamDate = (exam: ExamDTO): string => {
 
           <div>
             <div
-              class="inline-block bg-yellow-400 text-yellow-800 font-semibold py-1 px-4 rounded-md text-sm mb-4"
+              class="inline-block bg-[#FFC84A] text-[#2F2159] font-semibold py-1 px-4 rounded-full text-sm mb-4"
             >
               Assignment
             </div>
@@ -376,14 +455,30 @@ const formatExamDate = (exam: ExamDTO): string => {
                 :key="assignment.name"
                 class="bg-purple-50 rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
               >
-                <div class="col-span-4 font-semibold text-gray-800">{{ assignment.name }}</div>
-                <div class="col-span-4 font-semibold text-gray-600">
-                  {{ formatDueDate(assignment) }}
+                <!-- Editable Assignment Name -->
+                <div class="col-span-4">
+                  <input
+                    v-model="assignment.name"
+                    class="w-full bg-transparent font-semibold text-gray-800 focus:outline-none focus:border-b focus:border-purple-500"
+                    type="text"
+                  />
                 </div>
+
+                <!-- Editable Due Date -->
+                <div class="col-span-4">
+                  <input
+                    v-model="assignment.dueDate"
+                    type="date"
+                    class="w-full bg-transparent font-semibold text-gray-600 focus:outline-none focus:border-b focus:border-purple-500"
+                  />
+                </div>
+
+                <!-- Completed status -->
                 <div class="col-span-2 flex justify-start">
                   <span
                     v-if="assignment.completed"
-                    class="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center text-white"
+                    class="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center text-white cursor-pointer"
+                    @click="assignment.completed = false"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -400,13 +495,24 @@ const formatExamDate = (exam: ExamDTO): string => {
                       />
                     </svg>
                   </span>
-                  <span v-else class="h-6 w-6 rounded-full bg-yellow-400"></span>
+                  <span
+                    v-else
+                    class="h-6 w-6 rounded-full bg-[#FFC84A] cursor-pointer"
+                    @click="assignment.completed = true"
+                  ></span>
                 </div>
-                <div class="col-span-2 text-right font-semibold text-gray-800">
-                  {{ assignment.estimatedTime }}
+
+                <!-- Editable Estimated Time -->
+                <div class="col-span-2 text-right">
+                  <input
+                    v-model="assignment.estimatedTime"
+                    class="text-right bg-transparent font-semibold text-gray-800 focus:outline-none focus:border-b focus:border-purple-500 w-full"
+                    type="text"
+                  />
                 </div>
               </div>
-              <button class="text-purple-600 font-semibold pt-2 px-4">+ Add Topic</button>
+
+              <button class="text-purple-600 font-semibold pt-2 px-4">+ Add Assignment</button>
             </div>
           </div>
         </div>
