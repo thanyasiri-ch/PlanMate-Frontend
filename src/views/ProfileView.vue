@@ -49,6 +49,7 @@ const pieChartData = ref([
 
 const isEditing = ref(false)
 const editDisplayName = ref(authStore.displayName)
+const fileInput = ref(null)
 
 //เพิ่มเมื่อกดปุ่มแก้ไข
 const isEditingStudyPreferences = ref(false)
@@ -164,6 +165,7 @@ watch(isEditingStudyPreferences, (val) => {
       backupStudyPreferences.find((p) => p.id === 'breakPreference')?.value || breakOptions[0]
   }
 })
+
 const saveStudyPreferences = () => {
   studyPreferences.value = [
     {
@@ -192,6 +194,21 @@ const saveStudyPreferences = () => {
 const cancelStudyPreferencesEdit = () => {
   studyPreferences.value = cloneDeep(backupStudyPreferences)
   isEditingStudyPreferences.value = false
+}
+
+function triggerImageUpload() {
+  fileInput.value?.click()
+}
+
+function handleImageChange(event) {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      authStore.image = e.target.result // แสดงภาพใหม่
+    }
+    reader.readAsDataURL(file)
+  }
 }
 </script>
 
@@ -371,10 +388,31 @@ const cancelStudyPreferencesEdit = () => {
               class="bg-[#F1EFFF] border-[0.5px] border-[#DCD7FF] p-5 rounded-xl text-center min-h-62"
               v-if="!isEditingStudyPreferences"
             >
-              <img
-                :src="authStore.image"
-                class="w-24 h-24 rounded-full mx-auto mb-3 object-cover border-3 border-white shadow-sm"
-                alt="Profile"
+              <div class="relative w-24 h-24 mx-auto mb-3">
+                <!-- Profile image -->
+                <img
+                  :src="authStore.image"
+                  class="w-24 h-24 rounded-full object-cover border-3 border-white shadow-sm"
+                  alt="Profile"
+                />
+
+                <!-- Camera icon appears only in edit mode -->
+                <button
+                  v-if="isEditing"
+                  @click="triggerImageUpload"
+                  class="absolute bottom-0 right-0 bg-white border border-gray-300 rounded-full shadow w-7 h-7 flex items-center justify-center"
+                >
+                  <img src="/src/assets/images/camera_icon.png" alt="Change" class="w-8 h-8 object-contain" />
+                </button>
+              </div>
+
+              <!-- Hidden input for image upload -->
+              <input
+                type="file"
+                ref="fileInput"
+                accept="image/*"
+                class="hidden"
+                @change="handleImageChange"
               />
 
               <div v-if="isEditing">
