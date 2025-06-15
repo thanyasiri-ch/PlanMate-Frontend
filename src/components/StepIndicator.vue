@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps<{ activeStep: string }>()
+const props = defineProps<{ activeStepIndex: number }>()
 
-const steps = ['term', 'course', 'topic', 'availability', 'generate plan']
+const steps = ['term', 'course', 'topic', 'availability', 'generate Plan']
 
-const currentStepIndex = computed(() => steps.indexOf(props.activeStep))
+const currentStepIndex = computed(() => props.activeStepIndex)
 </script>
 
 <template>

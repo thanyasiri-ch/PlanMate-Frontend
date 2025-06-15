@@ -2,48 +2,88 @@
 import { useRoute, useRouter } from 'vue-router'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
-import { computed, ref } from 'vue'
+import { computed, ref, provide, type Ref } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
 const childComponent = ref<{ submit?: () => boolean } | null>(null)
 
-const steps = ['term', 'course', 'topic', 'availability', 'generate']
+const steps = ['term', 'course', 'topic', 'availability', 'generate Plan']
 
-// Compute current step name directly from the route name
-const currentStepName = computed(() => route.name as string)
+const subStepIndex = ref(0) // 0 = term, 1 = course
 
-// Move to next step
-function nextStep() {
-  // Check if a method needs to be called on the current step's component
-  if (childComponent.value && typeof childComponent.value.submit === 'function') {
-    // Call the child's submit function and only proceed if it returns true
-    const canProceed = childComponent.value.submit()
-    if (!canProceed) {
-        return // Stop navigation if the child's validation fails
+const currentStepIndex = computed(() => {
+  const base = route.name as string
+  if (base === 'term') {
+    return subStepIndex.value
+  }
+  const index = steps.indexOf(base)
+  return index === -1 ? 0 : index
+})
+
+function activateStep(stepName: string) {
+  const stepIndex = steps.indexOf(stepName)
+  if (stepIndex === -1) return
+
+  // If we are navigating to the first two steps, stay on the 'term' route
+  // and just update the subStepIndex
+  if (stepName === 'term' || stepName === 'course') {
+    subStepIndex.value = stepIndex
+    if (route.name !== 'term') {
+      router.push({ name: 'term' })
     }
+    return
   }
 
-  const currentIndex = steps.indexOf(currentStepName.value)
+  // For all other steps, navigate normally
+  router.push({ name: stepName })
+}
+
+function nextStep() {
+  if (childComponent.value?.submit && !childComponent.value.submit()) return
+
+  const base = route.name as string
+  const currentIndex = currentStepIndex.value // Use the computed index
+
+  // If we are on step 'term' (index 0), next takes us to 'course' (index 1)
+  if (currentIndex === 0) {
+    subStepIndex.value = 1
+    return
+  }
+
   if (currentIndex < steps.length - 1) {
-    router.push({ name: steps[currentIndex + 1] })
+    const nextStepName = steps[currentIndex + 1]
+    activateStep(nextStepName)
   }
 }
 
-// Move to previous step
 function prevStep() {
-  const currentIndex = steps.indexOf(currentStepName.value)
+  const currentIndex = currentStepIndex.value // Use the computed index
+
+  // If we are on step 'course' (index 1), back takes us to 'term' (index 0)
+  if (currentIndex === 1) {
+    subStepIndex.value = 0
+    return
+  }
+
   if (currentIndex > 0) {
-    router.push({ name: steps[currentIndex - 1] })
+    const prevStepName = steps[currentIndex - 1]
+    activateStep(prevStepName)
   }
 }
+
+// Provide the navigator object to all child routes
+provide('stepNavigator', {
+  activateStep,
+  subStepIndex: subStepIndex as Ref<number>,
+})
 </script>
 
 <template>
   <DefaultLayout>
     <div class="h-full flex flex-col overflow-hidden">
       <div class="flex justify-center mb-12">
-          <StepIndicator :activeStep="currentStepName" />
+          <StepIndicator :activeStepIndex="currentStepIndex" @step-click="activateStep" />
       </div>
 
       <router-view ref="childComponent" @next="nextStep" @back="prevStep" class="flex-1 overflow-hidden" />
