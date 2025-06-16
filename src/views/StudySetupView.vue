@@ -42,7 +42,6 @@ function activateStep(stepName: string) {
 function nextStep() {
   if (childComponent.value?.submit && !childComponent.value.submit()) return
 
-  const base = route.name as string
   const currentIndex = currentStepIndex.value // Use the computed index
 
   // If we are on step 'term' (index 0), next takes us to 'course' (index 1)
@@ -83,10 +82,15 @@ provide('stepNavigator', {
   <DefaultLayout>
     <div class="h-full flex flex-col overflow-hidden">
       <div class="flex justify-center mb-12">
-          <StepIndicator :activeStepIndex="currentStepIndex" @step-click="activateStep" />
+        <StepIndicator :activeStepIndex="currentStepIndex" @step-click="activateStep" />
       </div>
 
-      <router-view ref="childComponent" @next="nextStep" @back="prevStep" class="flex-1 overflow-hidden" />
+      <router-view
+        ref="childComponent"
+        @next="nextStep"
+        @back="prevStep"
+        class="flex-1 overflow-hidden"
+      />
 
       <!-- Shared navigation buttons across all steps -->
       <div class="flex justify-between items-center mt-8 mb-20 mx-80">

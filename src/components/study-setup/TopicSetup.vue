@@ -139,6 +139,7 @@ const courses = ref<CourseDTO[]>([
 // --- HANDLER FUNCTIONS ---
 const addTopic = () => {
   if (!selectedCourse.value) return
+
   selectedCourse.value.topics.push({
     name: '',
     difficulty: 1,
@@ -187,13 +188,33 @@ const filteredTopics = computed(() => {
   return selectedCourse.value.topics.filter((topic) => topic.examType === selectedExamType.value)
 })
 const filteredAssignments = computed(() => {
-  if (!selectedCourse.value) return []
-  const now = new Date()
+  if (!selectedCourse.value) return [];
+
+  // First, create our "checklist" of topic names for the selected exam.
+  const relevantTopicNames = new Set(
+    selectedCourse.value.topics
+      .filter((topic) => topic.examType === selectedExamType.value)
+      .map((topic) => topic.name)
+  );
+
+  // Filter the assignments based on the mode (viewing or editing).
   return selectedCourse.value.assignments.filter((assignment) => {
-    const dueDate = new Date(`${assignment.dueDate}T${assignment.dueTime}`)
-    return !assignment.completed && dueDate > now
-  })
-})
+    // Check if the assignment is relevant to the current exam section.
+    const isRelevant = assignment.associatedTopicTitles.some((topicTitle) =>
+      relevantTopicNames.has(topicTitle)
+    );
+
+    if (isEditing.value) {
+      // In EDIT mode, we have special rules:
+      // Show the assignment if it's relevant OR if it's a new, empty assignment.
+      const isNew = assignment.associatedTopicTitles.length === 0;
+      return isRelevant || isNew;
+    } else {
+      // In VIEW mode, the rule is simple: just show relevant assignments.
+      return isRelevant;
+    }
+  });
+});
 const selectedExamDetails = computed(() => {
   if (!selectedCourse.value) return null
   return selectedCourse.value.exams.find((exam) => exam.type === selectedExamType.value) || null
@@ -238,7 +259,7 @@ const formatExamDate = (exam: ExamDTO): string => {
           'border-[#5856D6]': stepNavigator?.subStepIndex.value === 0,
           'border-transparent': stepNavigator?.subStepIndex.value !== 0,
         }"
-        >
+      >
         <div class="flex flex-col gap-2">
           <div class="flex bg-[#FFF1D1] rounded-full w-min mb-2">
             <button
@@ -265,17 +286,17 @@ const formatExamDate = (exam: ExamDTO): string => {
             </button>
           </div>
           <button
-              v-for="course in courses"
-              :key="course.id"
-              @click="selectedCourseId = course.id"
-              :class="[
-                'font-bold py-3 px-6 rounded-lg rounded-l-none text-left text-base transition-colors duration-200 border-l-15',
-                course.id === selectedCourseId
-                  ? 'bg-[#8A98DD]/25 border-[#8A98DD]'
-                  : 'bg-gray-100 hover:bg-purple-50 text-gray-600 border-transparent',
-              ]"
+            v-for="course in courses"
+            :key="course.id"
+            @click="selectedCourseId = course.id"
+            :class="[
+              'font-bold py-3 px-6 rounded-lg rounded-l-none text-left text-base transition-colors duration-200 border-l-15',
+              course.id === selectedCourseId
+                ? 'bg-[#8A98DD]/25 border-[#8A98DD]'
+                : 'bg-gray-100 hover:bg-purple-50 text-gray-600 border-transparent',
+            ]"
           >
-              {{ course.name }}
+            {{ course.name }}
           </button>
         </div>
 
@@ -501,8 +522,12 @@ const formatExamDate = (exam: ExamDTO): string => {
             >
               Assignment
             </div>
-            <div v-if="isEditing || filteredAssignments.length > 0" class="space-y-2">
-              <div class="grid grid-cols-12 gap-4 text-sm text-gray-500 font-semibold px-4">
+
+            <div class="space-y-2">
+              <div
+                v-if="isEditing || filteredAssignments.length > 0"
+                class="grid grid-cols-12 gap-4 text-sm text-gray-500 font-semibold px-4"
+              >
                 <div class="col-span-1">Status</div>
                 <div class="col-span-3">Name</div>
                 <div class="col-span-3">Associated Topics</div>
@@ -510,6 +535,7 @@ const formatExamDate = (exam: ExamDTO): string => {
                 <div class="col-span-1 text-right">Time</div>
                 <div class="col-span-1"></div>
               </div>
+
               <div
                 v-for="(assignment, index) in filteredAssignments"
                 :key="index"

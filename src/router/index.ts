@@ -5,8 +5,7 @@ import SignupWithImage from '@/views/SignupWithImage.vue'
 import QuestionaireView from '@/views/QuestionaireView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 import StudySetupView from '@/views/StudySetupView.vue'
-import TermSetup from '@/components/study-setup/TermSetup.vue'
-import CourseSetup from '@/components/study-setup/TopicSetup.vue'
+import TermCourseSetup from '@/components/study-setup/TermCourseSetup.vue'
 import TopicSetup from '@/components/study-setup/TopicSetup.vue'
 import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
 import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
@@ -47,8 +46,8 @@ const router = createRouter({
       path: '/study-setup',
       component: StudySetupView,
       children: [
-        { path: 'term', name: 'term', component: TermSetup },
-        { path: 'course', name: 'course', component: CourseSetup },
+        { path: 'term', name: 'term', component: TermCourseSetup },
+        { path: 'course', name: 'course', component: TermCourseSetup },
         { path: 'topic', name: 'topic', component: TopicSetup },
         { path: 'availability', name: 'availability', component: AvailabilitySetup },
         { path: 'generate', name: 'generate', component: GeneratePlan },

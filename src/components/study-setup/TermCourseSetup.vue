@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useStudySetupStore } from '@/stores/studySetup'
 import type { TermDTO } from '@/types'
-import { ref, inject, watch, type Ref } from 'vue'
+import { ref, inject, watch, nextTick, type Ref } from 'vue'
 
 const store = useStudySetupStore()
 const courseListRef = ref<HTMLElement | null>(null)
@@ -35,14 +35,20 @@ watch(
 
 function addCourse() {
   term.value.courses.push({
-    id: '',
-    name: '',
+    id: "",
+    name: "",
     credit: 0,
     topics: [],
     assignments: [],
     exams: [],
   })
-  // ... (scroll logic unchanged)
+
+  // Scroll to bottom after DOM updates
+  nextTick(() => {
+    if (courseListRef.value) {
+      courseListRef.value.scrollTop = courseListRef.value.scrollHeight - courseListRef.value.clientHeight
+    }
+  })
 }
 
 function removeCourse(index: number) {
@@ -159,7 +165,7 @@ defineExpose({ submit })
         </div>
 
         <div ref="courseListRef" class="flex-1 min-h-0 overflow-y-auto space-y-4 mb-4 rounded-xl">
-          <div v-for="(c, index) in term.courses" :key="c.id || index" class="grid grid-cols-12 gap-4 mb-2">
+          <div v-for="(c, index) in term.courses" :key="index" class="grid grid-cols-12 gap-4 mb-2">
             <input
               v-model="c.id"
               type="text"
