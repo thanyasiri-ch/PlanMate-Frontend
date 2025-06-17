@@ -1,225 +1,130 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, computed, inject, type Ref } from 'vue'
-import type { CourseDTO, AssignmentDTO, ExamDTO } from '@/types'
+import { ref, computed, inject, onMounted, type Ref, watch } from 'vue'
+import { useStudySetupStore } from '@/stores/studySetup'
+import type { AssignmentDTO, ExamDTO, TopicDTO } from '@/types'
 import { ExamType } from '@/types'
+import { v4 as uuidv4 } from 'uuid'
 
-const selectedCourseId = ref<string>('955102')
+const store = useStudySetupStore()
+
+// --- State ---
+const selectedCourseId = ref<string>(store.term.courses[0]?.id ?? '')
 const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
+const isEditing = ref(true)
 
-// Controls edit mode for the entire component
-const isEditing = ref(false)
+// --- Injected Navigation ---
+const stepNavigator = inject<{ activateStep: (step: string) => void; subStepIndex: Ref<number> }>('stepNavigator')
 
-const stepNavigator = inject<{
-  activateStep: (step: string) => void
-  subStepIndex: Ref<number>
-}>('stepNavigator')
+// --- Lifecycle ---
+onMounted(() => initializeCurrentCourse())
+watch([selectedCourseId, selectedExamType], initializeCurrentCourse)
 
-// --- MOCK DATA ---
-const courses = ref<CourseDTO[]>([
-  {
-    id: '955102',
-    name: 'Digital Literacy',
-    credit: 3,
-    topics: [
-      {
-        name: 'Introduction',
-        difficulty: 1,
-        confidence: 1,
-        estimatedStudyTime: 30,
-        examType: ExamType.MIDTERM,
-      },
-      {
-        name: 'System testing',
-        difficulty: 3,
-        confidence: 3,
-        estimatedStudyTime: 90,
-        examType: ExamType.MIDTERM,
-      },
-      {
-        name: 'Docker CI',
-        difficulty: 2,
-        confidence: 2,
-        estimatedStudyTime: 90,
-        examType: ExamType.MIDTERM,
-      },
-      {
-        name: 'Final Project Topic',
-        difficulty: 3,
-        confidence: 1,
-        estimatedStudyTime: 120,
-        examType: ExamType.FINAL,
-      },
-    ],
-    assignments: [],
-    exams: [
-      { type: ExamType.MIDTERM, date: '2025-07-20', startTime: '09:00', endTime: '12:00' },
-      { type: ExamType.FINAL, date: '2025-09-15', startTime: '13:00', endTime: '16:00' },
-    ],
-  },
-  {
-    id: '955201',
-    name: 'Citizenship',
-    credit: 3,
-    topics: [
-      {
-        name: 'Civic Duties',
-        difficulty: 1,
-        confidence: 3,
-        estimatedStudyTime: 45,
-        examType: ExamType.MIDTERM,
-      },
-      {
-        name: 'Modern Governance',
-        difficulty: 2,
-        confidence: 2,
-        estimatedStudyTime: 75,
-        examType: ExamType.FINAL,
-      },
-    ],
-    assignments: [
-      {
-        name: 'Essay on Civic Duty',
-        dueDate: '2025-07-10',
-        dueTime: '23:59',
-        estimatedTime: 120,
-        associatedTopicTitles: ['Civic Duties'],
-        completed: false,
-      },
-    ],
-    exams: [
-      { type: ExamType.MIDTERM, date: '2025-07-22', startTime: '10:00', endTime: '12:00' },
-      { type: ExamType.FINAL, date: '2025-09-18', startTime: '10:00', endTime: '12:00' },
-    ],
-  },
-  {
-    id: '955301',
-    name: 'Advanced Programming',
-    credit: 4,
-    topics: [
-      {
-        name: 'Async/Await',
-        difficulty: 3,
-        confidence: 2,
-        estimatedStudyTime: 120,
-        examType: ExamType.MIDTERM,
-      },
-      {
-        name: 'WebSockets',
-        difficulty: 3,
-        confidence: 1,
-        estimatedStudyTime: 120,
-        examType: ExamType.MIDTERM,
-      },
-      {
-        name: 'Microservices',
-        difficulty: 3,
-        confidence: 1,
-        estimatedStudyTime: 180,
-        examType: ExamType.FINAL,
-      },
-    ],
-    assignments: [
-      {
-        name: 'WebSocket Chat App',
-        dueDate: '2025-08-01',
-        dueTime: '17:00',
-        estimatedTime: 300,
-        associatedTopicTitles: ['WebSockets'],
-        completed: false,
-      },
-    ],
-    exams: [
-      { type: ExamType.MIDTERM, date: '2025-07-25', startTime: '14:00', endTime: '17:00' },
-      { type: ExamType.FINAL, date: '2025-09-20', startTime: '14:00', endTime: '17:00' },
-    ],
-  },
-])
+// --- Computed ---
+const courses = computed(() => store.term.courses)
 
-// --- HANDLER FUNCTIONS ---
-const addTopic = () => {
-  if (!selectedCourse.value) return
+const selectedCourse = computed(() => courses.value.find(course => course.id === selectedCourseId.value) ?? null)
 
-  selectedCourse.value.topics.push({
+const selectedExamDetails = computed(() => {
+  const course = selectedCourse.value
+  return course?.exams?.find(exam => exam.type === selectedExamType.value) ?? null
+})
+
+const filteredTopics = computed(() => {
+  const course = selectedCourse.value
+  const exam = selectedExamDetails.value
+  if (!course || !exam) return []
+
+  return course.topics.filter(topic => topic.type === exam.type)
+})
+
+const filteredAssignments = computed(() => {
+  const course = selectedCourse.value
+  const exam = selectedExamDetails.value
+  if (!course || !exam) return []
+
+  return course.assignments.filter(assignment => assignment.type === exam.type)
+})
+
+// --- Initialization ---
+function initializeCurrentCourse() {
+  const course = selectedCourse.value
+  if (!course) return
+
+  course.exams ??= []
+  course.topics ??= []
+  course.assignments ??= []
+
+  if (!course.exams.some(e => e.type === selectedExamType.value)) {
+    const today = new Date().toISOString().split('T')[0]
+    course.exams.push({
+      type: selectedExamType.value,
+      date: today,
+      startTime: '09:00',
+      endTime: '11:00',
+    })
+  }
+}
+
+// --- Handlers ---
+function toggleEditMode() {
+  if (!isEditing.value) initializeCurrentCourse()
+  isEditing.value = !isEditing.value
+}
+
+function addTopic() {
+  const course = selectedCourse.value
+  const exam = selectedExamDetails.value
+  if (!course || !exam) return
+
+  const newTopic: TopicDTO = {
+    id: uuidv4(),
     name: '',
     difficulty: 1,
     confidence: 1,
     estimatedStudyTime: 0,
-    examType: selectedExamType.value,
-  })
-}
-
-const deleteTopic = (topicToDelete: any) => {
-  if (!selectedCourse.value) return
-  const index = selectedCourse.value.topics.indexOf(topicToDelete)
-  if (index > -1) {
-    selectedCourse.value.topics.splice(index, 1)
+    type: exam.type
   }
+
+  course.topics.push(newTopic)
 }
 
-const addAssignment = () => {
-  if (!selectedCourse.value) return
-  const today = new Date().toISOString().split('T')[0]
+function deleteTopic(topic: TopicDTO) {
+  const course = selectedCourse.value
+  if (!course) return
 
-  selectedCourse.value.assignments.push({
+  course.topics = course.topics.filter(t => t.id !== topic.id)
+}
+
+function addAssignment() {
+  const course = selectedCourse.value
+  const exam = selectedExamDetails.value
+  if (!course || !exam) return
+
+  const newAssignment: AssignmentDTO = {
+    id: uuidv4(),
     name: '',
-    dueDate: today,
+    dueDate: new Date().toISOString().split('T')[0],
     dueTime: '23:59',
     estimatedTime: 60,
-    associatedTopicTitles: [],
+    associatedTopicIds: [],
     completed: false,
-  })
-}
-
-const deleteAssignment = (assignmentToDelete: any) => {
-  if (!selectedCourse.value) return
-  const index = selectedCourse.value.assignments.indexOf(assignmentToDelete)
-  if (index > -1) {
-    selectedCourse.value.assignments.splice(index, 1)
+    type: exam.type,
   }
+
+  course.assignments.push(newAssignment)
+  course.assignments = [...course.assignments] // Force reactivity
 }
 
-// --- COMPUTED & HELPER FUNCTIONS ---
-const selectedCourse = computed(() =>
-  courses.value.find((course) => course.id === selectedCourseId.value),
-)
-const filteredTopics = computed(() => {
-  if (!selectedCourse.value) return []
-  return selectedCourse.value.topics.filter((topic) => topic.examType === selectedExamType.value)
-})
-const filteredAssignments = computed(() => {
-  if (!selectedCourse.value) return [];
+function deleteAssignment(assignment: AssignmentDTO) {
+  const course = selectedCourse.value
+  if (!course) return
 
-  // First, create our "checklist" of topic names for the selected exam.
-  const relevantTopicNames = new Set(
-    selectedCourse.value.topics
-      .filter((topic) => topic.examType === selectedExamType.value)
-      .map((topic) => topic.name)
-  );
+  course.assignments = course.assignments.filter(a => a.id !== assignment.id)
+}
 
-  // Filter the assignments based on the mode (viewing or editing).
-  return selectedCourse.value.assignments.filter((assignment) => {
-    // Check if the assignment is relevant to the current exam section.
-    const isRelevant = assignment.associatedTopicTitles.some((topicTitle) =>
-      relevantTopicNames.has(topicTitle)
-    );
-
-    if (isEditing.value) {
-      // In EDIT mode, we have special rules:
-      // Show the assignment if it's relevant OR if it's a new, empty assignment.
-      const isNew = assignment.associatedTopicTitles.length === 0;
-      return isRelevant || isNew;
-    } else {
-      // In VIEW mode, the rule is simple: just show relevant assignments.
-      return isRelevant;
-    }
-  });
-});
-const selectedExamDetails = computed(() => {
-  if (!selectedCourse.value) return null
-  return selectedCourse.value.exams.find((exam) => exam.type === selectedExamType.value) || null
-})
-const formatDueDate = (assignment: AssignmentDTO): string => {
+// --- Formatters ---
+function formatDueDate(assignment: AssignmentDTO): string {
   const date = new Date(`${assignment.dueDate}T${assignment.dueTime}`)
   return date.toLocaleDateString('en-US', {
     month: 'short',
@@ -229,25 +134,33 @@ const formatDueDate = (assignment: AssignmentDTO): string => {
     hour12: true,
   })
 }
-const formatExamDate = (exam: ExamDTO): string => {
-  const startDate = new Date(`${exam.date}T${exam.startTime}`)
-  const endDate = new Date(`${exam.date}T${exam.endTime}`)
-  const dateOptions: Intl.DateTimeFormatOptions = {
+
+function formatExamDate(exam: ExamDTO): string {
+  const start = new Date(`${exam.date}T${exam.startTime}`)
+  const end = new Date(`${exam.date}T${exam.endTime}`)
+
+  const dateStr = start.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-  }
-  const timeOptions: Intl.DateTimeFormatOptions = {
+  })
+
+  const startTime = start.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: 'numeric',
     hour12: true,
-  }
-  const datePart = startDate.toLocaleDateString('en-US', dateOptions)
-  const startTimePart = startDate.toLocaleTimeString('en-US', timeOptions)
-  const endTimePart = endDate.toLocaleTimeString('en-US', timeOptions)
-  return `${datePart} ・ ${startTimePart} - ${endTimePart}`
+  })
+
+  const endTime = end.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  })
+
+  return `${dateStr} ・ ${startTime} - ${endTime}`
 }
 </script>
+
 
 <template>
   <div class="h-screen flex flex-col items-center">
@@ -307,7 +220,7 @@ const formatExamDate = (exam: ExamDTO): string => {
               <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.name }}</h2>
             </div>
             <button
-              @click="isEditing = !isEditing"
+              @click="toggleEditMode"
               class="text-gray-400 hover:text-purple-600 p-2 rounded-full hover:bg-purple-100"
             >
               <svg
@@ -591,7 +504,7 @@ const formatExamDate = (exam: ExamDTO): string => {
                         type="checkbox"
                         :id="`topic-${assignment.name}-${topic.name}`"
                         :value="topic.name"
-                        v-model="assignment.associatedTopicTitles"
+                        v-model="assignment.associatedTopicIds"
                         class="h-4 w-4 rounded border-gray-300 accent-[#5856D6] shadow-sm cursor-pointer"
                       />
                       <label
@@ -604,7 +517,7 @@ const formatExamDate = (exam: ExamDTO): string => {
                   </div>
                   <div v-else class="flex flex-wrap gap-1">
                     <span
-                      v-for="topicTitle in assignment.associatedTopicTitles"
+                      v-for="topicTitle in assignment.associatedTopicIds"
                       :key="topicTitle"
                       class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full font-medium"
                     >

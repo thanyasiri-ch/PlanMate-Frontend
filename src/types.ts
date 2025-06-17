@@ -30,44 +30,48 @@ export interface User {
 }
 
 // study-setup
-export interface TopicDTO {
+export interface TermDTO {
   name: string
-  difficulty: number
-  confidence: number
-  estimatedStudyTime: number
-  examType: ExamType
-}
-
-export interface AssignmentDTO {
-  name: string
-  dueDate: string // "yyyy-MM-dd"
-  dueTime: string
-  estimatedTime: number
-  associatedTopicTitles: string[]
-  completed: boolean
-}
-
-export interface ExamDTO {
-  type: ExamType
-  date: string // "yyyy-MM-dd"
-  startTime: string
-  endTime: string
+  startDate: string // "yyyy-MM-dd"
+  endDate: string   // "yyyy-MM-dd"
+  courses: CourseDTO[]
 }
 
 export interface CourseDTO {
   id: string
   name: string
   credit: number
-  topics: TopicDTO[]
+  topics: TopicDTO[]            
   assignments: AssignmentDTO[]
   exams: ExamDTO[]
 }
 
-export interface TermDTO {
+export interface TopicDTO {
+  id: string
   name: string
-  startDate: string // "yyyy-MM-dd"
-  endDate: string   // "yyyy-MM-dd"
-  courses: CourseDTO[]
+  difficulty: number
+  confidence: number
+  estimatedStudyTime: number
+  type: ExamType
+}
+
+export interface ExamDTO {
+  type: ExamType
+  date: string
+  startTime: string
+  endTime: string
+}
+
+
+export interface AssignmentDTO {
+  id: string
+  name: string
+  dueDate: string // "yyyy-MM-dd"
+  dueTime: string
+  estimatedTime: number
+  associatedTopicIds: string[]
+  type: ExamType
+  completed: boolean
 }
 
 export interface AvailabilityDTO {

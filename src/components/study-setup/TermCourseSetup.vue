@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useStudySetupStore } from '@/stores/studySetup'
-import type { TermDTO } from '@/types'
-import { ref, inject, watch, nextTick, type Ref } from 'vue'
+import { ref, inject, watch, nextTick, type Ref, onMounted } from 'vue'
 
 const store = useStudySetupStore()
 const courseListRef = ref<HTMLElement | null>(null)
@@ -12,19 +11,22 @@ const stepNavigator = inject<{
   subStepIndex: Ref<number>
 }>('stepNavigator')
 
-const term = ref<TermDTO>({
-  name: '',
-  startDate: '',
-  endDate: '',
-  courses: [{ id: '', name: '', credit: 0, topics: [], assignments: [], exams: [] }],
+const term = store.term
+
+// If there are no courses when the component mounts, add a default one.
+onMounted(() => {
+  if (term.courses.length === 0) {
+    term.courses.push({
+      id: '', name: '', credit: 0, assignments: [], exams: [],
+      topics: []
+    })
+  }
 })
 
 // 2. Watch for the first interaction with the COURSES array
 watch(
-  () => term.value.courses,
+  () => term.courses,
   () => {
-    // When the user adds/edits a course, call the parent's function
-    // to activate the 'course' step (which sets subStepIndex to 1)
     stepNavigator?.activateStep('course')
   },
   {
@@ -34,39 +36,38 @@ watch(
 )
 
 function addCourse() {
-  term.value.courses.push({
+  term.courses.push({
     id: "",
     name: "",
     credit: 0,
-    topics: [],
     assignments: [],
     exams: [],
+    topics: []
   })
 
   // Scroll to bottom after DOM updates
   nextTick(() => {
-    if (courseListRef.value) {
-      courseListRef.value.scrollTop = courseListRef.value.scrollHeight - courseListRef.value.clientHeight
-    }
+    courseListRef.value?.scrollTo({ top: courseListRef.value.scrollHeight, behavior: 'smooth' })
   })
 }
 
 function removeCourse(index: number) {
-  term.value.courses.splice(index, 1)
+  term.courses.splice(index, 1)
 }
 
 function submit(): boolean {
-  if (!term.value.name || !term.value.startDate || !term.value.endDate) {
+  if (!term.name || !term.startDate || !term.endDate) {
       alert('Please fill in all term details.');
       stepNavigator?.activateStep('term'); // Go back to term substep
       return false;
   }
-  if (term.value.courses.length === 0 || !term.value.courses[0].name) {
+  if (term.courses.length === 0 || !term.courses[0].name) {
     alert('Please add at least one course with a name to continue.')
     stepNavigator?.activateStep('course'); // Go to course substep
     return false
   }
-  store.setTerm(term.value)
+
+  console.log('Term and Courses saved to store:', store.term)
   return true
 }
 
