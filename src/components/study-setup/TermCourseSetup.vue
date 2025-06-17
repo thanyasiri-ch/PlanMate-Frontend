@@ -56,19 +56,36 @@ function removeCourse(index: number) {
 }
 
 function submit(): boolean {
+  // Check if term info is filled
   if (!term.name || !term.startDate || !term.endDate) {
-      alert('Please fill in all term details.');
-      stepNavigator?.activateStep('term'); // Go back to term substep
-      return false;
-  }
-  if (term.courses.length === 0 || !term.courses[0].name) {
-    alert('Please add at least one course with a name to continue.')
-    stepNavigator?.activateStep('course'); // Go to course substep
-    return false
+    alert('Please fill in all term details: name, start date, and end date.');
+    stepNavigator?.activateStep('term');
+    return false;
   }
 
-  console.log('Term and Courses saved to store:', store.term)
-  return true
+  // Check if at least one course exists
+  if (term.courses.length === 0) {
+    alert('Please add at least one course to continue.');
+    stepNavigator?.activateStep('course');
+    return false;
+  }
+
+  // Validate all courses
+  for (const [index, course] of term.courses.entries()) {
+    if (!course.name?.trim()) {
+      alert(`Course ${index + 1} is missing a name.`);
+      stepNavigator?.activateStep('course');
+      return false;
+    }
+    if (!course.credit || course.credit <= 0) {
+      alert(`Course "${course.name || `#${index + 1}`}" must have a valid credit value.`);
+      stepNavigator?.activateStep('course');
+      return false;
+    }
+  }
+
+  console.log('Term and Courses saved to store:', store.term);
+  return true;
 }
 
 // Expose the submit function to the parent

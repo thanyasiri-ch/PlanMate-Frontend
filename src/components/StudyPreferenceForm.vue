@@ -1,5 +1,4 @@
 <script lang="ts">
-import '@/assets/tailwind.css'
 import type { PreferredStudyTime, RevisionFrequency, BreakDuration, StudyPreference } from '@/types'
 import '@vueform/slider/themes/default.css'
 import Slider from '@vueform/slider'

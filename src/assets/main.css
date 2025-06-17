@@ -1,4 +1,5 @@
 @import './base.css';
+@import "tailwindcss";
 
 body {
   font-family: 'Nunito Sans', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,

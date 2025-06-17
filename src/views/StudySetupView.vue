@@ -85,12 +85,13 @@ provide('stepNavigator', {
         <StepIndicator :activeStepIndex="currentStepIndex" @step-click="activateStep" />
       </div>
 
-      <router-view
-        ref="childComponent"
-        @next="nextStep"
-        @back="prevStep"
-        class="flex-1 overflow-hidden"
-      />
+      <router-view v-slot="{ Component }">
+        <component
+          :is="Component"
+          ref="childComponent"
+          class="flex-1 overflow-hidden"
+        />
+      </router-view>
 
       <!-- Shared navigation buttons across all steps -->
       <div class="flex justify-between items-center mt-8 mb-20 mx-80">
