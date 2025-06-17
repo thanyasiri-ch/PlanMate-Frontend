@@ -21,18 +21,66 @@ onMounted(() => {
 })
 
 watch(
-  () => term.courses,
-  () => {
-    stepNavigator?.activateStep('course')
+  () => term.courses.length,
+  (newLength, oldLength) => {
+    if (newLength > oldLength) {
+      stepNavigator?.activateStep('course')
+    }
   },
-  { deep: true, once: true },
 )
 
+function validateTerm(): boolean {
+  if (!term.name || !term.startDate || !term.endDate) {
+    alert('Please fill in all term details: name, start date, and end date.')
+    stepNavigator?.activateStep('term')
+    return false
+  }
+  console.log('Term details validated.', {
+    name: term.name,
+    startDate: term.startDate,
+    endDate: term.endDate,
+  })
+  return true
+}
+
+function validateCourses(): boolean {
+  if (term.courses.length === 0) {
+    alert('Please add at least one course to continue.')
+    stepNavigator?.activateStep('course')
+    return false
+  }
+  for (const [index, course] of term.courses.entries()) {
+    if (!course.name?.trim()) {
+      alert(`Course ${index + 1} is missing a name.`)
+      stepNavigator?.activateStep('course')
+      return false
+    }
+    if (!course.credit || course.credit <= 0) {
+      alert(`Course "${course.name || `#${index + 1}`}" must have a valid credit value.`)
+      stepNavigator?.activateStep('course')
+      return false
+    }
+  }
+  console.log('Courses validated.', term.courses)
+  return true
+}
+
 function toggleTermEditMode() {
+  // If we are currently editing, validate before switching to view mode.
+  if (isTermEditing.value) {
+    if (!validateTerm()) {
+      return // Stop if validation fails
+    }
+  }
   isTermEditing.value = !isTermEditing.value
 }
 
 function toggleCoursesEditMode() {
+  if (isCoursesEditing.value) {
+    if (!validateCourses()) {
+      return // Stop if validation fails
+    }
+  }
   isCoursesEditing.value = !isCoursesEditing.value
 }
 

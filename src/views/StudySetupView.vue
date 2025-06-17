@@ -2,11 +2,10 @@
 import { useRoute, useRouter } from 'vue-router'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
-import { computed, ref, provide, type Ref, watch } from 'vue'
+import { ref, provide, type Ref, watch } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
-const childComponent = ref<{ submit?: () => boolean } | null>(null)
 
 const steps = ['term', 'course', 'topic', 'availability', 'generate Plan']
 
@@ -17,22 +16,15 @@ watch(
   (newPath) => {
     const currentPathEnd = newPath.split('/').pop() ?? ''
     const index = steps.indexOf(currentPathEnd)
+    // When the route is /study-setup/course, this will correctly set the subStepIndex to 1.
+    // When it's /study-setup/term, it will be 0.
     subStepIndex.value = index > -1 ? index : 0;
   },
   {
-    // This makes sure the index is correct on initial page load
+    // makes sure the index is correct on initial page load
     immediate: true,
   }
 )
-
-const currentStepIndex = computed(() => {
-  const base = route.name as string
-  if (base === 'term') {
-    return subStepIndex.value
-  }
-  const index = steps.indexOf(base)
-  return index === -1 ? 0 : index
-})
 
 function activateStep(stepName: string) {
   if (steps.includes(stepName)) {
@@ -41,16 +33,7 @@ function activateStep(stepName: string) {
 }
 
 function nextStep() {
-  if (childComponent.value?.submit && !childComponent.value.submit()) return
-
-  const currentIndex = currentStepIndex.value // Use the computed index
-
-  // If we are on step 'term' (index 0), next takes us to 'course' (index 1)
-  if (currentIndex === 0) {
-    subStepIndex.value = 1
-    return
-  }
-
+  const currentIndex = subStepIndex.value
   if (currentIndex < steps.length - 1) {
     const nextStepName = steps[currentIndex + 1]
     activateStep(nextStepName)
@@ -58,14 +41,7 @@ function nextStep() {
 }
 
 function prevStep() {
-  const currentIndex = currentStepIndex.value // Use the computed index
-
-  // If we are on step 'course' (index 1), back takes us to 'term' (index 0)
-  if (currentIndex === 1) {
-    subStepIndex.value = 0
-    return
-  }
-
+  const currentIndex = subStepIndex.value
   if (currentIndex > 0) {
     const prevStepName = steps[currentIndex - 1]
     activateStep(prevStepName)
@@ -78,12 +54,11 @@ provide('stepNavigator', {
   subStepIndex: subStepIndex as Ref<number>,
 })
 </script>
-
 <template>
   <DefaultLayout>
     <div class="h-full flex flex-col overflow-hidden">
       <div class="flex justify-center mb-12">
-        <StepIndicator :activeStepIndex="currentStepIndex" @step-click="activateStep" />
+        <StepIndicator :activeStepIndex="subStepIndex" @step-click="activateStep" />
       </div>
 
       <router-view v-slot="{ Component }">
@@ -95,18 +70,26 @@ provide('stepNavigator', {
       </router-view>
 
       <!-- Shared navigation buttons across all steps -->
-      <div class="flex justify-between items-center mt-8 mb-20 mx-80">
+      <div class="flex justify-between items-center mt-8 mb-20 mx-auto w-full max-w-sm">
         <button
           @click="prevStep"
-          class="px-6 py-2 text-sm font-semibold text-white bg-gray-400 rounded-full shadow-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+          :disabled="subStepIndex === 0"
+          class="w-12 h-12 flex items-center justify-center text-xl font-bold text-white bg-gray-400 rounded-full shadow-md transition-colors hover:bg-gray-500 focus:outline-none disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+          title="Previous Step"
         >
-          Back
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
         </button>
         <button
           @click="nextStep"
-          class="px-6 py-2 text-sm font-semibold text-white bg-green-500 rounded-full shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          :disabled="subStepIndex >= steps.length - 1"
+          class="w-12 h-12 flex items-center justify-center text-xl font-bold text-white bg-[#766BDE] rounded-full shadow-md transition-colors hover:bg-[#423C9A] focus:outline-none disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+          title="Next Step"
         >
-          Next
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       </div>
     </div>
