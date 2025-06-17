@@ -1,6 +1,6 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, type Ref, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useStudySetupStore } from '@/stores/studySetup'
 import type { AssignmentDTO, ExamDTO, TopicDTO } from '@/types'
 import { ExamType } from '@/types'
@@ -12,9 +12,6 @@ const store = useStudySetupStore()
 const selectedCourseId = ref<string>(store.term.courses[0]?.id ?? '')
 const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
 const isEditing = ref(true)
-
-// --- Injected Navigation ---
-const stepNavigator = inject<{ activateStep: (step: string) => void; subStepIndex: Ref<number> }>('stepNavigator')
 
 // --- Lifecycle ---
 onMounted(() => initializeCurrentCourse())
@@ -166,14 +163,10 @@ function formatExamDate(exam: ExamDTO): string {
   <div class="h-screen flex flex-col items-center">
     <div class="w-5/6 flex flex-col flex-1 overflow-hidden">
       <div
-        @click="stepNavigator?.activateStep('topic')"
         class="bg-white rounded-2xl p-6 sm:p-8 flex gap-6 flex-1 overflow-hidden"
-        :class="{
-          'border-[#5856D6]': stepNavigator?.subStepIndex.value === 0,
-          'border-transparent': stepNavigator?.subStepIndex.value !== 0,
-        }"
       >
         <div class="flex flex-col gap-2">
+          <!-- Exam Type Selection -->
           <div class="flex bg-[#FFF1D1] rounded-full w-min mb-2">
             <button
               @click="selectedExamType = ExamType.MIDTERM"
@@ -198,6 +191,8 @@ function formatExamDate(exam: ExamDTO): string {
               Final
             </button>
           </div>
+
+          <!-- Course Selection -->
           <button
             v-for="course in courses"
             :key="course.id"
@@ -213,12 +208,16 @@ function formatExamDate(exam: ExamDTO): string {
           </button>
         </div>
 
+        <!-- Course Details -->
         <div class="flex-1 overflow-y-auto pr-4" v-if="selectedCourse">
           <div class="flex justify-between items-center mb-4">
+            <!-- Course Title -->
             <div class="flex items-baseline gap-4">
               <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.id }}</h2>
               <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.name }}</h2>
             </div>
+
+            <!-- Edit Button -->
             <button
               @click="toggleEditMode"
               class="text-gray-400 hover:text-purple-600 p-2 rounded-full hover:bg-purple-100"
@@ -254,6 +253,7 @@ function formatExamDate(exam: ExamDTO): string {
             </button>
           </div>
 
+          <!-- Exam Details -->
           <div
             v-if="selectedExamDetails"
             class="p-2 rounded-xl bg-yellow-100 border border-yellow-300 mb-4 text-gray-800"
@@ -319,6 +319,7 @@ function formatExamDate(exam: ExamDTO): string {
             </div>
           </div>
 
+          <!-- Topics Section -->
           <div class="space-y-2">
             <div class="grid grid-cols-12 gap-4 text-sm text-gray-500 font-semibold px-4">
               <div class="col-span-4">Name</div>
@@ -428,6 +429,7 @@ function formatExamDate(exam: ExamDTO): string {
 
           <div class="my-6"></div>
 
+          <!-- Assignments Section -->
           <div>
             <div
               v-if="isEditing || filteredAssignments.length > 0"
