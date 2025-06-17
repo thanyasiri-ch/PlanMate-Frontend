@@ -2,7 +2,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
-import { computed, ref, provide, type Ref } from 'vue'
+import { computed, ref, provide, type Ref, watch } from 'vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,6 +11,19 @@ const childComponent = ref<{ submit?: () => boolean } | null>(null)
 const steps = ['term', 'course', 'topic', 'availability', 'generate Plan']
 
 const subStepIndex = ref(0) // 0 = term, 1 = course
+
+watch(
+  () => route.path,
+  (newPath) => {
+    const currentPathEnd = newPath.split('/').pop() ?? ''
+    const index = steps.indexOf(currentPathEnd)
+    subStepIndex.value = index > -1 ? index : 0;
+  },
+  {
+    // This makes sure the index is correct on initial page load
+    immediate: true,
+  }
+)
 
 const currentStepIndex = computed(() => {
   const base = route.name as string
@@ -22,21 +35,9 @@ const currentStepIndex = computed(() => {
 })
 
 function activateStep(stepName: string) {
-  const stepIndex = steps.indexOf(stepName)
-  if (stepIndex === -1) return
-
-  // If we are navigating to the first two steps, stay on the 'term' route
-  // and just update the subStepIndex
-  if (stepName === 'term' || stepName === 'course') {
-    subStepIndex.value = stepIndex
-    if (route.name !== 'term') {
-      router.push({ name: 'term' })
-    }
-    return
+  if (steps.includes(stepName)) {
+    router.push(`/study-setup/${stepName}`)
   }
-
-  // For all other steps, navigate normally
-  router.push({ name: stepName })
 }
 
 function nextStep() {
