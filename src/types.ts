@@ -41,7 +41,7 @@ export interface CourseDTO {
   id: string
   name: string
   credit: number
-  topics: TopicDTO[]            
+  topics: TopicDTO[]
   assignments: AssignmentDTO[]
   exams: ExamDTO[]
 }
@@ -85,6 +85,8 @@ export interface StudySetupDTO {
   term: TermDTO
   availabilities: AvailabilityDTO[]
 }
+
+
 
 export enum ExamType {
   MIDTERM = 'MIDTERM',

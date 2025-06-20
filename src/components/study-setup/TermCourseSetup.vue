@@ -141,7 +141,7 @@ defineExpose({ submit })
       >
         <form @submit.prevent="submit">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-md font-extrabold text-gray-700">Term</h3>
+            <h3 class="text-lg font-extrabold text-gray-700">Term</h3>
             <button
               @click.stop="toggleTermEditMode"
               type="button"
@@ -279,7 +279,7 @@ defineExpose({ submit })
         }"
       >
         <div class="flex justify-between items-center mb-4">
-          <h3 class="text-md font-extrabold text-gray-900">Courses</h3>
+          <h3 class="text-lg font-extrabold text-gray-900">Courses</h3>
           <button
             @click.stop="toggleCoursesEditMode"
             type="button"
