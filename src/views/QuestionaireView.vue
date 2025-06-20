@@ -1,53 +1,60 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script lang="ts">
-import StudyPreferenceForm from '@/components/StudyPreferenceForm.vue';
-import StudyPrefServices from '@/services/StudyPrefServices';
-import type { StudyPreference } from '@/types';
+import StudyPreferenceForm from '@/components/StudyPreferenceForm.vue'
+import StudyPrefServices from '@/services/StudyPrefServices'
+import ModalConfirm from '@/components/ModalConfirm.vue'
+import type { StudyPreference } from '@/types'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 export default {
   components: {
-    StudyPreferenceForm
+    StudyPreferenceForm,
+    ModalConfirm,
   },
   data() {
     return {
       isSaving: false,
+      showConfirm: false,
     }
   },
   methods: {
     async handleSavePreferences() {
-      // Access the form component instance via ref
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const formComponent = this.$refs.studyFormComponent as any; // Cast to any or a more specific type if you define one
+      const formComponent = this.$refs.studyFormComponent as any
       if (!formComponent) {
-        console.error("StudyPreferenceForm component not found");
-        return;
+        console.error('StudyPreferenceForm component not found')
+        return
       }
 
-      const preferences: StudyPreference | null = formComponent.getValidatedPreferences();
+      const preferences: StudyPreference | null = formComponent.getValidatedPreferences()
 
       if (preferences) {
-        this.isSaving = true;
+        this.isSaving = true
         try {
-          await StudyPrefServices.savePref(preferences);
-          alert('Preferences saved successfully.');
-          // Optionally, redirect the user or perform other actions upon successful save
-          // For example, this.$router.push('/dashboard');
+          await StudyPrefServices.savePref(preferences)
+          alert('Preferences saved successfully.')
           router.push({ name: 'profile' })
         } catch (error) {
-          console.error('Failed to save preferences on page', error);
-          alert('Something went wrong saving your preferences. Please try again.');
+          console.error('Failed to save preferences on page', error)
+          alert('Something went wrong saving your preferences. Please try again.')
         } finally {
-          this.isSaving = false;
+          this.isSaving = false
         }
       } else {
-        // Validation failed in the form, form will show its own error messages.
-        // show a general validation error message here.
-        alert('Please correct the errors in the form.');
+        alert('Please correct the errors in the form.')
       }
-    }
-  }
+    },
+
+    handleCloseClick() {
+      this.showConfirm = true
+    },
+
+    leavePage() {
+      this.showConfirm = false
+      this.$router.back() // หรือ router.back();
+    },
+  },
 }
 </script>
 
@@ -61,6 +68,9 @@ export default {
       <div class="rectangle-wrapper">
         <div class="rectangle-1"></div>
         <div class="rectangle-2">
+          <!-- Close button -->
+          <button @click="handleCloseClick" class="close-button" aria-label="Close">×</button>
+
           <StudyPreferenceForm ref="studyFormComponent" />
           <div class="absolute bottom-8 right-8">
             <button
@@ -78,10 +88,15 @@ export default {
           </div>
         </div>
       </div>
+      <ModalConfirm v-if="showConfirm" @confirm="leavePage" @cancel="showConfirm = false" />
     </div>
 
     <div class="right-panel-question">
-      <img src="/src/assets/images/question-image.png" alt="Study Illustration" class="illustration-image" />
+      <img
+        src="/src/assets/images/question-image.png"
+        alt="Study Illustration"
+        class="illustration-image"
+      />
     </div>
   </div>
 </template>
@@ -92,7 +107,7 @@ export default {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #F1EFFF; /* Light purple background from reference */
+  background-color: #f1efff; /* Light purple background from reference */
 }
 
 .right-panel-question {
@@ -116,7 +131,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: clamp(90%, 70%, 640px);  /* responsive width */
+  width: clamp(90%, 70%, 640px); /* responsive width */
   height: clamp(50%, 80vh, 500px); /* responsive height */
 }
 
@@ -129,7 +144,7 @@ export default {
 
 /* Back layer */
 .rectangle-1 {
-  background: #E9E9E9;
+  background: #e9e9e9;
   transform: rotate(5deg);
   position: absolute;
   z-index: 0;
@@ -137,11 +152,41 @@ export default {
 
 /* Front layer */
 .rectangle-2 {
-  background: #FFFFFF;
+  background: #ffffff;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.25);
   position: relative;
   z-index: 1;
-  border: 1px solid #766BDE;
+  border: 1px solid #766bde;
   box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.close-button {
+  position: absolute;
+  top: 25px;
+  right: 25px;
+  width: 20px;
+  height: 20px;
+  background-color: #939393;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  line-height: 1;
+  padding: 0;
+}
+
+.close-button:hover {
+  background-color: #676767;
+  color: #ffffff;
+  transform: scale(1.1);
 }
 </style>

@@ -246,8 +246,8 @@ function handleImageChange(event) {
       </header>
 
       <!-- Main grid -->
-      <div class="flex-1 px-6 pb-4 overflow-hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+      <div class="flex-1 px-6 pb-8 overflow-hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
           <!-- Left 2/3 section -->
           <section class="lg:col-span-2 bg-white rounded-2xl p-5 flex flex-col h-full">
             <!-- Top controls -->
@@ -301,7 +301,7 @@ function handleImageChange(event) {
                 <div class="flex flex-col items-center gap-4">
                   <!-- Focus Completion Box -->
                   <div
-                    class="bg-[#DCD7FF] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs"
+                    class="bg-[#E5E1FD] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs"
                   >
                     <h3 class="text-sm font-medium text-black mb-1">Focus completion</h3>
                     <p class="text-lg font-bold text-[#544BAA]">20 times</p>
@@ -309,7 +309,7 @@ function handleImageChange(event) {
 
                   <!-- Focus Duration Box -->
                   <div
-                    class="bg-[#DCD7FF] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs"
+                    class="bg-[#E5E1FD] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs"
                   >
                     <h3 class="text-sm font-medium text-black mb-1">Focus duration</h3>
                     <p class="text-lg font-bold text-[#544BAA]">26 hrs 34 mins</p>
@@ -319,7 +319,7 @@ function handleImageChange(event) {
 
               <!-- Bar Chart Box -->
               <div class="flex-[3]">
-                <div class="bg-[#DCD7FF] rounded-xl p-4 h-full flex flex-col justify-between">
+                <div class="bg-[#E5E1FD] rounded-xl p-4 h-full flex flex-col justify-between">
                   <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
                   <div class="flex items-end justify-between h-40 px-2">
                     <div
@@ -344,7 +344,7 @@ function handleImageChange(event) {
 
             <!-- Chart area -->
             <div class="flex-1 overflow-auto">
-              <div class="bg-[#DCD7FF] p-12 rounded-xl">
+              <div class="bg-[#E5E1FD] p-12 rounded-xl">
                 <h3 class="text-lg font-bold text-gray-700 mb-4 text-center">Pie chart</h3>
                 <div class="flex flex-col md:flex-row items-center gap-6">
                   <div class="w-36 h-36 relative">
@@ -359,7 +359,7 @@ function handleImageChange(event) {
                         transform: rotate(-90deg);
                       "
                     ></div>
-                    <div class="absolute inset-3 bg-[#DCD7FF] rounded-full"></div>
+                    <div class="absolute inset-3 bg-[#E5E1FD] rounded-full"></div>
                   </div>
                   <ul class="flex-1 space-y-2">
                     <li
