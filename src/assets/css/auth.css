@@ -45,7 +45,7 @@
 
 .form-container h1 {
   font-size: 40px;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   color: #ffffff;
   font-weight: 800;
 }
@@ -66,7 +66,6 @@
 .input-group input {
   width: 100%;
   padding: 12px 15px;
-  /* border: 1px solid #8c82d0; */
   border: none;
   border-radius: 25px;
   background-color: #544BAA;
@@ -168,4 +167,22 @@
     width: 60px;
   }
   */
+}
+
+.input-error {
+  border: 1.5px solid #e05a4b !important;
+  background-color: #ffd4d4 !important;
+  color: #3e3e3e !important;;
+}
+
+.form-alert {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 12px;
 }
