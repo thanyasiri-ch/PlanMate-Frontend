@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useStudySetupStore } from '@/stores/studySetup'
-import { ref, inject, watch, nextTick, type Ref } from 'vue'
+import { ref, inject, watch, nextTick, type Ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import type { TermResponseDTO, CourseResponseDTO } from '@/types'
 import cloneDeep from 'lodash/cloneDeep'
@@ -22,68 +22,63 @@ const stepNavigator = inject<{
 }>('stepNavigator')
 
 // --- REFACTORED DATA LOADING ---
-watch(
-  () => route.params.id,
-  async (newId) => {
-    isLoading.value = true
-    const termId = Number(newId)
+// Watch the route's 'id' parameter to react to navigation.
+// This handles both initial load and navigating between different terms without a full page reload.
+async function loadTerm() {
+  isLoading.value = true
 
-    if (termId && !isNaN(termId) && termId !== 0) { // Check for non-zero termId
-      // --- EDITING AN EXISTING TERM ---
-      try {
-        console.log(`COMPONENT: Route detected termId: ${termId}. Fetching...`)
-        const fetchedTerm = await store.fetchAndSetTerm(termId)
-        localTerm.value = cloneDeep(fetchedTerm)
-        isTermEditing.value = false
-        isCoursesEditing.value = false
-      } catch (err) {
-        console.error('COMPONENT: Failed to load term data.', err)
-        // TODO: Show an error message to the user in the UI, e.g., a toast notification
-      }
-    } else {
-      // --- CREATING A NEW TERM ---
-      console.log('COMPONENT: No valid termId in route. Setting up for new term.')
-      store.reset() // Ensure the store is clean for a new term
-      // Manually initialize localTerm for a new term, ensuring termId is 0
-      localTerm.value = {
-        termId: 0, // Crucial: Indicate no ID yet
-        name: '',
-        startDate: '',
-        endDate: '',
-        courses: [],
-      }
+  try {
+    const fetchedTerm = await store.fetchAndSetTerm()
+
+    if (!fetchedTerm || !fetchedTerm.termId) {
+      // No active term found, let user fill it in
+      console.log('No current term found. Starting new term setup.')
+      store.reset() // Clear existing store state
+      localTerm.value = cloneDeep(store.term)
       isTermEditing.value = true
       isCoursesEditing.value = true
+    } else {
+      // Term exists, use it
+      localTerm.value = cloneDeep(fetchedTerm)
+      isTermEditing.value = false
+      isCoursesEditing.value = false
     }
-    isLoading.value = false
-  },
-  { immediate: true }
-)
+  } catch (err) {
+    console.error('Failed to fetch current term', err)
+    alert('No active term found or failed to load term from server.')
+
+    // Still allow user to start a new term manually
+    store.reset()
+    localTerm.value = cloneDeep(store.term)
+    isTermEditing.value = true
+    isCoursesEditing.value = true
+  }
+
+  isLoading.value = false
+}
+
+
+watch(() => route.params.id, loadTerm, { immediate: true })
+onMounted(loadTerm)
 
 // Watch for courses being added to scroll the view
 watch(
   () => localTerm.value?.courses.length,
   (newLength, oldLength) => {
-    if (newLength && oldLength !== undefined && newLength > oldLength) { // Check oldLength is defined
-      nextTick(() => { // Wait for DOM update
-        stepNavigator?.activateStep('course')
-        // Give a little more time for the scroll to happen if needed
-        setTimeout(() => {
-          courseListRef.value?.scrollTo({ top: courseListRef.value.scrollHeight, behavior: 'smooth' })
-        }, 100);
-      })
+    if (newLength && oldLength && newLength > oldLength) {
+      stepNavigator?.activateStep('course')
     }
   }
 )
 
 // --- REFACTORED VALIDATION ---
+// Validation functions now operate on the local, editable data.
 function validateTerm(termToValidate: TermResponseDTO | null): boolean {
   if (!termToValidate?.name || !termToValidate.startDate || !termToValidate.endDate) {
     alert('Please fill in all term details: name, start date, and end date.')
     stepNavigator?.activateStep('term')
     return false
   }
-  // Add more robust date validation if needed (e.g., startDate < endDate)
   return true
 }
 
@@ -95,17 +90,7 @@ function validateCourses(coursesToValidate: CourseResponseDTO[]): boolean {
   }
   for (const [index, course] of coursesToValidate.entries()) {
     if (!course.courseCode?.trim()) {
-      alert(`Course ${index + 1} is missing a Course Code.`) // Changed from Course ID for clarity
-      stepNavigator?.activateStep('course')
-      return false
-    }
-    if (!course.name?.trim()) {
-      alert(`Course ${index + 1} is missing a Name.`)
-      stepNavigator?.activateStep('course')
-      return false
-    }
-    if (course.credit === null || course.credit === undefined || course.credit <= 0) {
-      alert(`Course ${index + 1} has an invalid Credit value.`)
+      alert(`Course ${index + 1} is missing a Course ID.`)
       stepNavigator?.activateStep('course')
       return false
     }
@@ -115,70 +100,43 @@ function validateCourses(coursesToValidate: CourseResponseDTO[]): boolean {
 }
 
 // --- REFACTORED ACTIONS ---
+// Component methods are now lean. They handle UI state and delegate API logic to the store.
 async function handleSaveTerm() {
   if (!validateTerm(localTerm.value)) return
-  if (!localTerm.value) return
+  if (!localTerm.value) return // Type guard
 
   try {
-    // Call the new centralized store action that handles create/update
-    const savedTerm = await store.saveOrUpdateTerm(localTerm.value)
-    // After a successful save, update the local copy to match the now-updated store,
-    // especially crucial for new terms where termId is now assigned.
-    localTerm.value = cloneDeep(savedTerm) // Use 'savedTerm' directly as it's the latest
+    // Call the clean, centralized store action.
+    await store.saveOrUpdateTerm(localTerm.value)
+    // After a successful save, update the local copy to match the now-updated store.
+    localTerm.value = cloneDeep(store.term)
     isTermEditing.value = false // Exit edit mode
-    // If it was a new term, and we got an ID, we might want to navigate
-    // to the URL with the new ID. This is often handled at a higher level (e.g., a "Next" button).
-    // router.push({ name: 'setupTerm', params: { id: savedTerm.termId } });
   } catch (err) {
-    console.error('Failed to save the term:', err);
-    alert('Failed to save the term. Please check the console for details.');
+    alert('Failed to save the term. Please check the console for details.')
   }
 }
 
+// NOTE: The original code had 'toggleTermEditMode'. It's better practice to have separate
+// functions for entering edit mode, saving, and canceling for clarity.
 function enterTermEditMode() {
     isTermEditing.value = true;
 }
 
 function handleCancelTermEdit() {
-    // If cancelling a *new* term, might want to navigate away or completely reset.
-    // For existing terms, just revert local changes.
-    if (localTerm.value?.termId === 0) {
-        // If it was a new term and we cancel, maybe navigate back or to a clean state.
-        // For now, just reset local state to initial new term values.
-        localTerm.value = {
-            termId: 0,
-            name: '',
-            startDate: '',
-            endDate: '',
-            courses: [],
-        };
-    } else {
-        // For existing terms, revert to the store's current state.
-        localTerm.value = cloneDeep(store.term);
-    }
-    isTermEditing.value = false;
+    // To cancel, simply discard the local changes by re-cloning from the pristine store state.
+    localTerm.value = cloneDeep(store.term)
+    isTermEditing.value = false
 }
 
 async function handleSaveCourses() {
-  // Only proceed if term has an ID (i.e., it's been saved at least once)
-  if (!localTerm.value || !localTerm.value.termId || localTerm.value.termId === 0) {
-    alert('Please save the term details first before saving courses.');
-    stepNavigator?.activateStep('term');
-    return;
-  }
-  if (!validateCourses(localTerm.value.courses)) return
+  if (!localTerm.value || !validateCourses(localTerm.value.courses)) return
 
   try {
-    // Pass the courses from the localTerm
     await store.saveCourses(localTerm.value.courses)
-    // After saving courses, it might be good practice to refetch the term
-    // to ensure the localTerm reflects any backend updates, though not strictly
-    // necessary if `saveCourses` just persists and doesn't return the full term.
-    const fetchedTerm = await store.fetchAndSetTerm(localTerm.value.termId);
-    localTerm.value = cloneDeep(fetchedTerm); // Update local copy from fresh store state
+    // Update local state from the store, which may have been updated by the action
+    localTerm.value = cloneDeep(store.term)
     isCoursesEditing.value = false
   } catch(err) {
-    console.error('Failed to save courses:', err);
     alert('Failed to save courses. Please check the console for details.')
   }
 }
@@ -187,13 +145,8 @@ function enterCoursesEditMode() {
     isCoursesEditing.value = true;
 }
 
-function handleCancelCoursesEdit() {
-    // Revert local course changes by re-cloning from the store's pristine state
-    localTerm.value = cloneDeep(store.term);
-    isCoursesEditing.value = false;
-}
-
-// --- LOCAL DATA MANIPULATION (on localTerm.value) ---
+// --- LOCAL DATA MANIPULATION ---
+// These functions now only modify the local, non-global state.
 function addCourse() {
   if (!localTerm.value) return
   localTerm.value.courses.push({
@@ -203,9 +156,7 @@ function addCourse() {
     assignments: [],
     exams: [],
     topics: [],
-    // When adding a new course to a localTerm, its courseId.termId should reflect localTerm.value.termId
-    // If localTerm.value.termId is 0 (new term), this will be 0, which is fine until the term is saved.
-    courseId: { termId: localTerm.value.termId, courseCode: '' },
+    courseId: { termId: localTerm.value.termId || 0, courseCode: '' },
   })
   nextTick(() => {
     courseListRef.value?.scrollTo({ top: courseListRef.value.scrollHeight, behavior: 'smooth' })
@@ -218,7 +169,6 @@ function removeCourse(index: number) {
   // TODO: Implement deletion logic for the backend if course already saved
 }
 </script>
-
 <template>
   <div v-if="isLoading">Loading...</div>
   <div v-else-if="localTerm" class="flex flex-col items-center">

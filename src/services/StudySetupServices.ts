@@ -7,6 +7,10 @@ export const studySetupService = {
     return apiClient.get(`/study-setup/terms/${termId}`);
   },
 
+  getCurrentTerm(): Promise<{ data: TermResponseDTO | null }> {
+  return apiClient.get('/study-setup/terms/current')
+},
+
   createTerm(termData: TermRequestDTO): Promise<{ data: TermResponseDTO }> {
     return apiClient.post('/study-setup/terms', termData);
   },
@@ -19,7 +23,7 @@ export const studySetupService = {
   saveCourses(termId: number, courses: CourseBaseDTO[]): Promise<unknown> { // Adjust return type if known
     return apiClient.post(`/study-setup/terms/${termId}/courses`, courses);
   },
-  
+
 
   // TOPICS
   addTopic(courseCode: string, topic: TopicDTO) {
