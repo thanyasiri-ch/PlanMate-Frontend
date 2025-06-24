@@ -30,20 +30,37 @@ export interface User {
 }
 
 // study-setup
-export interface TermDTO {
+export interface TermRequestDTO {
   name: string
   startDate: string // "yyyy-MM-dd"
   endDate: string   // "yyyy-MM-dd"
-  courses: CourseDTO[]
 }
 
-export interface CourseDTO {
-  id: string
+export interface TermResponseDTO {
+  termId: number
+  name: string
+  startDate: string // "yyyy-MM-dd"
+  endDate: string   // "yyyy-MM-dd"
+  courses: CourseResponseDTO[]
+}
+
+export interface CourseBaseDTO {
+  courseId: CourseIdDTO
+  courseCode: string
   name: string
   credit: number
-  topics: TopicDTO[]
-  assignments: AssignmentDTO[]
-  exams: ExamDTO[]
+}
+
+export interface CourseIdDTO {
+  termId: number
+  courseCode: string
+}
+
+export interface CourseResponseDTO extends CourseBaseDTO {
+  courseId: CourseIdDTO
+  topics?: TopicDTO[]
+  assignments?: AssignmentDTO[]
+  exams?: ExamDTO[]
 }
 
 export interface TopicDTO {
@@ -52,7 +69,7 @@ export interface TopicDTO {
   difficulty: number
   confidence: number
   estimatedStudyTime: number
-  type: ExamType
+  examType: ExamType
 }
 
 export interface ExamDTO {
@@ -70,23 +87,35 @@ export interface AssignmentDTO {
   dueTime: string
   estimatedTime: number
   associatedTopicIds: string[]
-  type: ExamType
+  examType: ExamType
   completed: boolean
 }
 
-export interface AvailabilityDTO {
+export interface AvailabilityResponseDTO {
+  id: number
   date: string // "yyyy-MM-dd"
   startTime: string // "HH:mm"
   endTime: string   // "HH:mm"
 }
 
-export interface StudySetupDTO {
-  userUid: string
-  term: TermDTO
-  availabilities: AvailabilityDTO[]
+export interface AvailabilityRequestDTO {
+  date: string // "yyyy-MM-dd"
+  startTime: string // "HH:mm"
+  endTime: string   // "HH:mm"
 }
 
+export interface StudySetupResponseDTO {
+  userUid: string
+  term: TermResponseDTO
+  availabilities: AvailabilityResponseDTO[]
+}
 
+export interface CourseDetailsRequestDTO {
+  courseCode: string; // Needs to identify which course these details belong to
+  topics: TopicDTO[];
+  assignments: AssignmentDTO[];
+  exams: ExamDTO[];
+}
 
 export enum ExamType {
   MIDTERM = 'MIDTERM',

@@ -2,63 +2,72 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useStudySetupStore } from '@/stores/studySetup'
-import type { AssignmentDTO, ExamDTO, TopicDTO } from '@/types'
+import type {
+  AssignmentDTO,
+  ExamDTO,
+  TopicDTO,
+  CourseResponseDTO
+} from '@/types'
 import { ExamType } from '@/types'
 import { v4 as uuidv4 } from 'uuid'
 
 const store = useStudySetupStore()
 
 // --- State ---
-const selectedCourseId = ref<string>('')
+const selectedCourseCode = ref<string>('') // using courseCode instead of id
 const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
 const isEditing = ref(true)
 
 // --- Lifecycle ---
 onMounted(() => {
-  // Select the first valid course on mount
   if (hasCourses.value) {
-    selectedCourseId.value = store.term.courses.find((c) => c.id !== '' && c.name !== '')?.id ?? ''
+    selectedCourseCode.value =
+      store.term.courses.find((c) => c.courseCode && c.name)?.courseCode ?? ''
   }
   initializeCurrentCourse()
 })
 
-watch([selectedCourseId, selectedExamType], initializeCurrentCourse)
+watch([selectedCourseCode, selectedExamType], initializeCurrentCourse)
 
 // --- Computed ---
-const courses = computed(() => store.term.courses.filter((c) => c.id && c.name))
+const courses = computed(() =>
+  store.term.courses.filter((c) => c.courseCode && c.name),
+)
 
 const hasCourses = computed(() => courses.value.length > 0)
 
-const selectedCourse = computed(
-  () => courses.value.find((course) => course.id === selectedCourseId.value) ?? null,
+const selectedCourse = computed(() =>
+  courses.value.find((course) => course.courseCode === selectedCourseCode.value) ?? null,
 )
 
 const selectedExamDetails = computed(() => {
   const course = selectedCourse.value
-  return course?.exams?.find((exam) => exam.type === selectedExamType.value) ?? null
+  return (course?.exams ?? []).find((exam) => exam.type === selectedExamType.value) ?? null
 })
 
 const filteredTopics = computed(() => {
   const course = selectedCourse.value
   const exam = selectedExamDetails.value
   if (!course || !exam) return []
-  return course.topics.filter((topic) => topic.type === exam.type)
+  return (course.topics ?? []).filter((topic) => topic.examType === exam.type)
 })
 
 const filteredAssignments = computed(() => {
   const course = selectedCourse.value
   const exam = selectedExamDetails.value
   if (!course || !exam) return []
-  return course.assignments.filter((assignment) => assignment.type === exam.type)
+  return (course.assignments ?? []).filter((assignment) => assignment.examType === exam.type)
 })
 
 // --- Initialization ---
 function initializeCurrentCourse() {
   const course = selectedCourse.value
   if (!course) return
+
   course.exams ??= []
   course.topics ??= []
   course.assignments ??= []
+
   if (!course.exams.some((e) => e.type === selectedExamType.value)) {
     const today = new Date().toISOString().split('T')[0]
     course.exams.push({
@@ -72,59 +81,74 @@ function initializeCurrentCourse() {
 
 // --- Validation ---
 function validateCourseDetails(): boolean {
-  // Validate topics for the current exam type
   for (const topic of filteredTopics.value) {
     if (!topic.name.trim()) {
-      alert(`A topic name cannot be empty. Please fill it in before finishing.`)
+      alert(`A topic name cannot be empty.`)
       return false
     }
   }
-  // Validate assignments for the current exam type
   for (const assignment of filteredAssignments.value) {
     if (!assignment.name.trim()) {
-      alert(`An assignment name cannot be empty. Please fill it in before finishing.`)
+      alert(`An assignment name cannot be empty.`)
       return false
     }
   }
   return true
 }
 
-// --- Handlers ---
+// --- Save Handler ---
 function toggleEditMode() {
-  if (isEditing.value) {
-    // Only proceed to toggle if validation passes
-    if (!validateCourseDetails()) {
-      return
-    }
-  }
-  isEditing.value = !isEditing.value
+  if (isEditing.value && !validateCourseDetails()) return
+
+  const updatedCourses: CourseResponseDTO[] = store.term.courses.map((course) => ({
+    ...course,
+    topics: course.topics ?? [],
+    assignments: course.assignments ?? [],
+    exams: course.exams ?? [],
+  }))
+
+  studySetupService
+    .saveCourses(updatedCourses)
+    .then(() => {
+      console.log('Saved course details:', updatedCourses)
+      isEditing.value = !isEditing.value
+    })
+    .catch((err) => {
+      console.error('Failed to save course details:', err)
+      alert('There was an error saving your course data.')
+    })
 }
 
+// --- Topic Handlers ---
 function addTopic() {
   const course = selectedCourse.value
   const exam = selectedExamDetails.value
   if (!course || !exam) return
+
   const newTopic: TopicDTO = {
     id: uuidv4(),
     name: '',
     difficulty: 1,
     confidence: 1,
-    estimatedStudyTime: 60, // Default to 60 mins
-    type: exam.type,
+    estimatedStudyTime: 60,
+    examType: exam.type
   }
-  course.topics.push(newTopic)
+
+  course.topics = [...(course.topics ?? []), newTopic]
 }
 
 function deleteTopic(topic: TopicDTO) {
   const course = selectedCourse.value
   if (!course) return
-  course.topics = course.topics.filter((t) => t.id !== topic.id)
+  course.topics = (course.topics ?? []).filter((t) => t.id !== topic.id)
 }
 
+// --- Assignment Handlers ---
 function addAssignment() {
   const course = selectedCourse.value
   const exam = selectedExamDetails.value
   if (!course || !exam) return
+
   const newAssignment: AssignmentDTO = {
     id: uuidv4(),
     name: '',
@@ -133,15 +157,16 @@ function addAssignment() {
     estimatedTime: 60,
     associatedTopicIds: [],
     completed: false,
-    type: exam.type,
+    examType: exam.type,
   }
-  course.assignments.push(newAssignment)
+
+  course.assignments = [...(course.assignments ?? []), newAssignment]
 }
 
 function deleteAssignment(assignment: AssignmentDTO) {
   const course = selectedCourse.value
   if (!course) return
-  course.assignments = course.assignments.filter((a) => a.id !== assignment.id)
+  course.assignments = (course.assignments ?? []).filter((a) => a.id !== assignment.id)
 }
 
 // --- Formatters ---
@@ -177,7 +202,6 @@ function formatExamDate(exam: ExamDTO): string {
   return `${dateStr} ・ ${startTime} - ${endTime}`
 }
 </script>
-
 <template>
   <div class="h-screen flex flex-col items-center">
     <div class="w-5/6 flex flex-col flex-1 overflow-hidden">
@@ -213,11 +237,11 @@ function formatExamDate(exam: ExamDTO): string {
             <!-- Course Selection -->
             <button
               v-for="course in courses"
-              :key="course.id"
-              @click="selectedCourseId = course.id"
+              :key="course.courseCode"
+              @click="selectedCourseCode = course.courseCode"
               :class="[
                 'font-bold py-3 px-6 rounded-lg rounded-l-none text-left text-base transition-colors duration-200 border-l-15',
-                course.id === selectedCourseId
+                course.courseCode === selectedCourseCode
                   ? 'bg-[#8A98DD]/25 border-[#8A98DD]'
                   : 'bg-gray-100 hover:bg-purple-50 text-gray-600 border-transparent',
               ]"
@@ -231,7 +255,7 @@ function formatExamDate(exam: ExamDTO): string {
             <div class="flex justify-between items-center mb-4">
               <!-- Course Title -->
               <div class="flex items-baseline gap-4">
-                <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.id }}</h2>
+                <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.courseCode }}</h2>
                 <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.name }}</h2>
               </div>
 

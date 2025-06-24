@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.1.7",
     "@vueform/slider": "^2.1.10",
     "axios": "^1.9.0",
+    "lodash-es": "^4.17.21",
     "pinia": "^3.0.1",
     "tailwindcss": "^4.1.7",
     "uuid": "^11.1.0",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.1",
+    "@types/lodash": "^4.17.18",
     "@types/node": "^22.14.0",
     "@types/uuid": "^10.0.0",
     "@vitejs/plugin-vue": "^5.2.3",
