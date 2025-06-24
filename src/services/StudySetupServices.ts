@@ -1,5 +1,5 @@
 import apiClient from './AxiosClient';
-import type { AssignmentDTO, AvailabilityRequestDTO, CourseBaseDTO, ExamDTO, TermRequestDTO, TermResponseDTO, TopicDTO } from '@/types';
+import type { AssignmentDTO, AvailabilityRequestDTO, CourseBaseDTO, CourseId, CourseResponseDTO, ExamDTO, TermRequestDTO, TermResponseDTO, TopicDTO } from '@/types';
 
 export const studySetupService = {
   // Term
@@ -20,10 +20,13 @@ export const studySetupService = {
   },
 
   // Courses
-  saveCourses(termId: number, courses: CourseBaseDTO[]): Promise<unknown> { // Adjust return type if known
-    return apiClient.post(`/study-setup/terms/${termId}/courses`, courses);
+  saveAllCourses(termId: number, courses: CourseBaseDTO[]): Promise<{ data: CourseResponseDTO[] }> {
+    return apiClient.put(`/study-setup/terms/${termId}/courses`, courses);
   },
 
+  deleteCourse(courseId: CourseId): Promise<void> {
+    return apiClient.delete(`/study-setup/terms/${courseId.termId}/courses/${courseId.courseCode}`);
+  },
 
   // TOPICS
   addTopic(courseCode: string, topic: TopicDTO) {

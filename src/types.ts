@@ -45,19 +45,18 @@ export interface TermResponseDTO {
 }
 
 export interface CourseBaseDTO {
-  courseId: CourseIdDTO
   courseCode: string
   name: string
   credit: number
 }
 
-export interface CourseIdDTO {
+export interface CourseId {
   termId: number
   courseCode: string
 }
 
 export interface CourseResponseDTO extends CourseBaseDTO {
-  courseId: CourseIdDTO
+  courseId: CourseId
   topics?: TopicDTO[]
   assignments?: AssignmentDTO[]
   exams?: ExamDTO[]
@@ -73,6 +72,7 @@ export interface TopicDTO {
 }
 
 export interface ExamDTO {
+  id: string
   type: ExamType
   date: string
   startTime: string

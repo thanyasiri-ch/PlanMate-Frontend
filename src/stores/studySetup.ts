@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { defineStore } from 'pinia'
 import type {
   StudySetupResponseDTO,
@@ -5,6 +6,8 @@ import type {
   TermResponseDTO,
   AvailabilityResponseDTO,
   CourseBaseDTO,
+  CourseResponseDTO,
+  CourseId,
 } from '@/types'
 import { studySetupService } from '@/services/StudySetupServices' // Import your API service
 
@@ -22,8 +25,6 @@ export const useStudySetupStore = defineStore('studySetup', {
   }),
 
   getters: {
-    // ... (your existing getters remain the same) ...
-
     // This getter is useful for passing data to the API for creation/update
     termRequestDTO(state): TermRequestDTO {
       return {
@@ -50,8 +51,15 @@ export const useStudySetupStore = defineStore('studySetup', {
      * @returns The fetched term data.
      */
     async fetchAndSetTerm(): Promise<TermResponseDTO | null> {
+      // Return cached term if it exists and has a valid termId
+      if (this.term && this.term.termId && this.term.termId !== 0) {
+        console.log('STORE ACTION: Using cached current term from store.')
+        return this.term
+      }
+
+      // Otherwise fetch from server
       try {
-        console.log('STORE ACTION: Fetching current term')
+        console.log('STORE ACTION: Fetching current term from server...')
         const response = await studySetupService.getCurrentTerm()
         if (response.data) {
           this.setTerm(response.data)
@@ -64,7 +72,6 @@ export const useStudySetupStore = defineStore('studySetup', {
         return null
       }
     },
-
     /**
      * ACTION: Saves a new term or updates an existing one.
      * This action handles the logic of differentiating between creation and update.
@@ -100,44 +107,45 @@ export const useStudySetupStore = defineStore('studySetup', {
       }
     },
 
-    /**
-     * ACTION: Saves the courses for the current term.
-     * This action will require the termId from the store.
-     * @param courses The list of CourseBaseDTOs to save.
-     */
-    async saveCourses(courses: CourseBaseDTO[]): Promise<void> {
+    async saveAllCourses(coursesToSave: CourseResponseDTO[]): Promise<void> {
       if (!this.term.termId || this.term.termId === 0) {
-        console.warn('Cannot save courses: Term ID is missing. Save the term first.')
-        throw new Error('Term ID is required to save courses. Please save the term details first.')
+        console.warn('Cannot save courses: Term ID is missing. Save the term first.');
+        throw new Error('Term ID is required to save courses. Please save the term details first.');
       }
 
       try {
-        console.log(`STORE ACTION: Saving courses for term ID: ${this.term.termId}`)
-        // Adjust the courses to include the termId in their CourseIdDTO part if your backend expects it for new courses
-        const coursesWithTermId = courses.map((course) => ({
-          ...course,
-          courseId: {
-            termId: this.term.termId,
-            courseCode: course.courseCode,
-          },
-        }))
-        await studySetupService.saveCourses(this.term.termId, coursesWithTermId)
-        // Optionally refetch the term to ensure courses in store are up-to-date after saving
-        // await this.fetchAndSetTerm(this.term.termId); // Uncomment if backend updates term with new course info directly on saveCourses
-        console.log('STORE ACTION: Courses saved successfully.')
+        console.log(`STORE ACTION: Saving all courses for term ID: ${this.term.termId}`);
+
+        const courseBaseDTOs: CourseBaseDTO[] = coursesToSave.map(course => ({
+          courseCode: course.courseCode,
+          name: course.name,
+          credit: course.credit,
+        }));
+
+        console.log('Save courses: ' + '\n' + courseBaseDTOs + '\nto term ' + this.term.name)
+        const response = await studySetupService.saveAllCourses(this.term.termId, courseBaseDTOs);
+
+        this.term.courses = response.data;
+        console.log('STORE ACTION: All courses saved/updated successfully.');
       } catch (error) {
-        console.error('STORE ACTION: Failed to save courses.', error)
-        throw error
+        console.error('STORE ACTION: Failed to save all courses.', error);
+        throw error;
       }
     },
 
-    // ... (your other actions like updateCourse, updateCourseBaseInfo, etc., remain the same) ...
+    async deleteCourse(courseId: CourseId): Promise<void> {
+      await studySetupService.deleteCourse(courseId)
+      this.term.courses = this.term.courses.filter(
+        (c) => !(c.courseCode === courseId.courseCode && this.term.termId === courseId.termId),
+      )
+    },
 
     reset() {
       // Ensure reset sets termId back to 0 for a fresh start
       this.$reset()
-      this.term.termId = 0 // Explicitly reset termId
-      this.term.courses = [] // Ensure courses are cleared
+      this.term.termId = 0
+      this.term.courses = []
+      this.availabilities = []
     },
   },
 })
