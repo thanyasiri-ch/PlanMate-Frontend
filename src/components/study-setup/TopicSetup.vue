@@ -1,93 +1,236 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useStudySetupStore } from '@/stores/studySetup'
-import type {
-  AssignmentDTO,
-  ExamDTO,
-  TopicDTO,
-  CourseResponseDTO
-} from '@/types'
+import type { AssignmentDTO, ExamDTO, TopicDTO, CourseResponseDTO } from '@/types'
 import { ExamType } from '@/types'
 import { v4 as uuidv4 } from 'uuid'
+import cloneDeep from 'lodash/cloneDeep'
 
 const store = useStudySetupStore()
 
 // --- State ---
-const selectedCourseCode = ref<string>('') // using courseCode instead of id
+const selectedCourseCode = ref<string>('')
 const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
-const isEditing = ref(true)
+const isEditing = ref(false)
+const isLoading = ref(false)
 
-// --- Lifecycle ---
-onMounted(() => {
-  if (hasCourses.value) {
-    selectedCourseCode.value =
-      store.term.courses.find((c) => c.courseCode && c.name)?.courseCode ?? ''
+// This local ref will hold a clone of the course details for editing,
+// preventing direct mutation of the global store state until saved.
+const localCourseDetails = ref<CourseResponseDTO | null>(null)
+
+const editableExam = ref<ExamDTO | null>(null)
+
+// --- Computed Properties ---
+
+// This computed property now smartly returns either the local editing copy or the pristine store version.
+const currentCourseData = computed<CourseResponseDTO | null>(() => {
+  if (isEditing.value) {
+    return localCourseDetails.value
   }
-  initializeCurrentCourse()
+  return store.term.courses.find((c) => c.courseCode === selectedCourseCode.value) ?? null
 })
 
-watch([selectedCourseCode, selectedExamType], initializeCurrentCourse)
+const coursesForSelection = computed(() => store.term.courses.filter((c) => c.courseCode && c.name))
 
-// --- Computed ---
-const courses = computed(() =>
-  store.term.courses.filter((c) => c.courseCode && c.name),
-)
+const hasCourses = computed(() => coursesForSelection.value.length > 0)
 
-const hasCourses = computed(() => courses.value.length > 0)
-
-const selectedCourse = computed(() =>
-  courses.value.find((course) => course.courseCode === selectedCourseCode.value) ?? null,
+const selectedCourse = computed(
+  () =>
+    coursesForSelection.value.find((course) => course.courseCode === selectedCourseCode.value) ??
+    null,
 )
 
 const selectedExamDetails = computed(() => {
-  const course = selectedCourse.value
-  return (course?.exams ?? []).find((exam) => exam.type === selectedExamType.value) ?? null
+  const course = currentCourseData.value
+  if (!course) return null
+
+  // In edit mode, the source of truth is `editableExam`.
+  if (isEditing.value) {
+    // Find the exam in the local data that matches the selected type
+    return (
+      localCourseDetails.value?.exams?.find((exam) => exam.type === selectedExamType.value) ?? null
+    )
+  }
+
+  // In view mode, get it from the store data.
+  return (course.exams ?? []).find((exam) => exam.type === selectedExamType.value) ?? null
 })
 
 const filteredTopics = computed(() => {
-  const course = selectedCourse.value
+  const course = currentCourseData.value
   const exam = selectedExamDetails.value
   if (!course || !exam) return []
   return (course.topics ?? []).filter((topic) => topic.examType === exam.type)
 })
 
 const filteredAssignments = computed(() => {
-  const course = selectedCourse.value
+  const course = currentCourseData.value
   const exam = selectedExamDetails.value
   if (!course || !exam) return []
   return (course.assignments ?? []).filter((assignment) => assignment.examType === exam.type)
 })
 
-// --- Initialization ---
-function initializeCurrentCourse() {
-  const course = selectedCourse.value
-  if (!course) return
+// --- Lifecycle & Watchers ---
+onMounted(async () => {
+  // First, ensure term data is loaded, as termId is needed for course details
+  await store.fetchAndSetTerm() // Make sure this populates store.term and its termId
 
-  course.exams ??= []
-  course.topics ??= []
-  course.assignments ??= []
+  if (hasCourses.value) {
+    selectedCourseCode.value = coursesForSelection.value[0].courseCode ?? ''
+  }
+  await fetchAndInitializeCourse()
+})
 
-  if (!course.exams.some((e) => e.type === selectedExamType.value)) {
-    const today = new Date().toISOString().split('T')[0]
-    course.exams.push({
+watch([selectedCourseCode, selectedExamType], async () => {
+  // When the selection changes, if we are in edit mode, we must also update our editableExam ref.
+  if (isEditing.value) {
+    const confirm = window.confirm(
+      'You have unsaved changes. Are you sure you want to switch? Your changes will be lost.',
+    )
+    if (confirm) {
+      handleCancelEdit() // This will exit edit mode and then fetchAndInitializeCourse will run again.
+    } else {
+      // Revert selection if user cancels
+      const previousCourseCode = currentCourseData.value?.courseCode ?? ''
+      await nextTick()
+      selectedCourseCode.value = previousCourseCode
+      return
+    }
+  }
+  await fetchAndInitializeCourse()
+  // After fetching, if we are in edit mode, sync the editable exam
+  if (isEditing.value) {
+    syncEditableExam()
+  }
+})
+
+// A helper function to find and set the exam being edited.
+function syncEditableExam() {
+  if (!isEditing.value || !localCourseDetails.value) {
+    editableExam.value = null
+    return
+  }
+
+  // Ensure exams array exists
+  localCourseDetails.value.exams ??= []
+  let examToEdit = localCourseDetails.value.exams.find((e) => e.type === selectedExamType.value)
+
+  // If an exam of the selected type doesn't exist, create a default one for the form.
+  if (!examToEdit) {
+    examToEdit = {
+      id: uuidv4(),
       type: selectedExamType.value,
-      date: today,
+      date: new Date().toISOString().split('T')[0],
       startTime: '09:00',
       endTime: '11:00',
-    })
+    }
+    // Add the new exam to our local data.
+    localCourseDetails.value.exams.push(examToEdit)
+  }
+
+  editableExam.value = examToEdit
+}
+
+// --- Data Fetching and Initialization ---
+async function fetchAndInitializeCourse() {
+  if (isEditing.value) {
+    const confirm = window.confirm(
+      'You have unsaved changes. Are you sure you want to switch? Your changes will be lost.',
+    )
+    if (confirm) {
+      handleCancelEdit() // Discard changes before switching
+    } else {
+      // Revert selection if user cancels
+      const previousCourseCode = currentCourseData.value?.courseCode ?? ''
+      await nextTick()
+      selectedCourseCode.value = previousCourseCode
+      return
+    }
+  }
+
+  const courseCode = selectedCourseCode.value
+  if (!courseCode) return
+
+  // Ensure termId is available from the store before fetching course details
+  if (!store.term.termId || store.term.termId === 0) {
+    console.warn('Term ID is not available. Cannot fetch course details.')
+    // Optionally, attempt to fetch term here again or show an error
+    return
+  }
+
+  isLoading.value = true
+  try {
+    // Corrected: Pass both termId and courseCode
+    await store.fetchCourseDetails(store.term.termId, courseCode)
+  } catch (err) {
+    console.warn(`Could not load details for course: ${courseCode}`, err)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// --- Edit Mode and Save/Cancel Logic ---
+function enterEditMode() {
+  const courseFromStore = store.term.courses.find((c) => c.courseCode === selectedCourseCode.value)
+  if (!courseFromStore) {
+    console.error('Cannot enter edit mode: course not found in store.')
+    return
+  }
+
+  // Create a deep clone for safe editing
+  localCourseDetails.value = cloneDeep(courseFromStore)
+
+  // Ensure essential arrays exist on the local copy
+  localCourseDetails.value.exams ??= []
+  localCourseDetails.value.topics ??= []
+  localCourseDetails.value.assignments ??= []
+
+  isEditing.value = true
+  syncEditableExam()
+}
+
+function handleCancelEdit() {
+  localCourseDetails.value = null // Discard the local copy
+  editableExam.value = null
+  isEditing.value = false
+}
+
+async function handleSave() {
+  if (!localCourseDetails.value || !validateCourseDetails(localCourseDetails.value)) return
+
+  // The localCourseDetails ref now contains all the correct, updated data for exams, topics, and assignments.
+
+  console.debug(
+    '--- DEBUG: Payload about to be sent to backend ---',
+    cloneDeep(localCourseDetails.value),
+  )
+
+  try {
+    await store.saveCourseDetails(localCourseDetails.value.courseCode, localCourseDetails.value)
+
+    isEditing.value = false
+    localCourseDetails.value = null
+    editableExam.value = null
+    alert('Course details saved successfully!')
+
+    // Fetch fresh data from the server to ensure UI is in sync
+    await fetchAndInitializeCourse()
+  } catch (err) {
+    console.error('Failed to save course details:', err)
+    alert('There was an error saving your course data. Please check the console.')
   }
 }
 
 // --- Validation ---
-function validateCourseDetails(): boolean {
-  for (const topic of filteredTopics.value) {
+function validateCourseDetails(course: CourseResponseDTO): boolean {
+  for (const topic of course.topics ?? []) {
     if (!topic.name.trim()) {
       alert(`A topic name cannot be empty.`)
       return false
     }
   }
-  for (const assignment of filteredAssignments.value) {
+  for (const assignment of course.assignments ?? []) {
     if (!assignment.name.trim()) {
       alert(`An assignment name cannot be empty.`)
       return false
@@ -96,34 +239,11 @@ function validateCourseDetails(): boolean {
   return true
 }
 
-// --- Save Handler ---
-function toggleEditMode() {
-  if (isEditing.value && !validateCourseDetails()) return
-
-  const updatedCourses: CourseResponseDTO[] = store.term.courses.map((course) => ({
-    ...course,
-    topics: course.topics ?? [],
-    assignments: course.assignments ?? [],
-    exams: course.exams ?? [],
-  }))
-
-  studySetupService
-    .saveCourses(updatedCourses)
-    .then(() => {
-      console.log('Saved course details:', updatedCourses)
-      isEditing.value = !isEditing.value
-    })
-    .catch((err) => {
-      console.error('Failed to save course details:', err)
-      alert('There was an error saving your course data.')
-    })
-}
-
-// --- Topic Handlers ---
+// --- Local Data Handlers (operate on the localCourseDetails copy) ---
 function addTopic() {
-  const course = selectedCourse.value
-  const exam = selectedExamDetails.value
-  if (!course || !exam) return
+  if (!isEditing.value || !localCourseDetails.value) return
+  const exam = selectedExamDetails.value // Relies on computed property which now points to local data
+  if (!exam) return
 
   const newTopic: TopicDTO = {
     id: uuidv4(),
@@ -131,23 +251,23 @@ function addTopic() {
     difficulty: 1,
     confidence: 1,
     estimatedStudyTime: 60,
-    examType: exam.type
+    examType: exam.type,
   }
-
-  course.topics = [...(course.topics ?? []), newTopic]
+  localCourseDetails.value.topics ??= []
+  console.log('Adding new topic:', newTopic)
+  localCourseDetails.value.topics.push(newTopic)
 }
 
 function deleteTopic(topic: TopicDTO) {
-  const course = selectedCourse.value
-  if (!course) return
-  course.topics = (course.topics ?? []).filter((t) => t.id !== topic.id)
+  if (!isEditing.value || !localCourseDetails.value) return
+  if (!localCourseDetails.value.topics) return
+  localCourseDetails.value.topics = localCourseDetails.value.topics.filter((t) => t.id !== topic.id)
 }
 
-// --- Assignment Handlers ---
 function addAssignment() {
-  const course = selectedCourse.value
+  if (!isEditing.value || !localCourseDetails.value) return
   const exam = selectedExamDetails.value
-  if (!course || !exam) return
+  if (!exam) return
 
   const newAssignment: AssignmentDTO = {
     id: uuidv4(),
@@ -159,17 +279,41 @@ function addAssignment() {
     completed: false,
     examType: exam.type,
   }
-
-  course.assignments = [...(course.assignments ?? []), newAssignment]
+  localCourseDetails.value.assignments ??= []
+  console.log('Adding new assignment:', newAssignment)
+  localCourseDetails.value.assignments.push(newAssignment)
 }
 
 function deleteAssignment(assignment: AssignmentDTO) {
-  const course = selectedCourse.value
-  if (!course) return
-  course.assignments = (course.assignments ?? []).filter((a) => a.id !== assignment.id)
+  if (!isEditing.value || !localCourseDetails.value) return
+  if (!localCourseDetails.value.assignments) return
+  localCourseDetails.value.assignments = localCourseDetails.value.assignments.filter(
+    (a) => a.id !== assignment.id,
+  )
 }
 
-// --- Formatters ---
+function getAssociatedTopics(assignment: AssignmentDTO): TopicDTO[] {
+  const course = currentCourseData.value
+  // Guard against missing data
+  if (!course || !course.topics || !assignment.associatedTopicIds) {
+    return []
+  }
+
+  // Create a fast lookup map for topics by their ID
+  const topicsMap = new Map(course.topics.map((topic) => [topic.id, topic]))
+
+  // Map the array of IDs to an array of full TopicDTO objects
+  return assignment.associatedTopicIds
+    .map((topicId) => topicsMap.get(topicId))
+    .filter((topic): topic is TopicDTO => topic !== undefined) // Filter out any potential undefined values
+}
+
+// You can also create a convenience function to get just the names
+function getAssociatedTopicNames(assignment: AssignmentDTO): string[] {
+  return getAssociatedTopics(assignment).map((topic) => topic.name)
+}
+
+// --- Formatters (No changes needed) ---
 function formatDueDate(assignment: AssignmentDTO): string {
   const date = new Date(`${assignment.dueDate}T${assignment.dueTime}`)
   return date.toLocaleDateString('en-US', {
@@ -236,7 +380,7 @@ function formatExamDate(exam: ExamDTO): string {
 
             <!-- Course Selection -->
             <button
-              v-for="course in courses"
+              v-for="course in coursesForSelection"
               :key="course.courseCode"
               @click="selectedCourseCode = course.courseCode"
               :class="[
@@ -258,33 +402,48 @@ function formatExamDate(exam: ExamDTO): string {
                 <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.courseCode }}</h2>
                 <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.name }}</h2>
               </div>
-
+              <div v-if="isEditing" class="flex items-center space-x-2">
+                <!-- Cancle Button -->
+                <button
+                  @click="handleCancelEdit"
+                  type="button"
+                  class="text-gray-500 hover:text-gray-800 p-2 rounded-full hover:bg-gray-100"
+                  title="Cancel"
+                >
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+                <!-- Save Button -->
+                <button
+                  @click="handleSave"
+                  type="button"
+                  class="text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-green-100"
+                  title="Save Course"
+                >
+                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
               <!-- Edit Button -->
               <button
-                @click="toggleEditMode"
-                class="text-gray-400 hover:text-purple-600 p-2 rounded-full hover:bg-purple-100"
+                v-else
+                @click="enterEditMode"
+                type="button"
+                class="text-gray-500 hover:text-[#5856D6] p-2 rounded-full hover:bg-purple-100"
+                title="Edit Course"
               >
-                <svg
-                  v-if="isEditing"
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-5 w-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fill-rule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clip-rule="evenodd"
-                  />
-                </svg>
-                <svg
-                  v-else
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -371,8 +530,8 @@ function formatExamDate(exam: ExamDTO): string {
                 <div class="col-span-1"></div>
               </div>
               <div
-                v-for="(topic, index) in filteredTopics"
-                :key="index"
+                v-for="topic in filteredTopics"
+                :key="topic.id"
                 class="bg-purple-50 rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
               >
                 <div class="col-span-4">
@@ -494,8 +653,8 @@ function formatExamDate(exam: ExamDTO): string {
                 </div>
 
                 <div
-                  v-for="(assignment, index) in filteredAssignments"
-                  :key="index"
+                  v-for="assignment in filteredAssignments"
+                  :key="assignment.id"
                   class="bg-purple-50 rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
                 >
                   <div class="col-span-1 flex justify-start">
@@ -547,7 +706,7 @@ function formatExamDate(exam: ExamDTO): string {
                         <input
                           type="checkbox"
                           :id="`topic-${assignment.name}-${topic.name}`"
-                          :value="topic.name"
+                          :value="topic.id"
                           v-model="assignment.associatedTopicIds"
                           class="h-4 w-4 rounded border-gray-300 accent-[#5856D6] shadow-sm cursor-pointer"
                         />
@@ -561,11 +720,11 @@ function formatExamDate(exam: ExamDTO): string {
                     </div>
                     <div v-else class="flex flex-wrap gap-1">
                       <span
-                        v-for="topicTitle in assignment.associatedTopicIds"
-                        :key="topicTitle"
+                        v-for="topic in assignment.associatedTopicIds"
+                        :key="topic"
                         class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full font-medium"
                       >
-                        {{ topicTitle }}
+                        {{ getAssociatedTopicNames(assignment).join(', ') }}
                       </span>
                     </div>
                   </div>

@@ -140,6 +140,57 @@ export const useStudySetupStore = defineStore('studySetup', {
       )
     },
 
+    updateCourseInTerm(course: CourseResponseDTO) {
+      const index = this.term.courses.findIndex((c) => c.courseCode === course.courseCode)
+      if (index !== -1) {
+        // Use a robust merge to ensure you don't overwrite existing detailed data with a less detailed object
+        this.term.courses[index] = {
+          ...this.term.courses[index],
+          ...course,
+        }
+      } else {
+        // Push the new course if it doesn't exist
+        this.term.courses.push(course);
+      }
+    },
+
+    async fetchCourseDetails(termId: number, courseCode: string): Promise<CourseResponseDTO | null> {
+      // --- CACHING LOGIC START ---
+      const existingCourse = this.term.courses.find((c) => c.courseCode === courseCode);
+
+      // We consider details "loaded" if the 'topics' array exists.
+      // This assumes 'topics' is always part of the detailed fetch and not the initial course list.
+      if (existingCourse && existingCourse.topics) {
+        console.log(`STORE ACTION: Using cached details for course ${courseCode}.`);
+        return existingCourse;
+      }
+      // --- CACHING LOGIC END ---
+
+      try {
+        console.log(`STORE ACTION: Fetching details from server for course ${courseCode}...`);
+        const response = await studySetupService.getCourseDetails(termId, courseCode);
+        this.updateCourseInTerm(response.data);
+        console.log(`STORE ACTION: Fetched and stored details for course ${courseCode} in term ${termId}`);
+        return response.data;
+      } catch (error) {
+        console.error(`STORE ACTION: Failed to fetch course details for ${courseCode}`, error);
+        throw error;
+      }
+    },
+
+    async saveCourseDetails(
+      courseCode: string,
+      updates: CourseResponseDTO,
+    ): Promise<void> {
+      try {
+        const response = await studySetupService.saveCourseDetails(courseCode, updates)
+        this.updateCourseInTerm(response.data)
+        console.log(`STORE ACTION: Saved course details for ${courseCode}`)
+      } catch (error) {
+        console.error(`STORE ACTION: Failed to save course details for ${courseCode}`, error)
+        throw error
+      }
+    },
     reset() {
       // Ensure reset sets termId back to 0 for a fresh start
       this.$reset()
