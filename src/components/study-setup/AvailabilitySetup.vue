@@ -8,39 +8,39 @@ const store = useStudySetupStore()
 const errorMessage = ref('')
 
 // selectedDates is an array to hold multiple dates
-const selectedDates = ref<string[]>([]);
-const isModalOpen = ref(false); // NEW: State to control modal visibility
+const selectedDates = ref<string[]>([])
+const isModalOpen = ref(false) // NEW: State to control modal visibility
 
 // Stores availability as { 'YYYY-MM-DD': ['09:00-17:00', '19:00-21:00'] }
 const availabilityByDate = ref<Record<string, string[]>>({})
 
 // Refs for individual hour and minute selection in the modal
-const currentSelectedStartHour = ref<string>('09'); // Default start hour
-const currentSelectedStartMinute = ref<string>('00'); // Default start minute
+const currentSelectedStartHour = ref<string>('09') // Default start hour
+const currentSelectedStartMinute = ref<string>('00') // Default start minute
 
-const currentSelectedEndHour = ref<string>('17'); // Default end hour
-const currentSelectedEndMinute = ref<string>('00'); // Default end minute
+const currentSelectedEndHour = ref<string>('17') // Default end hour
+const currentSelectedEndMinute = ref<string>('00') // Default end minute
 
 // Helper to generate hour options
 const generateHourOptions = () => {
-  const hours = [];
+  const hours = []
   for (let h = 0; h < 24; h++) {
-    hours.push(String(h).padStart(2, '0'));
+    hours.push(String(h).padStart(2, '0'))
   }
-  return hours;
-};
+  return hours
+}
 
 // Helper to generate minute options (e.g., every 30 minutes)
 const generateMinuteOptions = (interval: number = 30) => {
-  const minutes = [];
+  const minutes = []
   for (let m = 0; m < 60; m += interval) {
-    minutes.push(String(m).padStart(2, '0'));
+    minutes.push(String(m).padStart(2, '0'))
   }
-  return minutes;
-};
+  return minutes
+}
 
-const hourOptions = generateHourOptions();
-const minuteOptions = generateMinuteOptions(30);
+const hourOptions = generateHourOptions()
+const minuteOptions = generateMinuteOptions(30)
 
 // --- CALENDAR STATE ---
 const currentDate = ref(new Date())
@@ -89,8 +89,18 @@ const nextMonth = () => {
 const VISIBLE_TIMES_LIMIT = 2 // Show 2 time slots before hiding
 
 const monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-  'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ]
 
 const currentMonth = computed(() => currentDate.value.getMonth())
@@ -120,59 +130,58 @@ const getHiddenTimesCount = (dateStr: string): number => {
 
 // Check if a date is currently selected
 const isDateSelected = (dateStr: string): boolean => {
-  return selectedDates.value.includes(dateStr);
-};
+  return selectedDates.value.includes(dateStr)
+}
 
 // Toggle date selection on calendar click
 const toggleDateSelection = (dateStr: string, isCurrentMonth: boolean) => {
-  if (!isCurrentMonth) return; // Prevent selecting dates from previous/next month padding
+  if (!isCurrentMonth) return // Prevent selecting dates from previous/next month padding
 
-  const index = selectedDates.value.indexOf(dateStr);
+  const index = selectedDates.value.indexOf(dateStr)
   if (index > -1) {
-    selectedDates.value.splice(index, 1); // Deselect
+    selectedDates.value.splice(index, 1) // Deselect
   } else {
-    selectedDates.value.push(dateStr); // Select
+    selectedDates.value.push(dateStr) // Select
   }
-};
+}
 
 // NEW: Open the bulk time slot modal
 const openBulkTimeSlotModal = () => {
   if (selectedDates.value.length === 0) {
-    alert('Please select at least one date to set times.');
-    return;
+    alert('Please select at least one date to set times.')
+    return
   }
   // Reset default times for the modal, or pre-fill from the first selected date
-  currentSelectedStartHour.value = '09';
-  currentSelectedStartMinute.value = '00';
-  currentSelectedEndHour.value = '17';
-  currentSelectedEndMinute.value = '00';
-  isModalOpen.value = true; // Show the modal
-};
+  currentSelectedStartHour.value = '09'
+  currentSelectedStartMinute.value = '00'
+  currentSelectedEndHour.value = '17'
+  currentSelectedEndMinute.value = '00'
+  isModalOpen.value = true // Show the modal
+}
 
 // NEW: Close the bulk time slot modal and clear selected dates
 const closeModalAndClearSelection = () => {
-  isModalOpen.value = false;
-  selectedDates.value = []; // Clear selected dates when done with the modal
-};
-
+  isModalOpen.value = false
+  selectedDates.value = [] // Clear selected dates when done with the modal
+}
 
 // Add time range to all selected dates
 const addTimeRange = () => {
   if (selectedDates.value.length === 0) {
-    alert('No dates are selected to add time ranges to.');
-    return;
+    alert('No dates are selected to add time ranges to.')
+    return
   }
 
   const startTime = `${currentSelectedStartHour.value}:${currentSelectedStartMinute.value}`
   const endTime = `${currentSelectedEndHour.value}:${currentSelectedEndMinute.value}`
 
   if (startTime >= endTime) {
-    alert('Start time must be before end time.');
-    return;
+    alert('Start time must be before end time.')
+    return
   }
 
   const newRange = `${startTime}-${endTime}`
-  let datesWithOverlap = 0;
+  let datesWithOverlap = 0
 
   for (const dateStr of selectedDates.value) {
     if (!availabilityByDate.value[dateStr]) {
@@ -182,18 +191,22 @@ const addTimeRange = () => {
     const currentRanges = availabilityByDate.value[dateStr]
 
     // Check for overlaps before adding
-    let overlapsWithExisting = false;
+    let overlapsWithExisting = false
     for (const existingRange of currentRanges) {
-      const [existingStart, existingEnd] = existingRange.split('-');
-      const newStartMinutes = parseInt(currentSelectedStartHour.value) * 60 + parseInt(currentSelectedStartMinute.value);
-      const newEndMinutes = parseInt(currentSelectedEndHour.value) * 60 + parseInt(currentSelectedEndMinute.value);
-      const existingStartMinutes = parseInt(existingStart.split(':')[0]) * 60 + parseInt(existingStart.split(':')[1]);
-      const existingEndMinutes = parseInt(existingEnd.split(':')[0]) * 60 + parseInt(existingEnd.split(':')[1]);
+      const [existingStart, existingEnd] = existingRange.split('-')
+      const newStartMinutes =
+        parseInt(currentSelectedStartHour.value) * 60 + parseInt(currentSelectedStartMinute.value)
+      const newEndMinutes =
+        parseInt(currentSelectedEndHour.value) * 60 + parseInt(currentSelectedEndMinute.value)
+      const existingStartMinutes =
+        parseInt(existingStart.split(':')[0]) * 60 + parseInt(existingStart.split(':')[1])
+      const existingEndMinutes =
+        parseInt(existingEnd.split(':')[0]) * 60 + parseInt(existingEnd.split(':')[1])
 
       if (newStartMinutes < existingEndMinutes && newEndMinutes > existingStartMinutes) {
-        overlapsWithExisting = true;
-        datesWithOverlap++;
-        break; // No need to check other ranges for this date
+        overlapsWithExisting = true
+        datesWithOverlap++
+        break // No need to check other ranges for this date
       }
     }
 
@@ -204,29 +217,31 @@ const addTimeRange = () => {
   }
 
   if (datesWithOverlap > 0) {
-    alert(`${datesWithOverlap} of ${selectedDates.value.length} selected dates had an overlapping time range and were not updated.`);
+    alert(
+      `${datesWithOverlap} of ${selectedDates.value.length} selected dates had an overlapping time range and were not updated.`,
+    )
   }
 
   // Reset for next input (optional, could retain last selection)
-  currentSelectedStartHour.value = '09';
-  currentSelectedStartMinute.value = '00';
-  currentSelectedEndHour.value = '17';
-  currentSelectedEndMinute.value = '00';
-};
+  currentSelectedStartHour.value = '09'
+  currentSelectedStartMinute.value = '00'
+  currentSelectedEndHour.value = '17'
+  currentSelectedEndMinute.value = '00'
+}
 
 // Remove time range from all selected dates
 const removeTimeRange = (rangeToRemove: string) => {
-  if (selectedDates.value.length === 0) return;
+  if (selectedDates.value.length === 0) return
 
   for (const dateStr of selectedDates.value) {
     if (availabilityByDate.value[dateStr]) {
-      const index = availabilityByDate.value[dateStr].indexOf(rangeToRemove);
+      const index = availabilityByDate.value[dateStr].indexOf(rangeToRemove)
       if (index > -1) {
-        availabilityByDate.value[dateStr].splice(index, 1);
+        availabilityByDate.value[dateStr].splice(index, 1)
       }
     }
   }
-};
+}
 
 // Computed property to display ranges from the *first* selected date in the modal.
 // This is a common compromise: when bulk-editing, the specific ranges of individual dates
@@ -234,12 +249,11 @@ const removeTimeRange = (rangeToRemove: string) => {
 // or just rely on the add/remove actions applying to all.
 const getRangesOfFirstSelectedDate = computed<string[]>(() => {
   if (selectedDates.value.length > 0) {
-    const firstDate = selectedDates.value[0];
-    return availabilityByDate.value[firstDate] || [];
+    const firstDate = selectedDates.value[0]
+    return availabilityByDate.value[firstDate] || []
   }
-  return [];
-});
-
+  return []
+})
 
 // Keeping this commented out as per your previous code
 // const generateFinalAvailabilities = (
@@ -287,39 +301,61 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
       <div class="flex-1 flex bg-white rounded-2xl p-6 sm:p-8 overflow-hidden">
         <div class="flex flex-1 flex-col justify-center">
           <div class="text-center">
-            <p class="text-gray-500 mb-5 mx-auto max-w-2xl">
+            <p class="text-gray-500 mb-3 mx-auto max-w-2xl">
               Click on a date to select available time slots for that specific day.
             </p>
             <button
               v-if="selectedDates.length > 0"
               @click="openBulkTimeSlotModal"
-              class="mb-4 px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 font-semibold"
+              class="mb-4 px-6 py-2 bg-[#544BAA]/90 text-white rounded-xl shadow hover:bg-[#544BAA] shadow"
             >
               Set Times for Selected Dates ({{ selectedDates.length }} selected)
             </button>
             <button
               v-if="selectedDates.length > 0"
               @click="selectedDates = []"
-              class="mb-4 ml-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400"
+              class="mb-4 ml-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 shadow"
             >
               Clear Selection
             </button>
           </div>
 
           <div class="w-full">
-            <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center justify-between mb-3">
               <button
                 @click="previousMonth"
-                class="px-4 py-1 font-semibold hover:font-bold bg-[#FFC84A] rounded-2xl"
+                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FFC84A] text-gray-700 rounded-full shadow hover:shadow-md transition font-medium"
               >
-                &lt; {{ previousMonthName }}
+                <div class="flex items-center justify-center">
+                  <svg
+                    class="w-4 h-4 rotate-180"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 5l7 7-7 7" />
+                  </svg>
+                  <span>{{ previousMonthName }}</span>
+                </div>
               </button>
               <h3 class="text-2xl font-bold">{{ monthYear }}</h3>
               <button
                 @click="nextMonth"
-                class="px-4 py-1 font-semibold hover:font-bold bg-[#FFC84A] rounded-2xl"
+                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FFC84A] text-gray-700  rounded-full shadow hover:shadow-md transition font-medium"
               >
-                {{ nextMonthName }} &gt;
+                <div class="flex items-center justify-center">
+                  <span>{{ nextMonthName }}</span>
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2.5"
+                  >
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 5l7 7-7 7" />
+                  </svg>
+                </div>
               </button>
             </div>
 
@@ -328,27 +364,36 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
                 <div
                   v-for="day in weekDays"
                   :key="day"
-                  class="p-2 font-semibold text-white bg-[#8A98DD] text-sm sm:text-base"
+                  class="p-2 font-semibold text-white bg-[#8A98DD] text-sm sm:text-base rounded-t-md shadow-sm"
                 >
                   {{ day }}
                 </div>
                 <div
                   v-for="day in calendarGrid"
                   :key="day.dateStr"
-                  class="h-15 border border-gray-200 cursor-pointer transition-colors duration-150 ease-in-out flex flex-col p-1"
+                  class="h-17 border-gray-200 cursor-pointer transition-colors duration-150 ease-in-out flex flex-col p-2"
                   :class="[
-                    { 'bg-gray-50 text-gray-400': !day.isCurrentMonth, 'cursor-not-allowed': !day.isCurrentMonth },
                     {
-                      'bg-green-50 hover:bg-green-100':
-                        hasAvailability(day.dateStr) && day.isCurrentMonth && !isDateSelected(day.dateStr),
+                      'bg-gray-50 text-gray-400': !day.isCurrentMonth,
+                      'cursor-not-allowed': !day.isCurrentMonth,
                     },
                     {
-                      'bg-[#8A98DD]/25 hover:bg-yellow-100':
-                        !hasAvailability(day.dateStr) && day.isCurrentMonth && !isDateSelected(day.dateStr),
+                      'bg-[#facdd4]/50 hover:bg-[#facdd4]':
+                        hasAvailability(day.dateStr) &&
+                        day.isCurrentMonth &&
+                        !isDateSelected(day.dateStr),
                     },
                     {
-                      'bg-purple-200 border-purple-500 ring-2 ring-purple-400': isDateSelected(day.dateStr) // Highlight selected dates
-                    }
+                      'bg-[#8A98DD]/30  hover:bg-[#8A98DD]/80':
+                        !hasAvailability(day.dateStr) &&
+                        day.isCurrentMonth &&
+                        !isDateSelected(day.dateStr),
+                    },
+                    {
+                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]': isDateSelected(
+                        day.dateStr,
+                      ), // Highlight selected dates
+                    },
                   ]"
                   @click="toggleDateSelection(day.dateStr, day.isCurrentMonth)"
                 >
@@ -360,7 +405,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
                     <span
                       v-for="time in getVisibleTimes(day.dateStr)"
                       :key="time"
-                      class="text-white bg-green-500 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      class="text-white bg-[#f37d80] rounded px-1.5 py-0.5 text-[10px] font-medium"
                     >
                       {{ time }}
                     </span>
@@ -384,9 +429,9 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
 
   <div
     v-if="isModalOpen"
-    class="fixed inset-0 bg-black/50 z-50 flex justify-center items-center transition-all duration-300"
+    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex justify-center items-center"
   >
-    <div class="bg-white rounded-lg p-8 max-w-lg w-full relative">
+    <div class="bg-white rounded-xl p-8 max-w-lg w-full relative shadow-2xl border border-gray-200">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold">Set Available Times for Selected Dates</h3>
         <button
@@ -467,7 +512,9 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
       </div>
 
       <div v-if="getRangesOfFirstSelectedDate.length > 0" class="mb-4">
-        <p class="text-sm font-medium text-gray-700 mb-2">Current ranges on first selected date ({{ selectedDates[0] }}):</p>
+        <p class="text-sm font-medium text-gray-700 mb-2">
+          Current ranges on first selected date ({{ selectedDates[0] }}):
+        </p>
         <div class="flex flex-wrap gap-2">
           <span
             v-for="range in getRangesOfFirstSelectedDate"
@@ -475,7 +522,10 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
             class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
           >
             {{ range }}
-            <button @click="removeTimeRange(range)" class="ml-2 -mr-1 text-green-600 hover:text-green-800">
+            <button
+              @click="removeTimeRange(range)"
+              class="ml-2 -mr-1 text-green-600 hover:text-green-800"
+            >
               &times;
             </button>
           </span>
