@@ -2,9 +2,6 @@
 import StudyPreferenceForm from '@/components/StudyPreferenceForm.vue';
 import StudyPrefServices from '@/services/StudyPrefServices';
 import type { StudyPreference } from '@/types';
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
 
 export default {
   components: {
@@ -34,7 +31,7 @@ export default {
           alert('Preferences saved successfully.');
           // Optionally, redirect the user or perform other actions upon successful save
           // For example, this.$router.push('/dashboard');
-          router.push({ name: 'profile' })
+          this.$router.push({ name: 'profile' })
         } catch (error) {
           console.error('Failed to save preferences on page', error);
           alert('Something went wrong saving your preferences. Please try again.');

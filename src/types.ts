@@ -69,6 +69,7 @@ export interface TopicDTO {
   confidence: number
   estimatedStudyTime: number
   examType: ExamType
+  courseId: CourseId
 }
 
 export interface ExamDTO {
@@ -77,6 +78,7 @@ export interface ExamDTO {
   date: string
   startTime: string
   endTime: string
+  courseId: CourseId
 }
 
 
@@ -89,6 +91,7 @@ export interface AssignmentDTO {
   associatedTopicIds: string[]
   examType: ExamType
   completed: boolean
+  courseId: CourseId
 }
 
 export interface AvailabilityResponseDTO {

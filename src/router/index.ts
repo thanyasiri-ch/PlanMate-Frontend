@@ -10,6 +10,7 @@ import TopicSetup from '@/components/study-setup/TopicSetup.vue'
 import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
 import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
 import PlanView from '@/views/PlanView.vue'
+import nProgress from 'nprogress'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -62,5 +63,13 @@ const router = createRouter({
     }
   ],
 })
+
+router.beforeEach(() => {
+  nProgress.start();
+});
+
+router.afterEach(() => {
+  nProgress.done();
+});
 
 export default router

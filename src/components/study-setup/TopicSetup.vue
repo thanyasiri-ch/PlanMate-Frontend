@@ -1,6 +1,5 @@
-<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch, watchEffect } from 'vue'
 import { useStudySetupStore } from '@/stores/studySetup'
 import type { AssignmentDTO, ExamDTO, TopicDTO, CourseResponseDTO } from '@/types'
 import { ExamType } from '@/types'
@@ -13,17 +12,12 @@ const store = useStudySetupStore()
 const selectedCourseCode = ref<string>('')
 const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
 const isEditing = ref(false)
-const isLoading = ref(false)
+const isLoading = ref(true)
 
-// This local ref will hold a clone of the course details for editing,
-// preventing direct mutation of the global store state until saved.
 const localCourseDetails = ref<CourseResponseDTO | null>(null)
-
 const editableExam = ref<ExamDTO | null>(null)
 
 // --- Computed Properties ---
-
-// This computed property now smartly returns either the local editing copy or the pristine store version.
 const currentCourseData = computed<CourseResponseDTO | null>(() => {
   if (isEditing.value) {
     return localCourseDetails.value
@@ -32,28 +26,11 @@ const currentCourseData = computed<CourseResponseDTO | null>(() => {
 })
 
 const coursesForSelection = computed(() => store.term.courses.filter((c) => c.courseCode && c.name))
-
 const hasCourses = computed(() => coursesForSelection.value.length > 0)
-
-const selectedCourse = computed(
-  () =>
-    coursesForSelection.value.find((course) => course.courseCode === selectedCourseCode.value) ??
-    null,
-)
 
 const selectedExamDetails = computed(() => {
   const course = currentCourseData.value
   if (!course) return null
-
-  // In edit mode, the source of truth is `editableExam`.
-  if (isEditing.value) {
-    // Find the exam in the local data that matches the selected type
-    return (
-      localCourseDetails.value?.exams?.find((exam) => exam.type === selectedExamType.value) ?? null
-    )
-  }
-
-  // In view mode, get it from the store data.
   return (course.exams ?? []).find((exam) => exam.type === selectedExamType.value) ?? null
 })
 
@@ -73,50 +50,61 @@ const filteredAssignments = computed(() => {
 
 // --- Lifecycle & Watchers ---
 onMounted(async () => {
-  // First, ensure term data is loaded, as termId is needed for course details
-  await store.fetchAndSetTerm() // Make sure this populates store.term and its termId
-
-  if (hasCourses.value) {
-    selectedCourseCode.value = coursesForSelection.value[0].courseCode ?? ''
+  isLoading.value = true
+  try {
+    await store.fetchAndSetTerm()
+    if (hasCourses.value) {
+      selectedCourseCode.value = coursesForSelection.value[0].courseCode ?? ''
+    }
+  } catch (err) {
+    console.error('Failed to load term data on mount:', err)
+    alert('Could not load study data. Please try again later.')
+  } finally {
+    isLoading.value = false
   }
-  await fetchAndInitializeCourse()
 })
 
-watch([selectedCourseCode, selectedExamType], async () => {
-  // When the selection changes, if we are in edit mode, we must also update our editableExam ref.
+watch(selectedCourseCode, (newCourseCode) => {
+  if (!newCourseCode) return
   if (isEditing.value) {
-    const confirm = window.confirm(
-      'You have unsaved changes. Are you sure you want to switch? Your changes will be lost.',
-    )
+    const confirm = window.confirm('You have unsaved changes. Are you sure you want to switch? Your changes will be lost.')
     if (confirm) {
-      handleCancelEdit() // This will exit edit mode and then fetchAndInitializeCourse will run again.
+      handleCancelEdit()
     } else {
-      // Revert selection if user cancels
-      const previousCourseCode = currentCourseData.value?.courseCode ?? ''
-      await nextTick()
-      selectedCourseCode.value = previousCourseCode
+      selectedCourseCode.value = currentCourseData.value?.courseCode ?? ''
       return
     }
   }
-  await fetchAndInitializeCourse()
-  // After fetching, if we are in edit mode, sync the editable exam
+  const course = store.term.courses.find((c) => c.courseCode === newCourseCode)
+  if (!course) return
+  const hasMidterm = course.exams?.some((e) => e.type === ExamType.MIDTERM)
+  if (hasMidterm) {
+    selectedExamType.value = ExamType.MIDTERM
+  } else {
+    const hasFinal = course.exams?.some((e) => e.type === ExamType.FINAL)
+    if (hasFinal) {
+      selectedExamType.value = ExamType.FINAL
+    }
+  }
+})
+
+watch([selectedCourseCode, selectedExamType], (newValues, oldValues) => {
+  if (isEditing.value && newValues[0] !== oldValues[0]) {
+    return
+  }
   if (isEditing.value) {
     syncEditableExam()
   }
 })
 
-// A helper function to find and set the exam being edited.
+// --- All other functions (syncEditableExam, enterEditMode, handleSave, etc.) ---
 function syncEditableExam() {
   if (!isEditing.value || !localCourseDetails.value) {
     editableExam.value = null
     return
   }
-
-  // Ensure exams array exists
   localCourseDetails.value.exams ??= []
   let examToEdit = localCourseDetails.value.exams.find((e) => e.type === selectedExamType.value)
-
-  // If an exam of the selected type doesn't exist, create a default one for the form.
   if (!examToEdit) {
     examToEdit = {
       id: uuidv4(),
@@ -124,105 +112,46 @@ function syncEditableExam() {
       date: new Date().toISOString().split('T')[0],
       startTime: '09:00',
       endTime: '11:00',
-    }
-    // Add the new exam to our local data.
+      courseId: {
+        termId: localCourseDetails.value.courseId.termId,
+        courseCode: localCourseDetails.value.courseId.courseCode,
+      },
+    } as ExamDTO
     localCourseDetails.value.exams.push(examToEdit)
   }
-
   editableExam.value = examToEdit
 }
-
-// --- Data Fetching and Initialization ---
-async function fetchAndInitializeCourse() {
-  if (isEditing.value) {
-    const confirm = window.confirm(
-      'You have unsaved changes. Are you sure you want to switch? Your changes will be lost.',
-    )
-    if (confirm) {
-      handleCancelEdit() // Discard changes before switching
-    } else {
-      // Revert selection if user cancels
-      const previousCourseCode = currentCourseData.value?.courseCode ?? ''
-      await nextTick()
-      selectedCourseCode.value = previousCourseCode
-      return
-    }
-  }
-
-  const courseCode = selectedCourseCode.value
-  if (!courseCode) return
-
-  // Ensure termId is available from the store before fetching course details
-  if (!store.term.termId || store.term.termId === 0) {
-    console.warn('Term ID is not available. Cannot fetch course details.')
-    // Optionally, attempt to fetch term here again or show an error
-    return
-  }
-
-  isLoading.value = true
-  try {
-    // Corrected: Pass both termId and courseCode
-    await store.fetchCourseDetails(store.term.termId, courseCode)
-  } catch (err) {
-    console.warn(`Could not load details for course: ${courseCode}`, err)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// --- Edit Mode and Save/Cancel Logic ---
 function enterEditMode() {
   const courseFromStore = store.term.courses.find((c) => c.courseCode === selectedCourseCode.value)
   if (!courseFromStore) {
     console.error('Cannot enter edit mode: course not found in store.')
     return
   }
-
-  // Create a deep clone for safe editing
   localCourseDetails.value = cloneDeep(courseFromStore)
-
-  // Ensure essential arrays exist on the local copy
   localCourseDetails.value.exams ??= []
   localCourseDetails.value.topics ??= []
   localCourseDetails.value.assignments ??= []
-
   isEditing.value = true
   syncEditableExam()
 }
-
 function handleCancelEdit() {
-  localCourseDetails.value = null // Discard the local copy
+  localCourseDetails.value = null
   editableExam.value = null
   isEditing.value = false
 }
-
 async function handleSave() {
   if (!localCourseDetails.value || !validateCourseDetails(localCourseDetails.value)) return
-
-  // The localCourseDetails ref now contains all the correct, updated data for exams, topics, and assignments.
-
-  console.debug(
-    '--- DEBUG: Payload about to be sent to backend ---',
-    cloneDeep(localCourseDetails.value),
-  )
-
   try {
     await store.saveCourseDetails(localCourseDetails.value.courseCode, localCourseDetails.value)
-
     isEditing.value = false
     localCourseDetails.value = null
     editableExam.value = null
     alert('Course details saved successfully!')
-
-    // Fetch fresh data from the server to ensure UI is in sync
-    await fetchAndInitializeCourse()
   } catch (err) {
     console.error('Failed to save course details:', err)
     alert('There was an error saving your course data. Please check the console.')
   }
 }
-
-// --- Validation ---
 function validateCourseDetails(course: CourseResponseDTO): boolean {
   for (const topic of course.topics ?? []) {
     if (!topic.name.trim()) {
@@ -238,37 +167,32 @@ function validateCourseDetails(course: CourseResponseDTO): boolean {
   }
   return true
 }
-
-// --- Local Data Handlers (operate on the localCourseDetails copy) ---
 function addTopic() {
-  if (!isEditing.value || !localCourseDetails.value) return
-  const exam = selectedExamDetails.value // Relies on computed property which now points to local data
-  if (!exam) return
-
+  if (!isEditing.value || !localCourseDetails.value || !editableExam.value) return
   const newTopic: TopicDTO = {
     id: uuidv4(),
     name: '',
     difficulty: 1,
     confidence: 1,
     estimatedStudyTime: 60,
-    examType: exam.type,
+    examType: editableExam.value.type,
+    courseId: {
+      termId: localCourseDetails.value.courseId.termId,
+      courseCode: localCourseDetails.value.courseId.courseCode,
+    },
   }
   localCourseDetails.value.topics ??= []
-  console.log('Adding new topic:', newTopic)
   localCourseDetails.value.topics.push(newTopic)
 }
-
 function deleteTopic(topic: TopicDTO) {
-  if (!isEditing.value || !localCourseDetails.value) return
-  if (!localCourseDetails.value.topics) return
-  localCourseDetails.value.topics = localCourseDetails.value.topics.filter((t) => t.id !== topic.id)
+  if (!isEditing.value || !localCourseDetails.value?.topics) return
+  const index = localCourseDetails.value.topics.findIndex((t) => t.id === topic.id)
+  if (index > -1) {
+    localCourseDetails.value.topics.splice(index, 1)
+  }
 }
-
 function addAssignment() {
-  if (!isEditing.value || !localCourseDetails.value) return
-  const exam = selectedExamDetails.value
-  if (!exam) return
-
+  if (!isEditing.value || !localCourseDetails.value || !editableExam.value) return
   const newAssignment: AssignmentDTO = {
     id: uuidv4(),
     name: '',
@@ -277,43 +201,33 @@ function addAssignment() {
     estimatedTime: 60,
     associatedTopicIds: [],
     completed: false,
-    examType: exam.type,
+    examType: editableExam.value.type,
+    courseId: {
+      termId: localCourseDetails.value.courseId.termId,
+      courseCode: localCourseDetails.value.courseId.courseCode,
+    },
   }
   localCourseDetails.value.assignments ??= []
-  console.log('Adding new assignment:', newAssignment)
   localCourseDetails.value.assignments.push(newAssignment)
 }
-
 function deleteAssignment(assignment: AssignmentDTO) {
-  if (!isEditing.value || !localCourseDetails.value) return
-  if (!localCourseDetails.value.assignments) return
-  localCourseDetails.value.assignments = localCourseDetails.value.assignments.filter(
-    (a) => a.id !== assignment.id,
-  )
+  if (!isEditing.value || !localCourseDetails.value?.assignments) return
+  const index = localCourseDetails.value.assignments.findIndex((a) => a.id === assignment.id)
+  if (index > -1) {
+    localCourseDetails.value.assignments.splice(index, 1)
+  }
 }
-
 function getAssociatedTopics(assignment: AssignmentDTO): TopicDTO[] {
   const course = currentCourseData.value
-  // Guard against missing data
-  if (!course || !course.topics || !assignment.associatedTopicIds) {
-    return []
-  }
-
-  // Create a fast lookup map for topics by their ID
+  if (!course || !course.topics || !assignment.associatedTopicIds) return []
   const topicsMap = new Map(course.topics.map((topic) => [topic.id, topic]))
-
-  // Map the array of IDs to an array of full TopicDTO objects
   return assignment.associatedTopicIds
     .map((topicId) => topicsMap.get(topicId))
-    .filter((topic): topic is TopicDTO => topic !== undefined) // Filter out any potential undefined values
+    .filter((topic): topic is TopicDTO => topic !== undefined)
 }
-
-// You can also create a convenience function to get just the names
 function getAssociatedTopicNames(assignment: AssignmentDTO): string[] {
   return getAssociatedTopics(assignment).map((topic) => topic.name)
 }
-
-// --- Formatters (No changes needed) ---
 function formatDueDate(assignment: AssignmentDTO): string {
   const date = new Date(`${assignment.dueDate}T${assignment.dueTime}`)
   return date.toLocaleDateString('en-US', {
@@ -324,7 +238,6 @@ function formatDueDate(assignment: AssignmentDTO): string {
     hour12: true,
   })
 }
-
 function formatExamDate(exam: ExamDTO): string {
   const start = new Date(`${exam.date}T${exam.startTime}`)
   const end = new Date(`${exam.date}T${exam.endTime}`)
@@ -333,18 +246,29 @@ function formatExamDate(exam: ExamDTO): string {
     month: 'short',
     day: 'numeric',
   })
-  const startTime = start.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
-  })
-  const endTime = end.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: true,
-  })
+  const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
+  const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
   return `${dateStr} ・ ${startTime} - ${endTime}`
 }
+
+
+// --- DEBUGGING BLOCK (PLACE AT THE END) ---
+// By placing this at the end, all variables and computed properties above are guaranteed to be initialized.
+watchEffect(() => {
+  console.group('--- DEBUG 3: Component State & Computed Properties ---')
+  const course = currentCourseData.value
+  console.log('Selected Course Code:', selectedCourseCode.value)
+  console.log('Selected Exam Type:', selectedExamType.value)
+  console.log('currentCourseData:', cloneDeep(course))
+  if (course) {
+    console.log('>>> Raw `exams` array in this course:', cloneDeep(course.exams))
+    console.log('>>> Raw `assignments` array in this course:', cloneDeep(course.assignments))
+  }
+  console.log('>>> selectedExamDetails (this controls the exam display):', cloneDeep(selectedExamDetails.value))
+  console.log('>>> filteredTopics:', cloneDeep(filteredTopics.value))
+  console.log('>>> filteredAssignments:', cloneDeep(filteredAssignments.value))
+  console.groupEnd()
+})
 </script>
 <template>
   <div class="h-screen flex flex-col items-center">
@@ -352,7 +276,6 @@ function formatExamDate(exam: ExamDTO): string {
       <div class="flex-1 flex bg-white rounded-2xl p-6 sm:p-8 overflow-hidden">
         <div v-if="hasCourses" class="flex gap-6 flex-1 overflow-hidden">
           <div class="flex flex-col gap-2">
-            <!-- Exam Type Selection -->
             <div class="flex bg-[#FFF1D1] rounded-full w-min mb-2">
               <button
                 @click="selectedExamType = ExamType.MIDTERM"
@@ -378,7 +301,6 @@ function formatExamDate(exam: ExamDTO): string {
               </button>
             </div>
 
-            <!-- Course Selection -->
             <button
               v-for="course in coursesForSelection"
               :key="course.courseCode"
@@ -394,16 +316,13 @@ function formatExamDate(exam: ExamDTO): string {
             </button>
           </div>
 
-          <!-- Course Details -->
-          <div class="flex-1 overflow-y-auto pr-4" v-if="selectedCourse">
+          <div class="flex-1 overflow-y-auto pr-4" v-if="currentCourseData">
             <div class="flex justify-between items-center mb-4">
-              <!-- Course Title -->
               <div class="flex items-baseline gap-4">
-                <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.courseCode }}</h2>
-                <h2 class="text-xl font-bold text-gray-800">{{ selectedCourse.name }}</h2>
+                <h2 class="text-xl font-bold text-gray-800">{{ currentCourseData.courseCode }}</h2>
+                <h2 class="text-xl font-bold text-gray-800">{{ currentCourseData.name }}</h2>
               </div>
               <div v-if="isEditing" class="flex items-center space-x-2">
-                <!-- Cancle Button -->
                 <button
                   @click="handleCancelEdit"
                   type="button"
@@ -419,7 +338,6 @@ function formatExamDate(exam: ExamDTO): string {
                     />
                   </svg>
                 </button>
-                <!-- Save Button -->
                 <button
                   @click="handleSave"
                   type="button"
@@ -435,7 +353,6 @@ function formatExamDate(exam: ExamDTO): string {
                   </svg>
                 </button>
               </div>
-              <!-- Edit Button -->
               <button
                 v-else
                 @click="enterEditMode"
@@ -454,7 +371,6 @@ function formatExamDate(exam: ExamDTO): string {
               </button>
             </div>
 
-            <!-- Exam Details -->
             <div
               v-if="selectedExamDetails"
               class="p-2 rounded-xl bg-yellow-100 border border-yellow-300 mb-4 text-gray-800"
@@ -520,7 +436,6 @@ function formatExamDate(exam: ExamDTO): string {
               </div>
             </div>
 
-            <!-- Topics Section -->
             <div class="space-y-2">
               <div class="grid grid-cols-12 gap-4 text-sm text-gray-500 font-semibold px-4">
                 <div class="col-span-4">Name</div>
@@ -587,9 +502,9 @@ function formatExamDate(exam: ExamDTO): string {
                     class="text-right bg-transparent font-semibold text-gray-800 focus:outline-none focus:border-b focus:border-purple-500 w-full"
                     type="number"
                   />
-                  <span v-else class="font-semibold text-gray-800">{{
-                    topic.estimatedStudyTime
-                  }}</span>
+                  <span v-else class="font-semibold text-gray-800"
+                    >{{ topic.estimatedStudyTime }} min</span
+                  >
                 </div>
                 <div class="col-span-1 text-right">
                   <button
@@ -630,7 +545,6 @@ function formatExamDate(exam: ExamDTO): string {
 
             <div class="my-6"></div>
 
-            <!-- Assignments Section -->
             <div>
               <div
                 v-if="isEditing || filteredAssignments.length > 0"
@@ -720,12 +634,12 @@ function formatExamDate(exam: ExamDTO): string {
                     </div>
                     <div v-else class="flex flex-wrap gap-1">
                       <span
-                        v-for="topic in assignment.associatedTopicIds"
-                        :key="topic"
-                        class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full font-medium"
+                        v-if="getAssociatedTopicNames(assignment).length"
+                        class="text-xs text-purple-800 font-medium"
                       >
                         {{ getAssociatedTopicNames(assignment).join(', ') }}
                       </span>
+                      <span v-else class="text-xs text-gray-500">No associated topics</span>
                     </div>
                   </div>
 
@@ -754,9 +668,9 @@ function formatExamDate(exam: ExamDTO): string {
                       class="text-right bg-transparent font-semibold text-gray-800 focus:outline-none focus:border-b focus:border-purple-500 w-full"
                       type="number"
                     />
-                    <span v-else class="font-semibold text-gray-800">{{
-                      assignment.estimatedTime
-                    }}</span>
+                    <span v-else class="font-semibold text-gray-800"
+                      >{{ assignment.estimatedTime }} min</span
+                    >
                   </div>
                   <div class="col-span-1 text-right">
                     <button
@@ -801,7 +715,6 @@ function formatExamDate(exam: ExamDTO): string {
           </div>
         </div>
 
-        <!-- No Courses Found Message -->
         <div
           v-else
           class="w-full h-full flex flex-col items-center justify-center text-center p-10 bg-white rounded-2xl"

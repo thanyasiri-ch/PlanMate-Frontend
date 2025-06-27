@@ -10,6 +10,7 @@ import type {
   CourseId,
 } from '@/types'
 import { studySetupService } from '@/services/StudySetupServices' // Import your API service
+import { cloneDeep } from 'lodash'
 
 export const useStudySetupStore = defineStore('studySetup', {
   state: (): StudySetupResponseDTO => ({
@@ -47,22 +48,35 @@ export const useStudySetupStore = defineStore('studySetup', {
     /**
      * ACTION: Fetches a term from the server and populates the store.
      * This is called when a component needs to load data for an existing term.
-     * @param termId The ID of the term to fetch.
      * @returns The fetched term data.
      */
     async fetchAndSetTerm(): Promise<TermResponseDTO | null> {
-      // Return cached term if it exists and has a valid termId
       if (this.term && this.term.termId && this.term.termId !== 0) {
         console.log('STORE ACTION: Using cached current term from store.')
+        // Even if cached, let's log what the store currently holds
+        console.log('DEBUG 0: Cached store state being used:', cloneDeep(this.term))
         return this.term
       }
 
-      // Otherwise fetch from server
       try {
         console.log('STORE ACTION: Fetching current term from server...')
         const response = await studySetupService.getCurrentTerm()
+
+        // --- DEBUG STEP 1: CHECK RAW API RESPONSE ---
+        // What does the server ACTUALLY return?
+        console.log('DEBUG 1: Raw API response data:', cloneDeep(response.data))
+        // Open this in your browser console.
+        // Does the `courses` array exist?
+        // Inside each course object, do you see the `exams` and `assignments` arrays with the correct data?
+
         if (response.data) {
           this.setTerm(response.data)
+
+          // --- DEBUG STEP 2: CHECK STORE STATE ---
+          // Is the data correctly set in the store's state after the API call?
+          console.log('DEBUG 2: Store state after setting term:', cloneDeep(this.term))
+          // This log should look identical to the "DEBUG 1" log above.
+
           console.log('STORE ACTION: Store updated with current term')
           return response.data
         }
@@ -140,31 +154,42 @@ export const useStudySetupStore = defineStore('studySetup', {
       )
     },
 
-    updateCourseInTerm(course: CourseResponseDTO) {
-      const index = this.term.courses.findIndex((c) => c.courseCode === course.courseCode)
+    // ============================ BUG FIX AREA 1 ============================
+    // The original merge logic was correct but could be made more explicit to
+    // ensure that detail arrays (like assignments) are properly cleared if they
+    // aren't present in the detailed response from the server.
+    updateCourseInTerm(courseWithDetails: CourseResponseDTO) {
+      const index = this.term.courses.findIndex((c) => c.courseCode === courseWithDetails.courseCode)
       if (index !== -1) {
-        // Use a robust merge to ensure you don't overwrite existing detailed data with a less detailed object
         this.term.courses[index] = {
-          ...this.term.courses[index],
-          ...course,
+          ...this.term.courses[index], // Keep old base data
+          ...courseWithDetails,       // Overwrite with all new data
+          // Explicitly handle detail arrays. If the server response for details
+          // doesn't include 'assignments', this ensures the local array becomes
+          // empty instead of preserving stale data.
+          topics: courseWithDetails.topics ?? [],
+          assignments: courseWithDetails.assignments ?? [],
+          exams: courseWithDetails.exams ?? [],
         }
       } else {
         // Push the new course if it doesn't exist
-        this.term.courses.push(course);
+        this.term.courses.push(courseWithDetails);
       }
     },
 
+    // ============================ BUG FIX AREA 2 ============================
+    // The original caching logic was too simple. It only checked for 'topics'.
+    // If a course had topics but not assignments, it would be considered "cached"
+    // and the store would never re-fetch to get the assignments.
     async fetchCourseDetails(termId: number, courseCode: string): Promise<CourseResponseDTO | null> {
-      // --- CACHING LOGIC START ---
       const existingCourse = this.term.courses.find((c) => c.courseCode === courseCode);
 
-      // We consider details "loaded" if the 'topics' array exists.
-      // This assumes 'topics' is always part of the detailed fetch and not the initial course list.
-      if (existingCourse && existingCourse.topics) {
-        console.log(`STORE ACTION: Using cached details for course ${courseCode}.`);
+      // More robust caching: only return from cache if the 'assignments' array is also defined.
+      // This ensures that we re-fetch if we have partial details but are missing assignments.
+      if (existingCourse && existingCourse.assignments !== undefined) {
+        console.log(`STORE ACTION: Using fully cached details for course ${courseCode}.`);
         return existingCourse;
       }
-      // --- CACHING LOGIC END ---
 
       try {
         console.log(`STORE ACTION: Fetching details from server for course ${courseCode}...`);
