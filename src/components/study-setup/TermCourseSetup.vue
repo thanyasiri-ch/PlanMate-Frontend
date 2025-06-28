@@ -151,13 +151,13 @@ function handleCancelCoursesEdit() {
 function addCourse() {
   if (!localTerm.value) return
   localTerm.value.courses.push({
+    courseId: 0,
     courseCode: '',
     name: '',
     credit: 0,
     assignments: [],
     exams: [],
     topics: [],
-    courseId: { termId: localTerm.value.termId || 0, courseCode: '' },
   })
   nextTick(() => {
     courseListRef.value?.scrollTo({ top: courseListRef.value.scrollHeight, behavior: 'smooth' })
@@ -168,7 +168,7 @@ async function removeCourse(index: number) {
   if (!localTerm.value) return
   const courseToDelete = localTerm.value.courses[index]
 
-  if (courseToDelete.courseId.courseCode) {
+  if (courseToDelete.courseId) {
     try {
       await store.deleteCourse(courseToDelete.courseId) // Dispatch delete action
     } catch (error) {

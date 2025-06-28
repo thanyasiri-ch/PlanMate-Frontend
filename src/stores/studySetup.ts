@@ -6,8 +6,7 @@ import type {
   TermResponseDTO,
   AvailabilityResponseDTO,
   CourseBaseDTO,
-  CourseResponseDTO,
-  CourseId,
+  CourseResponseDTO
 } from '@/types'
 import { studySetupService } from '@/services/StudySetupServices' // Import your API service
 import { cloneDeep } from 'lodash'
@@ -131,9 +130,13 @@ export const useStudySetupStore = defineStore('studySetup', {
         console.log(`STORE ACTION: Saving all courses for term ID: ${this.term.termId}`);
 
         const courseBaseDTOs: CourseBaseDTO[] = coursesToSave.map(course => ({
+          courseId: course.courseId,
           courseCode: course.courseCode,
           name: course.name,
           credit: course.credit,
+          topics: course.topics || [],
+          assignments: course.assignments || [],
+          exams: course.exams || [],
         }));
 
         console.log('Save courses: ' + '\n' + courseBaseDTOs + '\nto term ' + this.term.name)
@@ -147,14 +150,13 @@ export const useStudySetupStore = defineStore('studySetup', {
       }
     },
 
-    async deleteCourse(courseId: CourseId): Promise<void> {
+    async deleteCourse(courseId: number): Promise<void> {
       await studySetupService.deleteCourse(courseId)
       this.term.courses = this.term.courses.filter(
-        (c) => !(c.courseCode === courseId.courseCode && this.term.termId === courseId.termId),
+        (c) => !(c.courseId === courseId),
       )
     },
 
-    // ============================ BUG FIX AREA 1 ============================
     // The original merge logic was correct but could be made more explicit to
     // ensure that detail arrays (like assignments) are properly cleared if they
     // aren't present in the detailed response from the server.
@@ -177,38 +179,12 @@ export const useStudySetupStore = defineStore('studySetup', {
       }
     },
 
-    // ============================ BUG FIX AREA 2 ============================
-    // The original caching logic was too simple. It only checked for 'topics'.
-    // If a course had topics but not assignments, it would be considered "cached"
-    // and the store would never re-fetch to get the assignments.
-    async fetchCourseDetails(termId: number, courseCode: string): Promise<CourseResponseDTO | null> {
-      const existingCourse = this.term.courses.find((c) => c.courseCode === courseCode);
-
-      // More robust caching: only return from cache if the 'assignments' array is also defined.
-      // This ensures that we re-fetch if we have partial details but are missing assignments.
-      if (existingCourse && existingCourse.assignments !== undefined) {
-        console.log(`STORE ACTION: Using fully cached details for course ${courseCode}.`);
-        return existingCourse;
-      }
-
-      try {
-        console.log(`STORE ACTION: Fetching details from server for course ${courseCode}...`);
-        const response = await studySetupService.getCourseDetails(termId, courseCode);
-        this.updateCourseInTerm(response.data);
-        console.log(`STORE ACTION: Fetched and stored details for course ${courseCode} in term ${termId}`);
-        return response.data;
-      } catch (error) {
-        console.error(`STORE ACTION: Failed to fetch course details for ${courseCode}`, error);
-        throw error;
-      }
-    },
-
     async saveCourseDetails(
       courseCode: string,
       updates: CourseResponseDTO,
     ): Promise<void> {
       try {
-        const response = await studySetupService.saveCourseDetails(courseCode, updates)
+        const response = await studySetupService.saveCourseDetails(updates)
         this.updateCourseInTerm(response.data)
         console.log(`STORE ACTION: Saved course details for ${courseCode}`)
       } catch (error) {

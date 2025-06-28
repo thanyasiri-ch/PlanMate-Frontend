@@ -3,7 +3,6 @@ import type {
   AssignmentDTO,
   AvailabilityRequestDTO,
   CourseBaseDTO,
-  CourseId,
   CourseResponseDTO,
   ExamDTO,
   TermRequestDTO,
@@ -34,17 +33,12 @@ export const studySetupService = {
     return apiClient.put(`/study-setup/terms/${termId}/courses`, courses)
   },
 
-  deleteCourse(courseId: CourseId): Promise<void> {
-    return apiClient.delete(`/study-setup/terms/${courseId.termId}/courses/${courseId.courseCode}`)
+  deleteCourse(courseId: number): Promise<void> {
+    return apiClient.delete(`/study-setup/terms/courses/${courseId}`)
   },
 
-  // COURSE DETAILS
-  getCourseDetails(termId: number, courseCode: string): Promise<{ data: CourseResponseDTO }> {
-    return apiClient.get(`/study-setup/terms/${termId}/courses/${courseCode}/details`);
-  },
-
-  saveCourseDetails(courseCode: string, details: CourseResponseDTO): Promise<{ data: CourseResponseDTO }> {
-    return apiClient.put(`/study-setup/courses/${courseCode}/details`, details)
+  saveCourseDetails(details: CourseResponseDTO): Promise<{ data: CourseResponseDTO }> {
+    return apiClient.put(`/study-setup/courses/details`, details)
   },
 
   // TOPICS

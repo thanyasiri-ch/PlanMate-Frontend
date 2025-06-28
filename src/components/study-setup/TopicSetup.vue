@@ -112,10 +112,7 @@ function syncEditableExam() {
       date: new Date().toISOString().split('T')[0],
       startTime: '09:00',
       endTime: '11:00',
-      courseId: {
-        termId: localCourseDetails.value.courseId.termId,
-        courseCode: localCourseDetails.value.courseId.courseCode,
-      },
+      courseId: localCourseDetails.value.courseId, // assign as number
     } as ExamDTO
     localCourseDetails.value.exams.push(examToEdit)
   }
@@ -176,10 +173,7 @@ function addTopic() {
     confidence: 1,
     estimatedStudyTime: 60,
     examType: editableExam.value.type,
-    courseId: {
-      termId: localCourseDetails.value.courseId.termId,
-      courseCode: localCourseDetails.value.courseId.courseCode,
-    },
+    courseId: localCourseDetails.value.courseId,
   }
   localCourseDetails.value.topics ??= []
   localCourseDetails.value.topics.push(newTopic)
@@ -202,10 +196,7 @@ function addAssignment() {
     associatedTopicIds: [],
     completed: false,
     examType: editableExam.value.type,
-    courseId: {
-      termId: localCourseDetails.value.courseId.termId,
-      courseCode: localCourseDetails.value.courseId.courseCode,
-    },
+    courseId: localCourseDetails.value.courseId,
   }
   localCourseDetails.value.assignments ??= []
   localCourseDetails.value.assignments.push(newAssignment)
