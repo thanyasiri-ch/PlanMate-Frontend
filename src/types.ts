@@ -1,3 +1,5 @@
+import type { Session } from 'inspector/promises'
+
 // study preferences
 export type PreferredStudyTime =
   | 'early morning'
@@ -33,14 +35,14 @@ export interface User {
 export interface TermRequestDTO {
   name: string
   startDate: string // "yyyy-MM-dd"
-  endDate: string   // "yyyy-MM-dd"
+  endDate: string // "yyyy-MM-dd"
 }
 
 export interface TermResponseDTO {
   termId: number
   name: string
   startDate: string // "yyyy-MM-dd"
-  endDate: string   // "yyyy-MM-dd"
+  endDate: string // "yyyy-MM-dd"
   courses: CourseDTO[]
 }
 
@@ -74,7 +76,6 @@ export interface ExamDTO {
   endTime: string
 }
 
-
 export interface AssignmentDTO {
   id: string
   name: string
@@ -90,13 +91,13 @@ export interface AvailabilityResponseDTO {
   id: number
   date: string // "yyyy-MM-dd"
   startTime: string // "HH:mm"
-  endTime: string   // "HH:mm"
+  endTime: string // "HH:mm"
 }
 
 export interface AvailabilityRequestDTO {
   date: string // "yyyy-MM-dd"
   startTime: string // "HH:mm"
-  endTime: string   // "HH:mm"
+  endTime: string // "HH:mm"
 }
 
 export interface StudySetupResponseDTO {
@@ -106,13 +107,38 @@ export interface StudySetupResponseDTO {
 }
 
 export interface CourseDetailsRequestDTO {
-  courseCode: string; // Needs to identify which course these details belong to
-  topics: TopicDTO[];
-  assignments: AssignmentDTO[];
-  exams: ExamDTO[];
+  courseCode: string // Needs to identify which course these details belong to
+  topics: TopicDTO[]
+  assignments: AssignmentDTO[]
+  exams: ExamDTO[]
 }
 
 export enum ExamType {
   MIDTERM = 'MIDTERM',
-  FINAL = 'FINAL'
+  FINAL = 'FINAL',
+}
+
+export enum SessionType {
+  REVIEW = 'REVIEW',
+  STUDY = 'STUDY',
+  ASSIGNMENT = 'ASSIGNMENT',
+}
+
+export interface SessionViewDTO {
+  sessionId: string
+  courseCode: string
+  topicName: string | null
+  assignmentName: string | null
+  duration: number
+  type: SessionType
+  scheduled: boolean
+  date: string
+  start: string
+  end: string
+  completed: boolean
+}
+
+export interface ScheduleViewDTO {
+  study_plan: SessionViewDTO[]
+  unscheduled_sessions: SessionViewDTO[]
 }

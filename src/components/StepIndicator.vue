@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{ activeStepIndex: number }>()
 
-const steps = ['term', 'course', 'details', 'availability', 'generate-plan'] as const
+const steps = ['term', 'course', 'course-details', 'availability', 'generate-plan'] as const
 type Step = typeof steps[number]
 
 const currentStepIndex = computed(() => props.activeStepIndex)
@@ -11,7 +11,7 @@ const currentStepIndex = computed(() => props.activeStepIndex)
 const stepDisplayNames: Record<Step, string> = {
   'term': 'Term',
   'course': 'Course',
-  'details': 'Course Details', // <-- Customized name
+  'course-details': 'Course Details', // <-- Customized name
   'availability': 'Availability',
   'generate-plan': 'Generate Plan' // <-- Customized name
 }
@@ -26,7 +26,7 @@ const stepDisplayNames: Record<Step, string> = {
         class="relative flex items-center"
         :class="{
           // Apply `grow` ONLY to the items that are NOT the last one.
-          'grow': index < steps.length - 1,
+          'grow': index <= steps.length - 1,
 
           'after:content-[\'\'] after:w-full after:h-1 after:border-b-4 after:inline-block': index < steps.length - 1,
           'after:absolute after:left-0 after:top-4 lg:after:top-5': index < steps.length - 1,
@@ -54,7 +54,7 @@ const stepDisplayNames: Record<Step, string> = {
           </span>
 
           <span
-            class="absolute top-full left-1/2 mt-2 -translate-x-1/2 w-24 text-center text-sm"
+            class="absolute top-full left-1/2 mt-2 -translate-x-1/2 w-26 text-center text-sm"
             :class="{
               'font-extrabold text-[#766BDE]': index === currentStepIndex,
               'font-semibold text-[#766BDE]': index !== currentStepIndex
