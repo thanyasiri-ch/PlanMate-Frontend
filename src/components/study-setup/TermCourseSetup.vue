@@ -3,7 +3,7 @@
 import { useStudySetupStore } from '@/stores/studySetup'
 import { ref, inject, watch, nextTick, type Ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import type { TermResponseDTO, CourseResponseDTO } from '@/types'
+import type { TermResponseDTO, CourseDTO } from '@/types'
 import cloneDeep from 'lodash/cloneDeep'
 
 const route = useRoute()
@@ -78,7 +78,7 @@ function validateTerm(termToValidate: TermResponseDTO | null): boolean {
   return true
 }
 
-function validateCourses(coursesToValidate: CourseResponseDTO[]): boolean {
+function validateCourses(coursesToValidate: CourseDTO[]): boolean {
   if (coursesToValidate.length === 0) {
     alert('Please add at least one course to continue.')
     stepNavigator?.activateStep('course')

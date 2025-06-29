@@ -1,10 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useStudySetupStore } from '@/stores/studySetup'
-import type { TermDTO } from '@/types'
-
-const emit = defineEmits(['next', 'back'])
-const store = useStudySetupStore()
 const errorMessage = ref('')
 
 // selectedDates is an array to hold multiple dates

@@ -7,7 +7,7 @@ import { ref, provide, type Ref, watch } from 'vue'
 const router = useRouter()
 const route = useRoute()
 
-const steps = ['term', 'course', 'topic', 'availability', 'generate Plan']
+const steps = ['term', 'course', 'details', 'availability', 'generate-plan']
 
 const subStepIndex = ref(0) // 0 = term, 1 = course
 

@@ -41,7 +41,7 @@ export interface TermResponseDTO {
   name: string
   startDate: string // "yyyy-MM-dd"
   endDate: string   // "yyyy-MM-dd"
-  courses: CourseResponseDTO[]
+  courses: CourseDTO[]
 }
 
 export interface CourseBaseDTO {
@@ -50,7 +50,7 @@ export interface CourseBaseDTO {
   credit: number
 }
 
-export interface CourseResponseDTO extends CourseBaseDTO {
+export interface CourseDTO extends CourseBaseDTO {
   courseId: number
   topics?: TopicDTO[]
   assignments?: AssignmentDTO[]
@@ -64,7 +64,6 @@ export interface TopicDTO {
   confidence: number
   estimatedStudyTime: number
   examType: ExamType
-  courseId: number
 }
 
 export interface ExamDTO {
@@ -73,7 +72,6 @@ export interface ExamDTO {
   date: string
   startTime: string
   endTime: string
-  courseId: number
 }
 
 
@@ -86,7 +84,6 @@ export interface AssignmentDTO {
   associatedTopicIds: string[]
   examType: ExamType
   completed: boolean
-  courseId: number
 }
 
 export interface AvailabilityResponseDTO {

@@ -3,9 +3,18 @@ import { computed } from 'vue'
 
 const props = defineProps<{ activeStepIndex: number }>()
 
-const steps = ['term', 'course', 'topic', 'availability', 'generate Plan']
+const steps = ['term', 'course', 'details', 'availability', 'generate-plan'] as const
+type Step = typeof steps[number]
 
 const currentStepIndex = computed(() => props.activeStepIndex)
+
+const stepDisplayNames: Record<Step, string> = {
+  'term': 'Term',
+  'course': 'Course',
+  'details': 'Course Details', // <-- Customized name
+  'availability': 'Availability',
+  'generate-plan': 'Generate Plan' // <-- Customized name
+}
 </script>
 
 <template>
@@ -51,7 +60,7 @@ const currentStepIndex = computed(() => props.activeStepIndex)
               'font-semibold text-[#766BDE]': index !== currentStepIndex
             }"
           >
-            {{ step.charAt(0).toUpperCase() + step.slice(1) }}
+            {{ stepDisplayNames[step] }}
           </span>
         </div>
       </li>

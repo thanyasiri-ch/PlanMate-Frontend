@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, watchEffect } from 'vue'
 import { useStudySetupStore } from '@/stores/studySetup'
-import type { AssignmentDTO, ExamDTO, TopicDTO, CourseResponseDTO } from '@/types'
+import type { AssignmentDTO, ExamDTO, TopicDTO, CourseDTO } from '@/types'
 import { ExamType } from '@/types'
 import { v4 as uuidv4 } from 'uuid'
 import cloneDeep from 'lodash/cloneDeep'
@@ -14,11 +14,11 @@ const selectedExamType = ref<ExamType>(ExamType.MIDTERM)
 const isEditing = ref(false)
 const isLoading = ref(true)
 
-const localCourseDetails = ref<CourseResponseDTO | null>(null)
+const localCourseDetails = ref<CourseDTO | null>(null)
 const editableExam = ref<ExamDTO | null>(null)
 
 // --- Computed Properties ---
-const currentCourseData = computed<CourseResponseDTO | null>(() => {
+const currentCourseData = computed<CourseDTO | null>(() => {
   if (isEditing.value) {
     return localCourseDetails.value
   }
@@ -149,7 +149,7 @@ async function handleSave() {
     alert('There was an error saving your course data. Please check the console.')
   }
 }
-function validateCourseDetails(course: CourseResponseDTO): boolean {
+function validateCourseDetails(course: CourseDTO): boolean {
   for (const topic of course.topics ?? []) {
     if (!topic.name.trim()) {
       alert(`A topic name cannot be empty.`)
@@ -173,7 +173,6 @@ function addTopic() {
     confidence: 1,
     estimatedStudyTime: 60,
     examType: editableExam.value.type,
-    courseId: localCourseDetails.value.courseId,
   }
   localCourseDetails.value.topics ??= []
   localCourseDetails.value.topics.push(newTopic)
@@ -196,7 +195,6 @@ function addAssignment() {
     associatedTopicIds: [],
     completed: false,
     examType: editableExam.value.type,
-    courseId: localCourseDetails.value.courseId,
   }
   localCourseDetails.value.assignments ??= []
   localCourseDetails.value.assignments.push(newAssignment)

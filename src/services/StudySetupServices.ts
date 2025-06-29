@@ -3,7 +3,7 @@ import type {
   AssignmentDTO,
   AvailabilityRequestDTO,
   CourseBaseDTO,
-  CourseResponseDTO,
+  CourseDTO,
   ExamDTO,
   TermRequestDTO,
   TermResponseDTO,
@@ -29,7 +29,7 @@ export const studySetupService = {
   },
 
   // Courses
-  saveAllCourses(termId: number, courses: CourseBaseDTO[]): Promise<{ data: CourseResponseDTO[] }> {
+  saveAllCourses(termId: number, courses: CourseBaseDTO[]): Promise<{ data: CourseDTO[] }> {
     return apiClient.put(`/study-setup/terms/${termId}/courses`, courses)
   },
 
@@ -37,7 +37,7 @@ export const studySetupService = {
     return apiClient.delete(`/study-setup/terms/courses/${courseId}`)
   },
 
-  saveCourseDetails(details: CourseResponseDTO): Promise<{ data: CourseResponseDTO }> {
+  saveCourseDetails(details: CourseDTO): Promise<{ data: CourseDTO }> {
     return apiClient.put(`/study-setup/courses/details`, details)
   },
 
