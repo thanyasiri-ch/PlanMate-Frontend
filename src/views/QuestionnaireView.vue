@@ -4,9 +4,6 @@ import StudyPreferenceForm from '@/components/StudyPreferenceForm.vue'
 import StudyPrefServices from '@/services/StudyPrefServices'
 import ModalConfirm from '@/components/ModalConfirm.vue'
 import type { StudyPreference } from '@/types'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
 
 export default {
   components: {
@@ -34,7 +31,7 @@ export default {
         try {
           await StudyPrefServices.savePref(preferences)
           alert('Preferences saved successfully.')
-          router.push({ name: 'profile' })
+          this.$router.push({ name: 'profile' })
         } catch (error) {
           console.error('Failed to save preferences on page', error)
           alert('Something went wrong saving your preferences. Please try again.')
@@ -123,7 +120,7 @@ export default {
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 40px;
+  padding: 40px 0 0 40px;
 }
 
 .rectangle-wrapper {
