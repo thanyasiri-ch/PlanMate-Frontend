@@ -12,7 +12,7 @@ import apiClient from '@/services/AxiosClient'
 import type { User } from '@/types'
 import { auth, storage } from '@/firebase/firebase' // Import Firebase storage
 import { ref as firebaseStorageRef, uploadBytes, getDownloadURL } from 'firebase/storage' // For image upload
-import type { User as FirebaseUser } from 'firebase/auth' // Import Firebase User type
+import { updateProfile, type User as FirebaseUser } from 'firebase/auth' // Import Firebase User type
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -88,6 +88,49 @@ export const useAuthStore = defineStore('auth', {
         console.error('Google sign-in successful but auth.currentUser is null.')
         throw new Error('Could not finalize Google login session.')
       }
+    },
+
+    async updateUserProfile(newDisplayName: string, newImageFile: File | null) {
+      // 1. Get the current authenticated Firebase user.
+      const firebaseUser = auth.currentUser
+      if (!firebaseUser) {
+        throw new Error("No user is currently logged in to update.")
+      }
+
+      let newPhotoURL: string | null = null
+
+      // 2. Handle the image upload to Firebase Storage (if a new file is provided).
+      if (newImageFile) {
+        const imagePath = `profileImages/${firebaseUser.uid}_${Date.now()}_${newImageFile.name}`
+        const imageRef = firebaseStorageRef(storage, imagePath)
+
+        // Upload the file and get its public URL
+        await uploadBytes(imageRef, newImageFile)
+        newPhotoURL = await getDownloadURL(imageRef)
+      }
+
+      // 3. Prepare the payload for Firebase Auth updateProfile.
+      // This object only contains the fields that are actually changing.
+      const updates: { displayName?: string; photoURL?: string } = {}
+      if (newDisplayName && newDisplayName !== this.displayName) {
+        updates.displayName = newDisplayName
+      }
+      if (newPhotoURL) {
+        updates.photoURL = newPhotoURL
+      }
+
+      // 4. Call Firebase Auth's updateProfile function if there's something to update.
+      if (Object.keys(updates).length > 0) {
+        await updateProfile(firebaseUser, updates)
+      }
+
+      // 5. Update the local state (Pinia and localStorage) to reflect the changes immediately.
+      // We re-format the user from the (now updated) auth.currentUser.
+      const updatedAppUser = formatUser(auth.currentUser)
+
+      // Update the user object in the store and in localStorage.
+      this.user = updatedAppUser
+      localStorage.setItem('user', JSON.stringify(updatedAppUser))
     },
 
     setAuth(user: User, token: string) {

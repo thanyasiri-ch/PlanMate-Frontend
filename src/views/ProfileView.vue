@@ -14,7 +14,6 @@ const focusStats = ref({
 })
 
 const barChartData = ref([
-  // Values are percentages for height
   { month: 'Jan', value: 30 },
   { month: 'Feb', value: 50 },
   { month: 'Mar', value: 75 },
@@ -31,49 +30,47 @@ const barChartData = ref([
 
 const pieChartData = ref([
   { label: 'Eng 2', value: 40, time: '10 hrs 37 mins', colorClass: 'bg-orange-400' },
-  { label: 'UI', value: 35, time: '8 hrs 45 mins', colorClass: 'bg-yellow-400' }, // Adjusted color to match image
-  { label: 'AI', value: 25, time: '5 hrs 24 mins', colorClass: 'bg-emerald-400' }, // Adjusted color to match image
+  { label: 'UI', value: 35, time: '8 hrs 45 mins', colorClass: 'bg-yellow-400' },
+  { label: 'AI', value: 25, time: '5 hrs 24 mins', colorClass: 'bg-emerald-400' },
 ])
-
-// const studyPreferences = ref([
-//   { id: 'studyTime', label: 'Preferred study times', value: 'Late night', editable: true },
-//   { id: 'sessionDuration', label: 'Preferred session duration', value: '45 mins', editable: true },
-//   {
-//     id: 'reviewStyle',
-//     label: 'Review style',
-//     value: '2-3 review sessions per topic',
-//     editable: true,
-//   },
-//   { id: 'breakPreference', label: 'Break preference', value: '10 minutes', editable: true },
-// ])
 
 const isEditing = ref(false)
 const editDisplayName = ref(authStore.displayName)
-const fileInput = ref(null)
+const editImageFile = ref<File | null>(null)
+const previewUrl = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
 
-//เพิ่มเมื่อกดปุ่มแก้ไข
 const isEditingStudyPreferences = ref(false)
 
 const currentYear = ref(2025)
 const selectedTimeRange = ref('Year')
 const timeRangeOptions = ['Day', 'Week', 'Month', 'Year']
 
-// --- Helper functions for placeholders (can be removed if not needed) ---
 const incrementYear = () => currentYear.value++
 const decrementYear = () => currentYear.value--
 
 const startEditing = () => {
   isEditing.value = true
   editDisplayName.value = authStore.displayName
+  previewUrl.value = authStore.image // Set initial preview to current image
 }
 
-const saveProfile = () => {
-  authStore.updateDisplayName(editDisplayName.value)
-  isEditing.value = false
+const saveProfile = async () => {
+  try {
+    await authStore.updateUserProfile(editDisplayName.value, editImageFile.value)
+    isEditing.value = false
+    editImageFile.value = null
+    previewUrl.value = null
+  } catch (error) {
+    console.error('Failed to update profile:', error)
+    alert('Failed to update profile. Please try again.')
+  }
 }
 
 const cancelEdit = () => {
   isEditing.value = false
+  editImageFile.value = null
+  previewUrl.value = null // Reset preview
 }
 
 onMounted(() => {
@@ -81,7 +78,6 @@ onMounted(() => {
     authStore.checkAuthStatus()
   }
 
-  // Optional: If user is still not found, redirect to login
   if (!authStore.user) {
     router.push({ name: 'login' })
   }
@@ -96,7 +92,6 @@ const handleLogout = async () => {
   }
 }
 
-//เพิ่มเมื่อกดปุ่มแก้ไข
 const studyPreferences = ref([
   { id: 'studyTime', label: 'Preferred study times', value: 'Late night' },
   { id: 'sessionDuration', label: 'Preferred session duration', value: '45–60 mins' },
@@ -104,7 +99,6 @@ const studyPreferences = ref([
   { id: 'breakPreference', label: 'Break preference', value: '10 minutes' },
 ])
 
-// 1. Study time options
 const studyTimeOptions = [
   'Early morning',
   'Late morning',
@@ -122,10 +116,8 @@ const toggleStudyTime = (time: string) => {
   }
 }
 
-// 2. Session duration range
 const sessionDurationRange = ref<[number, number]>([45, 60])
 
-// 3. Review style
 const reviewStyleOptions = [
   'One deep review session before the exam',
   '2–3 review sessions per topic',
@@ -133,7 +125,6 @@ const reviewStyleOptions = [
 ]
 const selectedReviewStyle = ref('2–3 review sessions per topic')
 
-// 4. Break preference
 const breakOptions = [
   '5 minutes',
   '10 minutes',
@@ -146,11 +137,9 @@ const selectedBreakTime = ref('10 minutes')
 
 let backupStudyPreferences: typeof studyPreferences.value
 
-// เมื่อกดปุ่มแก้ไข (edit) ให้สำรองข้อมูลไว้
 watch(isEditingStudyPreferences, (val) => {
   if (val) {
     backupStudyPreferences = cloneDeep(studyPreferences.value)
-    // ตั้งค่าชั่วคราวสำหรับแก้ไข
     const studyTime = backupStudyPreferences.find((p) => p.id === 'studyTime')?.value || ''
     selectedStudyTimes.value = studyTime.split(', ').filter(Boolean)
 
@@ -191,6 +180,7 @@ const saveStudyPreferences = () => {
   ]
   isEditingStudyPreferences.value = false
 }
+
 const cancelStudyPreferencesEdit = () => {
   studyPreferences.value = cloneDeep(backupStudyPreferences)
   isEditingStudyPreferences.value = false
@@ -200,20 +190,17 @@ function triggerImageUpload() {
   fileInput.value?.click()
 }
 
-function handleImageChange(event) {
-  const file = event.target.files[0]
+function handleImageChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
   if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      authStore.image = e.target.result // แสดงภาพใหม่
-    }
-    reader.readAsDataURL(file)
+    editImageFile.value = file
+    previewUrl.value = URL.createObjectURL(file)
   }
 }
 </script>
-
 <template>
-  <div class="flex h-screen bg-[#F1EFFF]">
+  <div class="flex flex-1 h-screen bg-[#F1EFFF]">
     <!-- Sidebar -->
     <aside
       class="w-20 md:w-24 lg:w-50 bg-[#544BAA] text-white p-4 md:p-5 flex flex-col flex-shrink-0"
@@ -247,7 +234,7 @@ function handleImageChange(event) {
 
       <!-- Main grid -->
       <div class="flex-1 px-6 pb-8 overflow-hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-5/6">
           <!-- Left 2/3 section -->
           <section class="lg:col-span-2 bg-white rounded-2xl p-5 flex flex-col h-full">
             <!-- Top controls -->
@@ -321,18 +308,19 @@ function handleImageChange(event) {
               <div class="flex-[3]">
                 <div class="bg-[#E5E1FD] rounded-xl p-4 h-full flex flex-col justify-between">
                   <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
-                  <div class="flex items-end justify-between h-40 px-2">
+
+                  <div class="flex items-end justify-between h-40 px-2 border-b-2 border-gray-300">
                     <div
                       v-for="item in barChartData"
                       :key="item.month"
-                      class="flex flex-col items-center w-[calc(100%/12-0.5rem)] mx-1 text-center"
+                      class="flex flex-col justify-end items-center w-[calc(100%/12-0.5rem)] h-full text-center"
                     >
                       <div
-                        class="bg-[#6D5BD0] w-full mb-1 rounded-t"
+                        class="bg-[#6D5BD0] w-full rounded-t transition-all duration-300"
                         :style="{ height: item.value + '%' }"
                         :title="item.value > 0 ? `${item.value}%` : ''"
                       ></div>
-                      <span class="text-xs text-gray-500">{{ item.month }}</span>
+                      <span class="text-xs text-gray-500 mt-1">{{ item.month }}</span>
                     </div>
                   </div>
                   <p class="text-center text-xs text-gray-400 mt-2">
@@ -344,7 +332,7 @@ function handleImageChange(event) {
 
             <!-- Chart area -->
             <div class="flex-1 overflow-auto">
-              <div class="bg-[#E5E1FD] p-12 rounded-xl">
+              <div class="flex-1 bg-[#E5E1FD] p-12 rounded-xl">
                 <h3 class="text-lg font-bold text-gray-700 mb-4 text-center">Pie chart</h3>
                 <div class="flex flex-col md:flex-row items-center gap-6">
                   <div class="w-36 h-36 relative">
@@ -391,7 +379,7 @@ function handleImageChange(event) {
               <div class="relative w-24 h-24 mx-auto mb-3">
                 <!-- Profile image -->
                 <img
-                  :src="authStore.image"
+                  :src="previewUrl || authStore.image"
                   class="w-24 h-24 rounded-full object-cover border-3 border-white shadow-sm"
                   alt="Profile"
                 />
@@ -402,7 +390,11 @@ function handleImageChange(event) {
                   @click="triggerImageUpload"
                   class="absolute bottom-0 right-0 bg-white border border-gray-300 rounded-full shadow w-7 h-7 flex items-center justify-center"
                 >
-                  <img src="/src/assets/images/camera_icon.png" alt="Change" class="w-8 h-8 object-contain" />
+                  <img
+                    src="/src/assets/images/camera_icon.png"
+                    alt="Change"
+                    class="w-8 h-8 object-contain"
+                  />
                 </button>
               </div>
 
@@ -623,6 +615,7 @@ function handleImageChange(event) {
             <button
               v-if="!isEditingStudyPreferences"
               class="w-full py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600"
+              @click="handleLogout"
             >
               Log out
             </button>
@@ -632,9 +625,3 @@ function handleImageChange(event) {
     </main>
   </div>
 </template>
-
-<style scoped>
-/* You can add minimal scoped styles here if absolutely necessary, but prefer Tailwind utilities */
-/* For example, if you needed very specific conic-gradient support not covered by Tailwind */
-/* However, the inline style for conic-gradient is used above for simplicity in this example */
-</style>
