@@ -33,7 +33,19 @@ function enrichSession(session: any) {
 // Create a reactive, enriched version of the scheduled plan for display
 const enrichedStudyPlan = computed(() => {
   if (!planStore.schedule?.study_plan) return []
-  return planStore.schedule.study_plan.map(enrichSession)
+
+  return planStore.schedule.study_plan
+    .map(enrichSession) // 1. First, enrich the data with names
+    .slice() // 2. Create a copy to avoid mutating the store's state
+    .sort((a, b) => { // 3. Sort the copied array
+      // First, compare by date
+      const dateComparison = a.date.localeCompare(b.date);
+      if (dateComparison !== 0) {
+        return dateComparison;
+      }
+      // If dates are the same, compare by start time
+      return a.start.localeCompare(b.start);
+    });
 })
 
 // Create a reactive, enriched version of the unscheduled plan
