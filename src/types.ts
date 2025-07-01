@@ -117,29 +117,32 @@ export enum ExamType {
 }
 
 export enum SessionType {
-  REVIEW = 'REVIEW',
-  STUDY = 'STUDY',
+  FINAL_REVIEW = 'FINAL_REVIEW',
+  OVERVIEW = 'OVERVIEW',
+  CORE_STUDY = 'CORE_STUDY',
   ASSIGNMENT = 'ASSIGNMENT',
 }
 
 export interface SessionDTO {
-  sessionId: string;
-  courseId: number;
-  duration: number;
-  type: SessionType;
-  isScheduled: boolean;
-  date: string;
-  start: string;
-  end: string;
-  topicId: string | null;
-  assignmentId: string | null;
+  sessionId: string
+  courseId: number
+  duration: number
+  type: SessionType
+  isScheduled: boolean
+  date: string
+  start: string
+  end: string
+  topicId: string | null
+  assignmentId: string | null
+  sessionNumber: number
+  totalSessionsInGroup: number
 }
 
 export interface ScheduleDTO {
-  id: string;
-  generatedAt: string;
-  examType: ExamType;
-  termId: number;
-  study_plan: SessionDTO[];
-  unscheduled_plan: SessionDTO[];
+  id: string
+  generatedAt: string
+  examType: ExamType
+  termId: number
+  study_plan: SessionDTO[]
+  unscheduled_plan: SessionDTO[]
 }
