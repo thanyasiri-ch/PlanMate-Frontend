@@ -1,5 +1,3 @@
-import type { Session } from 'inspector/promises'
-
 // study preferences
 export type PreferredStudyTime =
   | 'early morning'
@@ -124,21 +122,24 @@ export enum SessionType {
   ASSIGNMENT = 'ASSIGNMENT',
 }
 
-export interface SessionViewDTO {
-  sessionId: string
-  courseCode: string
-  topicName: string | null
-  assignmentName: string | null
-  duration: number
-  type: SessionType
-  scheduled: boolean
-  date: string
-  start: string
-  end: string
-  completed: boolean
+export interface SessionDTO {
+  sessionId: string;
+  courseId: number;
+  duration: number;
+  type: SessionType;
+  isScheduled: boolean;
+  date: string;
+  start: string;
+  end: string;
+  topicId: string | null;
+  assignmentId: string | null;
 }
 
-export interface ScheduleViewDTO {
-  study_plan: SessionViewDTO[]
-  unscheduled_sessions: SessionViewDTO[]
+export interface ScheduleDTO {
+  id: string;
+  generatedAt: string;
+  examType: ExamType;
+  termId: number;
+  study_plan: SessionDTO[];
+  unscheduled_plan: SessionDTO[];
 }

@@ -6,7 +6,7 @@ import type {
   TermResponseDTO,
   AvailabilityResponseDTO,
   CourseBaseDTO,
-  CourseResponseDTO
+  CourseDTO
 } from '@/types'
 import { studySetupService } from '@/services/StudySetupServices' // Import your API service
 import { cloneDeep } from 'lodash'
@@ -120,7 +120,7 @@ export const useStudySetupStore = defineStore('studySetup', {
       }
     },
 
-    async saveAllCourses(coursesToSave: CourseResponseDTO[]): Promise<void> {
+    async saveAllCourses(coursesToSave: CourseDTO[]): Promise<void> {
       if (!this.term.termId || this.term.termId === 0) {
         console.warn('Cannot save courses: Term ID is missing. Save the term first.');
         throw new Error('Term ID is required to save courses. Please save the term details first.');
@@ -160,7 +160,7 @@ export const useStudySetupStore = defineStore('studySetup', {
     // The original merge logic was correct but could be made more explicit to
     // ensure that detail arrays (like assignments) are properly cleared if they
     // aren't present in the detailed response from the server.
-    updateCourseInTerm(courseWithDetails: CourseResponseDTO) {
+    updateCourseInTerm(courseWithDetails: CourseDTO) {
       const index = this.term.courses.findIndex((c) => c.courseCode === courseWithDetails.courseCode)
       if (index !== -1) {
         this.term.courses[index] = {
@@ -181,7 +181,7 @@ export const useStudySetupStore = defineStore('studySetup', {
 
     async saveCourseDetails(
       courseCode: string,
-      updates: CourseResponseDTO,
+      updates: CourseDTO,
     ): Promise<void> {
       try {
         const response = await studySetupService.saveCourseDetails(updates)
