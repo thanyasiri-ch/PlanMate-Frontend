@@ -1,114 +1,111 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue' // <-- Import ref
 import { useGeneratedPlanStore } from '@/stores/generatedPlan'
 import { useStudySetupStore } from '@/stores/studySetup'
-import { SessionType } from '@/types'
+import { SessionType, type SessionDTO } from '@/types'
+import SessionEditModal from '@/components/SessionEditModal.vue' // <-- Import the modal
 
 const planStore = useGeneratedPlanStore()
 const setupStore = useStudySetupStore()
 
+// --- NEW: State for controlling the modal ---
+const isModalOpen = ref(false)
+const editingSession = ref<SessionDTO | null>(null)
+
 onMounted(() => {
-  // Fetch the term/course data first, as it's needed to display names
   setupStore.fetchAndSetTerm().then(() => {
-    // After the setup data is loaded, fetch the existing schedule
     planStore.fetchExistingSchedule()
   })
 })
 
+// --- NEW: Function to open the modal with the selected item ---
+function openEditModal(item: SessionDTO) {
+  editingSession.value = item
+  isModalOpen.value = true
+}
+
+// --- NEW: Function to handle the 'save' event from the modal ---
+function handleSave(updatedItem: SessionDTO) {
+  if (updatedItem.isScheduled) {
+    // If it's an existing session, update its time
+    planStore.updateSessionTime({
+      sessionId: updatedItem.sessionId,
+      date: updatedItem.date,
+      start: updatedItem.start,
+    })
+  } else {
+    // If it's an unscheduled item, schedule it
+    planStore.scheduleItemManually({
+      sessionId: updatedItem.sessionId,
+      date: updatedItem.date,
+      start: updatedItem.start,
+    })
+  }
+  closeModal()
+}
+
+// --- NEW: Function to close the modal ---
+function closeModal() {
+  isModalOpen.value = false
+  editingSession.value = null
+}
+
+// --- Helper functions (getSessionTypeStyles, enrichSession) remain the same ---
 function getSessionTypeStyles(type: SessionType) {
   switch (type) {
     case SessionType.CORE_STUDY:
-      return 'bg-blue-100 text-blue-800' // For primary study sessions
+      return 'bg-blue-100 text-blue-800'
     case SessionType.ASSIGNMENT:
-      return 'bg-green-100 text-green-800' // For assignments
+      return 'bg-green-100 text-green-800'
     case SessionType.OVERVIEW:
-      return 'bg-purple-100 text-purple-800' // For introductory sessions
+      return 'bg-purple-100 text-purple-800'
     case SessionType.FINAL_REVIEW:
-      return 'bg-orange-100 text-orange-800' // For important reviews
+      return 'bg-orange-100 text-orange-800'
     default:
-      return 'bg-gray-100 text-gray-800' // A fallback for any other type
+      return 'bg-gray-100 text-gray-800'
   }
 }
 
-// A helper function to find names and dates from IDs
 function enrichSession(session: any) {
   const course = setupStore.term.courses.find((c) => c.courseId === session.courseId)
   const topic = course?.topics?.find((t) => t.id === session.topicId)
   const assignment = course?.assignments?.find((a) => a.id === session.assignmentId)
-
-  return {
-    ...session, // Keep original data
-    courseCode: course?.courseCode || 'N/A',
-    topicName: topic?.name || null,
-    assignmentName: assignment?.name || null,
-  }
+  return { ...session, courseCode: course?.courseCode || 'N/A', topicName: topic?.name || null, assignmentName: assignment?.name || null }
 }
 
-// Create a reactive, enriched version of the scheduled plan for display
+// --- Computed properties (enrichedStudyPlan, etc.) remain the same ---
 const enrichedStudyPlan = computed(() => {
   if (!planStore.schedule?.study_plan) return []
-
-  return planStore.schedule.study_plan
-    .map(enrichSession) // 1. First, enrich the data with names
-    .slice() // 2. Create a copy to avoid mutating the store's state
-    .sort((a, b) => {
-      // 3. Sort the copied array
-      // First, compare by date
-      const dateComparison = a.date.localeCompare(b.date)
-      if (dateComparison !== 0) {
-        return dateComparison
-      }
-      // If dates are the same, compare by start time
-      return a.start.localeCompare(b.start)
-    })
+  return planStore.schedule.study_plan.map(enrichSession).slice().sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date)
+    if (dateComparison !== 0) return dateComparison
+    return a.start.localeCompare(b.start)
+  })
 })
 
-// Create a reactive, enriched version of the unscheduled plan
 const enrichedUnscheduledPlan = computed(() => {
   if (!planStore.schedule?.unscheduled_plan) return []
-  return planStore.schedule.unscheduled_plan.map(enrichSession)
+  return planStore.schedule.unscheduled_plan.slice().map(enrichSession)
 })
 
-// Group the enriched plan by date for the template
 const groupedStudyPlan = computed(() => {
   if (!planStore.schedule) return {}
-
-  // 1. Get all exams and format them
   const examsAsEvents = setupStore.term.courses.flatMap((course) =>
-    (course.exams || []).map((exam) => ({
-      ...exam,
-      displayType: 'EXAM',
-      courseCode: course.courseCode,
-      name: `${course.courseCode} ${exam.type}`,
-    })),
+    (course.exams || []).map((exam) => ({ ...exam, displayType: 'EXAM', courseCode: course.courseCode, name: `${course.courseCode} ${exam.type}` })),
   )
-
-  // 2. Combine the already-enriched-and-sorted study plan with the exams
-  const allEvents = [
-    ...enrichedStudyPlan.value.map((s) => ({ ...s, displayType: 'SESSION' })),
-    ...examsAsEvents,
-  ]
-
-  // 3. Sort the final combined list
+  const allEvents = [...enrichedStudyPlan.value.map((s) => ({ ...s, displayType: 'SESSION' })), ...examsAsEvents]
   allEvents.sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date)
     if (dateComparison !== 0) return dateComparison
     return (a.start || a.startTime).localeCompare(b.start || b.startTime)
   })
-
-  // 4. Group the final list by date
-  return allEvents.reduce(
-    (acc, event) => {
-      const date = event.date
-      if (!acc[date]) {
-        acc[date] = []
-      }
-      acc[date].push(event)
-      return acc
-    },
-    {} as Record<string, any[]>,
-  )
+  return allEvents.reduce((acc, event) => {
+    const date = event.date
+    if (!acc[date]) { acc[date] = [] }
+    acc[date].push(event)
+    return acc
+  }, {} as Record<string, any[]>)
 })
 </script>
 <template>
@@ -116,7 +113,7 @@ const groupedStudyPlan = computed(() => {
     <div v-if="planStore.schedule" class="flex-1 flex flex-col min-h-0">
       <div class="flex-shrink-0 mb-4 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800">Your Generated Study Plan</h1>
-        <div class="flex gap-x-3">
+        <div v-if="planStore.isPlanDirty" class="flex gap-x-3">
           <button
             @click="planStore.clearPlan"
             class="px-4 py-2 bg-white border border-gray-300 rounded-2xl text-sm font-semibold text-gray-700 hover:bg-gray-100"
@@ -190,7 +187,7 @@ const groupedStudyPlan = computed(() => {
                     </div>
                     <div class="flex gap-x-2">
                       <!-- Edit Button with Colored Pencil Icon -->
-                      <button class="text-blue-500" title="Edit Session">
+                      <button  @click="openEditModal(item)" class="text-blue-500" title="Edit Session">
                         <svg
                           class="h-5 w-5"
                           fill="none"
@@ -207,7 +204,7 @@ const groupedStudyPlan = computed(() => {
                       </button>
 
                       <!-- Delete Button with Colored Trash Icon -->
-                      <button class="text-red-500" title="Delete Session">
+                      <button @click="planStore.unscheduleSession({ sessionId: item.sessionId })" class="text-red-500" title="Delete Session">
                         <svg
                           class="w-6 h-6"
                           fill="none"
@@ -254,6 +251,7 @@ const groupedStudyPlan = computed(() => {
               </p>
               <div class="mt-2">
                 <button
+                  @click="openEditModal(item)"
                   class="w-full text-center px-3 py-1.5 bg-white border rounded-md text-xs font-semibold hover:bg-gray-100"
                 >
                   Schedule Manually
@@ -282,5 +280,12 @@ const groupedStudyPlan = computed(() => {
       </button>
       <p v-if="planStore.error" class="mt-4 text-sm text-red-600">{{ planStore.error }}</p>
     </div>
+
+  <SessionEditModal
+    :is-open="isModalOpen"
+    :item="editingSession"
+    @close="closeModal"
+    @save="handleSave"
+  />
   </div>
 </template>
