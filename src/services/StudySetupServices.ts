@@ -1,7 +1,7 @@
 import apiClient from './AxiosClient'
 import type {
   AssignmentDTO,
-  AvailabilityRequestDTO,
+  AvailabilityDTO,
   CourseBaseDTO,
   CourseDTO,
   ExamDTO,
@@ -64,8 +64,12 @@ export const studySetupService = {
     return apiClient.put(`/study-setup/courses/${courseCode}/exams/${exam.type}`, exam)
   },
 
-  // AVAILABILITY
-  saveAvailabilities(avails: AvailabilityRequestDTO[]) {
-    return apiClient.post('/study-setup/availabilities', avails)
+  getAvailabilities(): Promise<{ data: AvailabilityDTO[] }> {
+  return apiClient.get('/study-setup/availabilities')
   },
+
+  // AVAILABILITY
+  updateAvailabilities(avails: AvailabilityDTO[]): Promise<{ data: AvailabilityDTO[] }> {
+  return apiClient.put('/study-setup/availabilities', avails)
+  }
 }

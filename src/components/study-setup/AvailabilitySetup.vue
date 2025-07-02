@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useStudySetupStore } from '@/stores/studySetup' // <-- Use the correct store
+import type { AvailabilityDTO } from '@/types'
+
 const errorMessage = ref('')
+const studySetupStore = useStudySetupStore()
 
 // selectedDates is an array to hold multiple dates
 const selectedDates = ref<string[]>([])
@@ -16,6 +20,56 @@ const currentSelectedStartMinute = ref<string>('00') // Default start minute
 const currentSelectedEndHour = ref<string>('17') // Default end hour
 const currentSelectedEndMinute = ref<string>('00') // Default end minute
 
+onMounted(async () => {
+  try {
+    // 1. Fetch data from the store when the component is loaded
+    await studySetupStore.fetchAndSetAvailabilities()
+
+    // 2. Populate the component's local state from the store's state
+    const localAvailabilities: Record<string, string[]> = {}
+    for (const availability of studySetupStore.availabilities) {
+      localAvailabilities[availability.date] = [`${availability.startTime}-${availability.endTime}`]
+    }
+    availabilityByDate.value = localAvailabilities
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (error) {
+    errorMessage.value = 'Could not load your existing availabilities.'
+  }
+})
+
+const generateAvailabilityDTOs = (): AvailabilityDTO[] => {
+  const dtos: AvailabilityDTO[] = []
+  for (const date in availabilityByDate.value) {
+    // Only include dates that have time slots defined
+    if (availabilityByDate.value[date]?.length > 0) {
+      for (const range of availabilityByDate.value[date]) {
+        const [startTime, endTime] = range.split('-')
+        dtos.push({
+          date: date,
+          startTime: startTime,
+          endTime: endTime,
+        })
+      }
+    }
+  }
+  return dtos
+}
+
+const saveAndClose = async () => {
+  errorMessage.value = '' // Clear previous errors
+  try {
+    const availabilityDTOs = generateAvailabilityDTOs()
+    console.log('Saving availabilities:', availabilityDTOs)
+    await studySetupStore.saveAvailabilities(availabilityDTOs)
+    // After saving, close the modal and clear the selection
+    closeModalAndClearSelection()
+    // You could also show a success toast/message here
+  } catch (error) {
+    console.error('Failed to save availabilities:', error)
+    errorMessage.value = 'There was an error saving your schedule. Please try again.'
+  }
+}
+
 // Helper to generate hour options
 const generateHourOptions = () => {
   const hours = []
@@ -23,6 +77,11 @@ const generateHourOptions = () => {
     hours.push(String(h).padStart(2, '0'))
   }
   return hours
+}
+
+const closeModalAndClearSelection = () => {
+  isModalOpen.value = false
+  selectedDates.value = []
 }
 
 // Helper to generate minute options (e.g., every 30 minutes)
@@ -140,7 +199,6 @@ const toggleDateSelection = (dateStr: string, isCurrentMonth: boolean) => {
   }
 }
 
-// NEW: Open the bulk time slot modal
 const openBulkTimeSlotModal = () => {
   if (selectedDates.value.length === 0) {
     alert('Please select at least one date to set times.')
@@ -152,12 +210,6 @@ const openBulkTimeSlotModal = () => {
   currentSelectedEndHour.value = '17'
   currentSelectedEndMinute.value = '00'
   isModalOpen.value = true // Show the modal
-}
-
-// NEW: Close the bulk time slot modal and clear selected dates
-const closeModalAndClearSelection = () => {
-  isModalOpen.value = false
-  selectedDates.value = [] // Clear selected dates when done with the modal
 }
 
 // Add time range to all selected dates
@@ -238,10 +290,6 @@ const removeTimeRange = (rangeToRemove: string) => {
   }
 }
 
-// Computed property to display ranges from the *first* selected date in the modal.
-// This is a common compromise: when bulk-editing, the specific ranges of individual dates
-// before the edit might be complex. It's often simpler to show ranges of one representative date,
-// or just rely on the add/remove actions applying to all.
 const getRangesOfFirstSelectedDate = computed<string[]>(() => {
   if (selectedDates.value.length > 0) {
     const firstDate = selectedDates.value[0]
@@ -249,45 +297,6 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
   }
   return []
 })
-
-// Keeping this commented out as per your previous code
-// const generateFinalAvailabilities = (
-//   availabilities: Record<string, string[]>,
-// ): Record<string, string[]> => {
-//   const finalAvailability: Record<string, string[]> = {}
-
-//   for (const dateStr in availabilities) {
-//     if (availabilities[dateStr].length > 0) {
-//       const [year, month, day] = dateStr.split('-')
-//       const formattedDate = `${day}/${month}/${year}`
-
-//       finalAvailability[formattedDate] = availabilities[dateStr].map((timeRange) => {
-//         return timeRange
-//       })
-//     }
-//   }
-//   return finalAvailability
-// }
-
-// async function saveSetup() {
-//   if (!store.studySetupDTO.term?.startDate || !store.studySetupDTO.term?.endDate) {
-//     errorMessage.value = 'Term start and end dates are not set. Please go back.'
-//     return
-//   }
-
-//   const finalAvailabilities = generateFinalAvailabilities(availabilityByDate.value)
-//   store.studySetupDTO.availabilities = finalAvailabilities
-
-//   try {
-//     console.log(`Generated availability for ${Object.keys(finalAvailabilities).length} dates.`)
-//     console.log('Saving setup with DTO:', store.studySetupDTO)
-//     // await StudySetupService.saveSetup(store.studySetupDTO) // Uncomment when ready to integrate API
-//     emit('next')
-//   } catch (error) {
-//     console.error('Failed to save study setup:', error)
-//     errorMessage.value = 'There was an error saving your schedule.'
-//   }
-// }
 </script>
 
 <template>
@@ -337,7 +346,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
               <h3 class="text-2xl font-bold">{{ monthYear }}</h3>
               <button
                 @click="nextMonth"
-                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FFC84A] text-gray-700  rounded-full shadow hover:shadow-md transition font-medium"
+                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FFC84A] text-gray-700 rounded-full shadow hover:shadow-md transition font-medium"
               >
                 <div class="flex items-center justify-center">
                   <span>{{ nextMonthName }}</span>
@@ -385,9 +394,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
                         !isDateSelected(day.dateStr),
                     },
                     {
-                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]': isDateSelected(
-                        day.dateStr,
-                      ), // Highlight selected dates
+                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]': isDateSelected(day.dateStr), // Highlight selected dates
                     },
                   ]"
                   @click="toggleDateSelection(day.dateStr, day.isCurrentMonth)"
@@ -529,7 +536,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
       <div v-else class="mb-4 text-gray-500">No time ranges set for the first selected date.</div>
 
       <button
-        @click="closeModalAndClearSelection"
+        @click="saveAndClose"
         class="mt-6 w-full py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900"
       >
         Done

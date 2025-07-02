@@ -4,7 +4,7 @@ import type {
   StudySetupResponseDTO,
   TermRequestDTO,
   TermResponseDTO,
-  AvailabilityResponseDTO,
+  AvailabilityDTO,
   CourseBaseDTO,
   CourseDTO
 } from '@/types'
@@ -21,7 +21,7 @@ export const useStudySetupStore = defineStore('studySetup', {
       endDate: '',
       courses: [],
     } as TermResponseDTO,
-    availabilities: [] as AvailabilityResponseDTO[],
+    availabilities: [] as AvailabilityDTO[],
   }),
 
   getters: {
@@ -192,6 +192,37 @@ export const useStudySetupStore = defineStore('studySetup', {
         throw error
       }
     },
+    async fetchAndSetAvailabilities(): Promise<void> {
+      try {
+        console.log('STORE ACTION: Fetching availabilities from server...')
+        const response = await studySetupService.getAvailabilities()
+        if (response.data) {
+          this.availabilities = response.data
+          console.log('STORE ACTION: Availabilities updated in store.')
+        }
+      } catch (error) {
+        console.error('STORE ACTION: Failed to fetch availabilities.', error)
+        // Optionally re-throw or handle the error
+        throw error
+      }
+    },
+    async saveAvailabilities(
+      availabilities: AvailabilityDTO[]
+    ): Promise<void> {
+      try {
+        console.log('STORE ACTION: Saving availabilities to server...')
+        const response = await studySetupService.updateAvailabilities(
+          availabilities
+        )
+        // Update the store with the data confirmed by the server
+        this.availabilities = response.data
+        console.log('STORE ACTION: Availabilities saved successfully.')
+      } catch (error) {
+        console.error('STORE ACTION: Failed to save availabilities.', error)
+        throw error
+      }
+    },
+    
     reset() {
       // Ensure reset sets termId back to 0 for a fresh start
       this.$reset()

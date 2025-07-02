@@ -85,14 +85,7 @@ export interface AssignmentDTO {
   completed: boolean
 }
 
-export interface AvailabilityResponseDTO {
-  id: number
-  date: string // "yyyy-MM-dd"
-  startTime: string // "HH:mm"
-  endTime: string // "HH:mm"
-}
-
-export interface AvailabilityRequestDTO {
+export interface AvailabilityDTO {
   date: string // "yyyy-MM-dd"
   startTime: string // "HH:mm"
   endTime: string // "HH:mm"
@@ -101,7 +94,7 @@ export interface AvailabilityRequestDTO {
 export interface StudySetupResponseDTO {
   userUid: string
   term: TermResponseDTO
-  availabilities: AvailabilityResponseDTO[]
+  availabilities: AvailabilityDTO[]
 }
 
 export interface CourseDetailsRequestDTO {
