@@ -3,17 +3,21 @@
 import StudyPreferenceForm from '@/components/StudyPreferenceForm.vue'
 import StudyPrefServices from '@/services/StudyPrefServices'
 import ModalConfirm from '@/components/ModalConfirm.vue'
+import ModalAlert from '@/components/ModalAlert.vue'
 import type { StudyPreference } from '@/types'
 
 export default {
   components: {
     StudyPreferenceForm,
     ModalConfirm,
+    ModalAlert,
   },
   data() {
     return {
       isSaving: false,
       showConfirm: false,
+      showAlert: false,
+      alertMessage: '',
     }
   },
   methods: {
@@ -21,6 +25,9 @@ export default {
       const formComponent = this.$refs.studyFormComponent as any
       if (!formComponent) {
         console.error('StudyPreferenceForm component not found')
+        this.alertTitle = 'System Error'
+        this.alertMessage = 'Form component not found.'
+        this.showAlert = true
         return
       }
 
@@ -30,16 +37,30 @@ export default {
         this.isSaving = true
         try {
           await StudyPrefServices.savePref(preferences)
-          alert('Preferences saved successfully.')
-          this.$router.push({ name: 'profile' })
-        } catch (error) {
+          this.alertTitle = 'Success'
+          this.alertMessage = 'Preferences saved successfully.'
+          this.showAlert = true
+          // Wait a moment before routing (or move this logic after user clicks OK)
+          setTimeout(() => {
+            this.$router.push({ name: 'profile' })
+          }, 1000)
+        } catch (error: any) {
           console.error('Failed to save preferences on page', error)
-          alert('Something went wrong saving your preferences. Please try again.')
+          if (error?.response?.data?.error === 'Study preference information cannot be empty.') {
+            this.alertTitle = 'Incomplete Data'
+            this.alertMessage = 'Some required fields are empty. Please complete all fields.'
+          } else {
+            this.alertTitle = 'Save Failed'
+            this.alertMessage = 'Something went wrong. Please try again later.'
+          }
+          this.showAlert = true
         } finally {
           this.isSaving = false
         }
       } else {
-        alert('Please correct the errors in the form.')
+        this.alertTitle = 'Empty fields'
+        this.alertMessage = 'Study preference information cannot be empty!'
+        this.showAlert = true
       }
     },
 
@@ -86,6 +107,12 @@ export default {
         </div>
       </div>
       <ModalConfirm v-if="showConfirm" @confirm="leavePage" @cancel="showConfirm = false" />
+      <ModalAlert
+        v-if="showAlert"
+        :title="alertTitle"
+        :message="alertMessage"
+        @close="showAlert = false"
+      />
     </div>
 
     <div class="right-panel-question">
@@ -134,7 +161,7 @@ export default {
 
 .rectangle-1,
 .rectangle-2 {
-  width: 100%;
+  width: 90%;
   height: 100%;
   border-radius: 20px; /* Adjusted slightly for smaller screens */
 }
