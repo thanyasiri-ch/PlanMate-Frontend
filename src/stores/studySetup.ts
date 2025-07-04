@@ -122,14 +122,14 @@ export const useStudySetupStore = defineStore('studySetup', {
 
     async saveAllCourses(coursesToSave: CourseDTO[]): Promise<void> {
       if (!this.term.termId || this.term.termId === 0) {
-        console.warn('Cannot save courses: Term ID is missing. Save the term first.');
-        throw new Error('Term ID is required to save courses. Please save the term details first.');
+        console.warn('Cannot save courses: Term ID is missing. Save the term first.')
+        throw new Error('Term ID is required to save courses. Please save the term details first.')
       }
 
       try {
-        console.log(`STORE ACTION: Saving all courses for term ID: ${this.term.termId}`);
+        console.log(`STORE ACTION: Saving all courses for term ID: ${this.term.termId}`)
 
-        const courseBaseDTOs: CourseBaseDTO[] = coursesToSave.map(course => ({
+        const courseBaseDTOs: CourseBaseDTO[] = coursesToSave.map((course) => ({
           courseId: course.courseId,
           courseCode: course.courseCode,
           name: course.name,
@@ -137,35 +137,35 @@ export const useStudySetupStore = defineStore('studySetup', {
           topics: course.topics || [],
           assignments: course.assignments || [],
           exams: course.exams || [],
-        }));
+        }))
 
         console.log('Save courses: ' + '\n' + courseBaseDTOs + '\nto term ' + this.term.name)
-        const response = await studySetupService.saveAllCourses(this.term.termId, courseBaseDTOs);
+        const response = await studySetupService.saveAllCourses(this.term.termId, courseBaseDTOs)
 
-        this.term.courses = response.data;
-        console.log('STORE ACTION: All courses saved/updated successfully.');
+        this.term.courses = response.data
+        console.log('STORE ACTION: All courses saved/updated successfully.')
       } catch (error) {
-        console.error('STORE ACTION: Failed to save all courses.', error);
-        throw error;
+        console.error('STORE ACTION: Failed to save all courses.', error)
+        throw error
       }
     },
 
     async deleteCourse(courseId: number): Promise<void> {
       await studySetupService.deleteCourse(courseId)
-      this.term.courses = this.term.courses.filter(
-        (c) => !(c.courseId === courseId),
-      )
+      this.term.courses = this.term.courses.filter((c) => !(c.courseId === courseId))
     },
 
     // The original merge logic was correct but could be made more explicit to
     // ensure that detail arrays (like assignments) are properly cleared if they
     // aren't present in the detailed response from the server.
     updateCourseInTerm(courseWithDetails: CourseDTO) {
-      const index = this.term.courses.findIndex((c) => c.courseCode === courseWithDetails.courseCode)
+      const index = this.term.courses.findIndex(
+        (c) => c.courseCode === courseWithDetails.courseCode,
+      )
       if (index !== -1) {
         this.term.courses[index] = {
           ...this.term.courses[index], // Keep old base data
-          ...courseWithDetails,       // Overwrite with all new data
+          ...courseWithDetails, // Overwrite with all new data
           // Explicitly handle detail arrays. If the server response for details
           // doesn't include 'assignments', this ensures the local array becomes
           // empty instead of preserving stale data.
@@ -175,14 +175,11 @@ export const useStudySetupStore = defineStore('studySetup', {
         }
       } else {
         // Push the new course if it doesn't exist
-        this.term.courses.push(courseWithDetails);
+        this.term.courses.push(courseWithDetails)
       }
     },
 
-    async saveCourseDetails(
-      courseCode: string,
-      updates: CourseDTO,
-    ): Promise<void> {
+    async saveCourseDetails(courseCode: string, updates: CourseDTO): Promise<void> {
       try {
         const response = await studySetupService.saveCourseDetails(updates)
         this.updateCourseInTerm(response.data)
@@ -206,23 +203,28 @@ export const useStudySetupStore = defineStore('studySetup', {
         throw error
       }
     },
-    async saveAvailabilities(
-      availabilities: AvailabilityDTO[]
-    ): Promise<void> {
+    async saveAvailabilities(partialUpdates: AvailabilityDTO[]): Promise<void> {
       try {
-        console.log('STORE ACTION: Saving availabilities to server...')
-        const response = await studySetupService.updateAvailabilities(
-          availabilities
-        )
-        // Update the store with the data confirmed by the server
-        this.availabilities = response.data
-        console.log('STORE ACTION: Availabilities saved successfully.')
+        console.log('STORE ACTION: Saving partial availabilities to server...')
+        const response = await studySetupService.updateAvailabilities(partialUpdates)
+
+        if (response.data) {
+          response.data.forEach((item) => {
+            const index = this.availabilities.findIndex((a) => a.id === item.id)
+            if (index !== -1) {
+              this.availabilities[index] = item
+            } else {
+              this.availabilities.push(item)
+            }
+          })
+          console.log('STORE ACTION: Partial availabilities merged successfully.')
+        }
       } catch (error) {
-        console.error('STORE ACTION: Failed to save availabilities.', error)
+        console.error('STORE ACTION: Failed to save partial availabilities.', error)
         throw error
       }
     },
-    
+
     reset() {
       // Ensure reset sets termId back to 0 for a fresh start
       this.$reset()

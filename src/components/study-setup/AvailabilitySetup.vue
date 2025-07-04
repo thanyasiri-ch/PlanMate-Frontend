@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useStudySetupStore } from '@/stores/studySetup' // <-- Use the correct store
-import type { AvailabilityDTO } from '@/types'
+import { useStudySetupStore } from '@/stores/studySetup'
+import type { AvailabilityRequestDTO } from '@/types'
 
 const errorMessage = ref('')
 const studySetupStore = useStudySetupStore()
@@ -37,8 +37,8 @@ onMounted(async () => {
   }
 })
 
-const generateAvailabilityDTOs = (): AvailabilityDTO[] => {
-  const dtos: AvailabilityDTO[] = []
+const generateAvailabilityDTOs = (): AvailabilityRequestDTO[] => {
+  const dtos: AvailabilityRequestDTO[] = []
   for (const date in availabilityByDate.value) {
     // Only include dates that have time slots defined
     if (availabilityByDate.value[date]?.length > 0) {
@@ -55,12 +55,26 @@ const generateAvailabilityDTOs = (): AvailabilityDTO[] => {
   return dtos
 }
 
+const formatDateToYYYYMMDD = (date: Date): string => {
+  const year = date.getFullYear()
+  // getMonth() is 0-indexed, so we add 1
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
 const saveAndClose = async () => {
   errorMessage.value = '' // Clear previous errors
   try {
     const availabilityDTOs = generateAvailabilityDTOs()
-    console.log('Saving availabilities:', availabilityDTOs)
-    await studySetupStore.saveAvailabilities(availabilityDTOs)
+    // Add a dummy id to each DTO to satisfy the AvailabilityDTO type
+    const availabilityDTOsWithId = availabilityDTOs.map((dto, idx) => ({
+      ...dto,
+      id: idx, // Assign a temporary id; replace with real id if needed
+    }))
+    console.log('Saving availabilities:', availabilityDTOsWithId)
+    await studySetupStore.saveAvailabilities(availabilityDTOsWithId)
     // After saving, close the modal and clear the selection
     closeModalAndClearSelection()
     // You could also show a success toast/message here
@@ -122,7 +136,10 @@ const calendarGrid = computed(() => {
   for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(year, month, i)
     grid.push({
-      dateStr: date.toISOString().split('T')[0], //YYYY-MM-DD
+      // Replace this line:
+      // dateStr: date.toISOString().split('T')[0],
+      // With this:
+      dateStr: formatDateToYYYYMMDD(date),
       dayOfMonth: i,
       isCurrentMonth: true,
     })
@@ -298,7 +315,6 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
   return []
 })
 </script>
-
 <template>
   <div class="h-screen flex flex-col items-center">
     <div class="w-4/5 flex flex-col flex-1 overflow-hidden">

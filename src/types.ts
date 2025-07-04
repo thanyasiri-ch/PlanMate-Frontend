@@ -86,6 +86,13 @@ export interface AssignmentDTO {
 }
 
 export interface AvailabilityDTO {
+  id: number
+  date: string // "yyyy-MM-dd"
+  startTime: string // "HH:mm"
+  endTime: string // "HH:mm"
+}
+
+export interface AvailabilityRequestDTO {
   date: string // "yyyy-MM-dd"
   startTime: string // "HH:mm"
   endTime: string // "HH:mm"

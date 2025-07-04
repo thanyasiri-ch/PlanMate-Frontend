@@ -67,7 +67,9 @@ onMounted(async () => {
 watch(selectedCourseCode, (newCourseCode) => {
   if (!newCourseCode) return
   if (isEditing.value) {
-    const confirm = window.confirm('You have unsaved changes. Are you sure you want to switch? Your changes will be lost.')
+    const confirm = window.confirm(
+      'You have unsaved changes. Are you sure you want to switch? Your changes will be lost.',
+    )
     if (confirm) {
       handleCancelEdit()
     } else {
@@ -235,11 +237,18 @@ function formatExamDate(exam: ExamDTO): string {
     month: 'short',
     day: 'numeric',
   })
-  const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
-  const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })
+  const startTime = start.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  })
+  const endTime = end.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  })
   return `${dateStr} ・ ${startTime} - ${endTime}`
 }
-
 
 // --- DEBUGGING BLOCK (PLACE AT THE END) ---
 // By placing this at the end, all variables and computed properties above are guaranteed to be initialized.
@@ -253,7 +262,10 @@ watchEffect(() => {
     console.log('>>> Raw `exams` array in this course:', cloneDeep(course.exams))
     console.log('>>> Raw `assignments` array in this course:', cloneDeep(course.assignments))
   }
-  console.log('>>> selectedExamDetails (this controls the exam display):', cloneDeep(selectedExamDetails.value))
+  console.log(
+    '>>> selectedExamDetails (this controls the exam display):',
+    cloneDeep(selectedExamDetails.value),
+  )
   console.log('>>> filteredTopics:', cloneDeep(filteredTopics.value))
   console.log('>>> filteredAssignments:', cloneDeep(filteredAssignments.value))
   console.groupEnd()
@@ -623,12 +635,12 @@ watchEffect(() => {
                     </div>
                     <div v-else class="flex flex-wrap gap-1">
                       <span
-                        v-if="getAssociatedTopicNames(assignment).length"
-                        class="text-xs text-purple-800 font-medium"
+                        v-for="(topicName, index) in getAssociatedTopicNames(assignment)"
+                        :key="assignment.associatedTopicIds[index]"
+                        class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full font-medium"
                       >
-                        {{ getAssociatedTopicNames(assignment).join(', ') }}
+                        {{ topicName }}
                       </span>
-                      <span v-else class="text-xs text-gray-500">No associated topics</span>
                     </div>
                   </div>
 
