@@ -6,7 +6,7 @@ import type {
   TermResponseDTO,
   AvailabilityDTO,
   CourseBaseDTO,
-  CourseDTO
+  CourseDTO,
 } from '@/types'
 import { studySetupService } from '@/services/StudySetupServices' // Import your API service
 import { cloneDeep } from 'lodash'
@@ -190,6 +190,12 @@ export const useStudySetupStore = defineStore('studySetup', {
       }
     },
     async fetchAndSetAvailabilities(): Promise<void> {
+      // Only fetch from the server if the availabilities array is empty.
+      if (this.availabilities && this.availabilities.length > 0) {
+        console.log('STORE ACTION: Availabilities already exist in store. Skipping fetch.')
+        return // Exit the function early, using the cached data
+      }
+
       try {
         console.log('STORE ACTION: Fetching availabilities from server...')
         const response = await studySetupService.getAvailabilities()
