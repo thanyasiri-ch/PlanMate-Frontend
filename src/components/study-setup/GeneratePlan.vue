@@ -121,10 +121,18 @@ const groupedStudyPlan = computed(() => {
             Discard
           </button>
           <button
+            v-if="planStore.isNewPlan"
             @click="planStore.acceptAndSavePlan"
-            class="px-4 py-2 bg-[#FFC84A] rounded-2xl text-sm font-bold text-gray-700 hover:bg-indigo-700"
+            class="px-4 py-2 bg-[#FFC84A] rounded-2xl text-sm font-bold text-gray-700 hover:bg-[#ffa51f]"
           >
             Accept & Save Plan
+          </button>
+          <button
+            v-else
+            @click="planStore.updateSchedule"
+            class="px-4 py-2 bg-green-500 rounded-2xl text-sm font-bold text-white hover:bg-green-600"
+          >
+            Update Schedule
           </button>
         </div>
       </div>

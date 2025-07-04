@@ -22,6 +22,7 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
     isLoading: false,
     error: null as string | null,
     isPlanDirty: false,
+    isNewPlan: false,
   }),
 
   actions: {
@@ -33,6 +34,7 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
         const response = await scheduleService.getSchedule()
         this.schedule = response.data
         this.isPlanDirty = false
+        this.isNewPlan = false
       } catch (err: any) {
         if (err.response && err.response.status !== 404) {
           this.error = 'Failed to load your existing schedule.'
@@ -53,6 +55,7 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
         const response = await scheduleService.generateSchedule()
         this.schedule = response.data
         this.isPlanDirty = true
+        this.isNewPlan = true
       } catch (err) {
         this.error = 'Failed to generate a study plan. Please try again.'
         console.error(err)
@@ -135,6 +138,7 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
       try {
         await scheduleService.saveSchedule(this.schedule)
         this.isPlanDirty = false
+        this.isNewPlan = false 
         this.clearPlan()
       } catch (err) {
         this.error = 'Failed to save the plan.'
@@ -144,8 +148,26 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
       }
     },
 
+    async updateSchedule() {
+      if (!this.schedule) return
+
+      this.isLoading = true
+      try {
+        // Assume you have an updateSchedule method in your service
+        await scheduleService.updateSchedule(this.schedule)
+        this.isPlanDirty = false // Reset dirty flag after successful save
+        // No need to set isNewPlan, it's already false
+      } catch (err) {
+        this.error = 'Failed to update the plan.'
+        console.error(err)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
     clearPlan() {
       this.$reset()
+      this.fetchExistingSchedule()
     },
   },
 })
