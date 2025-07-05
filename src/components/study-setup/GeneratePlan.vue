@@ -193,7 +193,10 @@ const groupedStudyPlan = computed(() => {
 </script>
 <template>
   <div class="h-screen w-5/6 mx-auto flex flex-col bg-gray-50 p-4 sm:p-6 lg:p-8 rounded-2xl">
-    <div v-if="planStore.schedule" class="flex-1 flex flex-col min-h-0">
+    <div v-if="planStore.isLoading" class="flex-1 flex items-center justify-center">
+      <p class="text-xl font-semibold text-gray-500 animate-pulse">Loading...</p>
+    </div>
+    <div v-else-if="planStore.schedule" class="flex-1 flex flex-col min-h-0">
       <div class="flex-shrink-0 mb-4 flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-800">Your Generated Study Plan</h1>
         <div v-if="planStore.isPlanDirty" class="flex gap-x-3">
