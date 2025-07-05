@@ -3,6 +3,7 @@ import "nprogress/nprogress.css"
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 import App from './App.vue'
 import router from './router'
@@ -15,6 +16,7 @@ import { formatUser } from '@/services/auth'
 
 const app = createApp(App)
 const pinia = createPinia()
+pinia.use(piniaPluginPersistedstate) // Enable persisted state for Pinia
 app.use(pinia) // Must come before using the store
 
 const authStore = useAuthStore()
