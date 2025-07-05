@@ -9,7 +9,6 @@ import SessionEditModal from '@/components/SessionEditModal.vue' // <-- Import t
 const planStore = useGeneratedPlanStore()
 const setupStore = useStudySetupStore()
 
-// --- NEW: State for controlling the modal ---
 const isModalOpen = ref(false)
 const editingSession = ref<SessionDTO | null>(null)
 
@@ -19,13 +18,11 @@ onMounted(() => {
   })
 })
 
-// --- NEW: Function to open the modal with the selected item ---
 function openEditModal(item: SessionDTO) {
   editingSession.value = item
   isModalOpen.value = true
 }
 
-// --- NEW: Function to handle the 'save' event from the modal ---
 function handleSave(updatedItem: SessionDTO) {
   if (updatedItem.isScheduled) {
     // If it's an existing session, update its time
@@ -45,7 +42,6 @@ function handleSave(updatedItem: SessionDTO) {
   closeModal()
 }
 
-// --- NEW: Function to close the modal ---
 function closeModal() {
   isModalOpen.value = false
   editingSession.value = null
@@ -57,11 +53,11 @@ function getSessionTypeStyles(type: SessionType) {
     case SessionType.CORE_STUDY:
       return 'bg-blue-100 text-blue-800'
     case SessionType.ASSIGNMENT:
-      return 'bg-green-100 text-green-800'
+      return 'bg-orange-100 text-orange-800'
     case SessionType.OVERVIEW:
       return 'bg-purple-100 text-purple-800'
     case SessionType.FINAL_REVIEW:
-      return 'bg-orange-100 text-orange-800'
+      return 'bg-red-100 text-red-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
@@ -100,6 +96,8 @@ const enrichedUnscheduledPlan = computed(() => {
 
 const groupedStudyPlan = computed(() => {
   if (!planStore.schedule) return {}
+
+  // 1. Get exams as events
   const examsAsEvents = setupStore.term.courses.flatMap((course) =>
     (course.exams || []).map((exam) => ({
       ...exam,
@@ -108,15 +106,38 @@ const groupedStudyPlan = computed(() => {
       name: `${course.name}`,
     })),
   )
+
+  // 2. Get assignment deadlines as events
+  const assignmentsAsEvents = setupStore.term.courses.flatMap((course) =>
+    (course.assignments || [])
+      .filter((a) => a.dueDate) // Ensure the assignment has a due date
+      .map((assignment) => ({
+        ...assignment,
+        displayType: 'ASSIGNMENT_DUE',
+        courseCode: course.courseCode,
+        courseName: course.name,
+        date: assignment.dueDate, // Assumes property is named 'dueDate'
+        time: '23:59', // Add a time for sorting to the end of the day
+      })),
+  )
+
+  // 3. Combine sessions, exams, and deadlines
   const allEvents = [
     ...enrichedStudyPlan.value.map((s) => ({ ...s, displayType: 'SESSION' })),
     ...examsAsEvents,
+    ...assignmentsAsEvents,
   ]
+
+  // 4. Sort all events chronologically
   allEvents.sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date)
     if (dateComparison !== 0) return dateComparison
-    return (a.start || a.startTime).localeCompare(b.start || b.startTime)
+    const timeA = a.start || a.startTime || a.time || '00:00'
+    const timeB = b.start || b.startTime || b.time || '00:00'
+    return timeA.localeCompare(timeB)
   })
+
+  // 5. Group events by date
   return allEvents.reduce(
     (acc, event) => {
       const date = event.date
@@ -183,6 +204,22 @@ const groupedStudyPlan = computed(() => {
                     </div>
                     <div class="text-xs font-bold px-2 py-1 rounded-full bg-red-500 text-white">
                       EXAM
+                    </div>
+                  </div>
+
+                  <div
+                    v-else-if="item.displayType === 'ASSIGNMENT_DUE'"
+                    class="flex items-center gap-x-4 p-4 rounded-xl bg-orange-100 border border-orange-200 text-orange-800"
+                  >
+                    <div class="text-sm font-semibold text-center w-24">
+                      Due {{ item.dueTime }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-bold truncate">{{ item.name }}</p>
+                      <p class="text-sm">{{ item.courseCode }} {{ item.courseName }}</p>
+                    </div>
+                    <div class="text-xs font-bold px-2 py-1 rounded-full bg-orange-500 text-white">
+                      ASSIGNMENT
                     </div>
                   </div>
 

@@ -1,5 +1,6 @@
+<!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <script setup lang="ts">
-import { ref, watch, type PropType } from 'vue'
+import { computed, ref, watch, type PropType } from 'vue'
 import type { SessionDTO } from '@/types'
 
 const props = defineProps({
@@ -21,6 +22,29 @@ const emit = defineEmits(['close', 'save'])
 const editDate = ref('')
 const editStart = ref('')
 
+const computedEndTime = computed(() => {
+  if (!editDate.value || !editStart.value || !props.item?.duration) {
+    return '--:--'
+  }
+
+  try {
+    const startDate = new Date(`${editDate.value}T${editStart.value}`)
+    startDate.setMinutes(startDate.getMinutes() + props.item.duration)
+
+    let hours = startDate.getHours()
+    const minutes = String(startDate.getMinutes()).padStart(2, '0')
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+
+    hours = hours % 12
+    hours = hours ? hours : 12 // the hour '0' should be '12'
+    const formattedHours = String(hours).padStart(2, '0')
+
+    return `${formattedHours}:${minutes} ${ampm}`
+  } catch (error) {
+    return '--:--'
+  }
+})
+
 // This `watch` effect syncs the local form state
 // with the prop whenever a new item is passed to the modal.
 watch(
@@ -39,6 +63,7 @@ function handleSave() {
       ...props.item,
       date: editDate.value,
       start: editStart.value,
+      end: computedEndTime.value,
     })
   }
 }
@@ -51,7 +76,7 @@ function handleClose() {
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-25 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/25"
     @click.self="handleClose"
   >
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
@@ -59,7 +84,7 @@ function handleClose() {
         {{ item?.isScheduled ? 'Edit Session' : 'Schedule Item' }}
       </h2>
 
-      <p class="mt-1 text-sm text-gray-500">
+      <p class="mt-1 text-base font-bold text-indigo-500">
         {{ item?.topicName || item?.assignmentName }}
       </p>
 
@@ -70,18 +95,31 @@ function handleClose() {
             id="session-date"
             v-model="editDate"
             type="date"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm px-3 py-1 focus:border-indigo-500 focus:ring-indigo-500"
           />
         </div>
         <div>
-          <label for="session-start" class="block text-sm font-medium text-gray-700">Start Time</label>
+          <label for="session-start" class="block text-sm font-medium text-gray-700"
+            >Start Time</label
+          >
           <input
             id="session-start"
             v-model="editStart"
             type="time"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm px-3 py-1 focus:border-indigo-500 focus:ring-indigo-500"
           />
         </div>
+        <div>
+          <label for="session-end" class="block text-sm font-medium text-gray-700">End Time</label>
+          <div
+            id="session-end"
+            class="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 px-3 py-1 text-sm text-gray-500 shadow-sm">
+            {{ computedEndTime }}
+          </div>
+        </div>
+        <p class="text-xs text-gray-500">
+          Duration: {{ item?.duration }} minutes
+        </p>
       </div>
 
       <div class="mt-8 flex justify-end gap-x-3">
