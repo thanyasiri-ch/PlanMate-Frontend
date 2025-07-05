@@ -1,16 +1,24 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue' // <-- Import ref
+import { computed, onMounted, ref } from 'vue'
 import { useGeneratedPlanStore } from '@/stores/generatedPlan'
 import { useStudySetupStore } from '@/stores/studySetup'
 import { SessionType, type SessionDTO } from '@/types'
-import SessionEditModal from '@/components/SessionEditModal.vue' // <-- Import the modal
+import SessionEditModal from '@/components/SessionEditModal.vue'
+import NotificationModal from '@/components/NotificationModal.vue'
 
 const planStore = useGeneratedPlanStore()
 const setupStore = useStudySetupStore()
 
-const isModalOpen = ref(false)
+// --- State for the Session Edit Modal ---
+const isEditModalOpen = ref(false)
 const editingSession = ref<SessionDTO | null>(null)
+
+// --- State for the Notification Modal ---
+const isNotificationOpen = ref(false)
+const notificationStatus = ref<'success' | 'error'>('success')
+const notificationTitle = ref('')
+const notificationMessage = ref('')
 
 onMounted(() => {
   setupStore.fetchAndSetTerm().then(() => {
@@ -18,9 +26,22 @@ onMounted(() => {
   })
 })
 
+// --- Functions to control the Notification Modal ---
+function showNotification(status: 'success' | 'error', title: string, message: string) {
+  notificationStatus.value = status
+  notificationTitle.value = title
+  notificationMessage.value = message
+  isNotificationOpen.value = true
+}
+
+function closeNotification() {
+  isNotificationOpen.value = false
+}
+
+// --- Functions to control the Edit Modal ---
 function openEditModal(item: SessionDTO) {
   editingSession.value = item
-  isModalOpen.value = true
+  isEditModalOpen.value = true
 }
 
 function handleSave(updatedItem: SessionDTO) {
@@ -32,22 +53,40 @@ function handleSave(updatedItem: SessionDTO) {
       start: updatedItem.start,
     })
   } else {
-    // If it's an unscheduled item, schedule it
+     // If it's an unscheduled item, schedule it
     planStore.scheduleItemManually({
       sessionId: updatedItem.sessionId,
       date: updatedItem.date,
       start: updatedItem.start,
     })
   }
-  closeModal()
+  closeEditModal()
 }
 
-function closeModal() {
-  isModalOpen.value = false
+function closeEditModal() {
+  isEditModalOpen.value = false
   editingSession.value = null
 }
 
 // --- Helper functions ---
+async function handleAcceptAndSave() {
+  await planStore.acceptAndSavePlan()
+  if (planStore.error) {
+    showNotification('error', 'Save Failed', planStore.error)
+  } else {
+    showNotification('success', 'Plan Saved!', 'Your new study plan has been successfully saved.')
+  }
+}
+
+async function handleUpdate() {
+  await planStore.updateSchedule()
+  if (planStore.error) {
+    showNotification('error', 'Update Failed', planStore.error)
+  } else {
+    showNotification('success', 'Update Successful!', 'Your schedule changes have been saved.')
+  }
+}
+
 function getSessionTypeStyles(type: SessionType) {
   switch (type) {
     case SessionType.CORE_STUDY:
@@ -76,6 +115,7 @@ function enrichSession(session: any) {
   }
 }
 
+
 // --- Computed properties ---
 const enrichedStudyPlan = computed(() => {
   if (!planStore.schedule?.study_plan) return []
@@ -84,7 +124,7 @@ const enrichedStudyPlan = computed(() => {
     .slice()
     .sort((a, b) => {
       const dateComparison = a.date.localeCompare(b.date)
-      if (dateComparison !== 0) return dateComparison
+      if (dateComparison !== 0) return
       return a.start.localeCompare(b.start)
     })
 })
@@ -103,21 +143,21 @@ const groupedStudyPlan = computed(() => {
       ...exam,
       displayType: 'EXAM',
       courseCode: course.courseCode,
-      name: `${course.name}`,
+      courseName: `${course.name}`,
     })),
   )
 
   // 2. Get assignment deadlines as events
   const assignmentsAsEvents = setupStore.term.courses.flatMap((course) =>
     (course.assignments || [])
-      .filter((a) => a.dueDate) // Ensure the assignment has a due date
+      .filter((a) => a.dueDate)
       .map((assignment) => ({
         ...assignment,
         displayType: 'ASSIGNMENT_DUE',
         courseCode: course.courseCode,
         courseName: course.name,
-        date: assignment.dueDate, // Assumes property is named 'dueDate'
-        time: '23:59', // Add a time for sorting to the end of the day
+        date: assignment.dueDate,
+        time: assignment.dueTime || '23:59',
       })),
   )
 
@@ -165,28 +205,27 @@ const groupedStudyPlan = computed(() => {
           </button>
           <button
             v-if="planStore.isNewPlan"
-            @click="planStore.acceptAndSavePlan"
+            @click="handleAcceptAndSave"
             class="px-4 py-2 bg-[#FFC84A] rounded-2xl text-sm font-bold text-gray-700 hover:bg-[#ffa51f]"
           >
             Accept & Save Plan
           </button>
           <button
             v-else
-            @click="planStore.updateSchedule"
+            @click="handleUpdate"
             class="px-4 py-2 bg-green-500 rounded-2xl text-sm font-bold text-white hover:bg-green-600"
           >
             Update Schedule
           </button>
         </div>
       </div>
-
       <div class="flex-1 flex gap-x-8 overflow-hidden">
         <div class="w-full lg:w-2/3 flex-1 bg-white rounded-2xl p-6 overflow-y-auto">
           <h2 class="text-lg font-semibold text-gray-700 mb-4">Scheduled Sessions</h2>
           <div class="space-y-6">
             <div v-for="(sessions, date) in groupedStudyPlan" :key="date">
               <h3
-                class="font-semibold text-yellow-700 pl-5 pt-1 pb-1 border-b rounded-t-lg bg-yellow-200 border-yellow-700"
+                class="font-semibold text-yellow-700 pl-5 py-1 border-b rounded-t-lg bg-yellow-200 border-yellow-700"
               >
                 {{ new Date(date + 'T00:00:00').toDateString() }}
               </h3>
@@ -200,20 +239,17 @@ const groupedStudyPlan = computed(() => {
                       <div>{{ item.startTime }} - {{ item.endTime }}</div>
                     </div>
                     <div class="flex-1">
-                      <p class="font-bold">{{ item.courseCode }} - {{ item.name }}</p>
+                      <p class="font-bold">{{ item.courseCode }} - {{ item.courseName }}</p>
                     </div>
                     <div class="text-xs font-bold px-2 py-1 rounded-full bg-red-500 text-white">
                       EXAM
                     </div>
                   </div>
-
                   <div
                     v-else-if="item.displayType === 'ASSIGNMENT_DUE'"
                     class="flex items-center gap-x-4 p-4 rounded-xl bg-orange-100 border border-orange-200 text-orange-800"
                   >
-                    <div class="text-sm font-semibold text-center w-24">
-                      Due {{ item.dueTime }}
-                    </div>
+                    <div class="text-sm font-semibold text-center w-24">Due {{ item.dueTime }}</div>
                     <div class="flex-1 min-w-0">
                       <p class="font-bold truncate">{{ item.name }}</p>
                       <p class="text-sm">{{ item.courseCode }} {{ item.courseName }}</p>
@@ -222,46 +258,34 @@ const groupedStudyPlan = computed(() => {
                       ASSIGNMENT
                     </div>
                   </div>
-
                   <div
                     v-else
                     class="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 shadow-sm"
                   >
-                    <!-- Time & Duration -->
                     <div class="text-center w-24">
                       <div class="text-sm text-indigo-600 font-medium">
                         {{ item.start }} - {{ item.end }}
                       </div>
                       <div class="text-xs text-gray-400 mt-1">{{ item.duration }} mins</div>
                     </div>
-
-                    <!-- Topic / Assignment -->
                     <div class="flex-1 min-w-0">
                       <p class="text-base font-semibold text-gray-800 truncate">
                         {{ item.topicName || item.assignmentName }}
-                        <span
-                          v-if="item.totalSessionsInGroup > 1"
-                          class="text-gray-400 font-normal"
+                        <span v-if="item.totalSessionsInGroup > 1" class="text-gray-400 font-normal"
+                          >({{ item.sessionNumber }}/{{ item.totalSessionsInGroup }})</span
                         >
-                          ({{ item.sessionNumber }}/{{ item.totalSessionsInGroup }})
-                        </span>
                       </p>
                       <p class="text-sm text-gray-500 mt-0.5">
                         {{ item.courseCode }} {{ item.courseName }}
                       </p>
                     </div>
-
-                    <!-- Session Type Badge -->
                     <div
                       class="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap"
                       :class="getSessionTypeStyles(item.type)"
                     >
                       {{ item.type.replace('_', ' ') }}
                     </div>
-
-                    <!-- Action Buttons -->
                     <div class="flex gap-2">
-                      <!-- Edit -->
                       <button
                         @click="openEditModal(item)"
                         class="text-gray-500 hover:text-gray-600 transition-colors"
@@ -281,8 +305,6 @@ const groupedStudyPlan = computed(() => {
                           />
                         </svg>
                       </button>
-
-                      <!-- Delete -->
                       <button
                         @click="planStore.unscheduleSession({ sessionId: item.sessionId })"
                         class="text-red-500 hover:text-red-600 transition-colors"
@@ -312,7 +334,6 @@ const groupedStudyPlan = computed(() => {
             </div>
           </div>
         </div>
-
         <div class="hidden lg:block lg:w-1/3 bg-white rounded-2xl p-6 overflow-y-auto">
           <h2 class="text-lg font-semibold text-gray-700 mb-4">Unscheduled Items</h2>
           <p class="text-sm text-gray-500 mb-4">
@@ -327,9 +348,9 @@ const groupedStudyPlan = computed(() => {
               <p class="font-semibold text-gray-800">{{ item.topicName || item.assignmentName }}</p>
               <p class="text-sm text-gray-500">
                 {{ item.courseCode }} •
-                <span v-if="item.totalSessionsInGroup > 1">
-                  Session {{ item.sessionNumber }} of {{ item.totalSessionsInGroup }} •
-                </span>
+                <span v-if="item.totalSessionsInGroup > 1"
+                  >Session {{ item.sessionNumber }} of {{ item.totalSessionsInGroup }} •</span
+                >
                 Est. {{ item.duration }} mins
               </p>
               <div class="mt-2">
@@ -365,10 +386,17 @@ const groupedStudyPlan = computed(() => {
     </div>
 
     <SessionEditModal
-      :is-open="isModalOpen"
+      :is-open="isEditModalOpen"
       :item="editingSession"
-      @close="closeModal"
+      @close="closeEditModal"
       @save="handleSave"
+    />
+    <NotificationModal
+      :is-open="isNotificationOpen"
+      :status="notificationStatus"
+      :title="notificationTitle"
+      :message="notificationMessage"
+      @close="closeNotification"
     />
   </div>
 </template>
