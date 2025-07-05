@@ -21,6 +21,14 @@ const currentSelectedStartMinute = ref<string>('00') // Default start minute
 const currentSelectedEndHour = ref<string>('17') // Default end hour
 const currentSelectedEndMinute = ref<string>('00') // Default end minute
 
+
+const isDateInPast = (dateStr: string): boolean => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set time to midnight to compare dates accurately
+  const dateToCompare = new Date(dateStr + 'T00:00:00');
+  return dateToCompare < today;
+}
+
 onMounted(async () => {
   try {
     // 1. Fetch data from the store
@@ -136,19 +144,18 @@ const calendarGrid = computed(() => {
 
   // Add padding for days from the previous month
   for (let i = 0; i < startDayOfWeek; i++) {
-    grid.push({ dateStr: `prev-${i}`, dayOfMonth: '', isCurrentMonth: false })
+    grid.push({ dateStr: `prev-${i}`, dayOfMonth: '', isCurrentMonth: false, isPast: false })
   }
 
   // Add days of the current month
   for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(year, month, i)
+    const dateStr = formatDateToYYYYMMDD(date)
     grid.push({
-      // Replace this line:
-      // dateStr: date.toISOString().split('T')[0],
-      // With this:
-      dateStr: formatDateToYYYYMMDD(date),
+      dateStr: dateStr,
       dayOfMonth: i,
       isCurrentMonth: true,
+      isPast: isDateInPast(dateStr),
     })
   }
 
@@ -212,14 +219,14 @@ const isDateSelected = (dateStr: string): boolean => {
 }
 
 // Toggle date selection on calendar click
-const toggleDateSelection = (dateStr: string, isCurrentMonth: boolean) => {
-  if (!isCurrentMonth) return // Prevent selecting dates from previous/next month padding
+const toggleDateSelection = (day: { dateStr: string, isCurrentMonth: boolean, isPast: boolean }) => {
+  if (!day.isCurrentMonth || day.isPast) return // Prevent selecting past or non-current-month dates
 
-  const index = selectedDates.value.indexOf(dateStr)
+  const index = selectedDates.value.indexOf(day.dateStr)
   if (index > -1) {
     selectedDates.value.splice(index, 1) // Deselect
   } else {
-    selectedDates.value.push(dateStr) // Select
+    selectedDates.value.push(day.dateStr) // Select
   }
 }
 
@@ -403,27 +410,27 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
                   :key="day.dateStr"
                   class="h-17 border-gray-200 cursor-pointer transition-colors duration-150 ease-in-out flex flex-col p-2"
                   :class="[
-                    {
-                      'bg-gray-50 text-gray-400': !day.isCurrentMonth,
-                      'cursor-not-allowed': !day.isCurrentMonth,
-                    },
+                    { 'bg-gray-100 text-gray-400 cursor-not-allowed': day.isPast && day.isCurrentMonth },
+                    { 'bg-gray-50 text-gray-400 cursor-not-allowed': !day.isCurrentMonth },,
                     {
                       'bg-[#facdd4]/50 hover:bg-[#facdd4]':
                         hasAvailability(day.dateStr) &&
                         day.isCurrentMonth &&
-                        !isDateSelected(day.dateStr),
+                        !isDateSelected(day.dateStr) &&
+                        !day.isPast
                     },
                     {
                       'bg-[#8A98DD]/30  hover:bg-[#8A98DD]/80':
                         !hasAvailability(day.dateStr) &&
                         day.isCurrentMonth &&
-                        !isDateSelected(day.dateStr),
+                        !isDateSelected(day.dateStr) &&
+                        !day.isPast
                     },
                     {
-                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]': isDateSelected(day.dateStr), // Highlight selected dates
+                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]': isDateSelected(day.dateStr) && !day.isPast, // Highlight selected dates
                     },
                   ]"
-                  @click="toggleDateSelection(day.dateStr, day.isCurrentMonth)"
+                  @click="toggleDateSelection(day)"
                 >
                   <span class="font-medium self-start">{{ day.dayOfMonth }}</span>
                   <div
