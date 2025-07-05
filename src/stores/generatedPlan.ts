@@ -5,6 +5,7 @@ import type { ScheduleDTO } from '@/types'
 
 // Helper function to calculate a session's end time based on its start and duration
 function calculateEndTime(startTime: string, durationInMinutes: number): string {
+  if (!startTime) return ''
   const [hours, minutes] = startTime.split(':').map(Number)
   const date = new Date()
   date.setHours(hours, minutes, 0, 0)
@@ -26,8 +27,17 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
   }),
 
   actions: {
-    // --- Existing actions (fetch, generate) remain the same ---
+    /**
+     * Fetches the existing schedule from the server, but only if it's not already in the store.
+     */
     async fetchExistingSchedule() {
+      // --- FIX: Added this block to prevent re-fetching ---
+      if (this.schedule) {
+        console.log('Using cached schedule from planStore. Skipping fetch.')
+        return // Exit if the schedule is already loaded
+      }
+      // ---------------------------------------------------
+
       this.isLoading = true
       this.error = null
       try {
@@ -50,7 +60,7 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
     async generatePlan() {
       this.isLoading = true
       this.error = null
-      this.schedule = null // Clear previous plan
+      this.schedule = null
       try {
         const response = await scheduleService.generateSchedule()
         this.schedule = response.data
@@ -64,82 +74,53 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
       }
     },
 
-    /**
-     * NEW: Updates the date and time of an existing scheduled session.
-     */
     updateSessionTime(payload: { sessionId: string; date: string; start: string }) {
       if (!this.schedule) return
-
       const session = this.schedule.study_plan.find((s) => s.sessionId === payload.sessionId)
-
       if (session) {
         session.date = payload.date
         session.start = payload.start
-        session.end = calculateEndTime(payload.start, session.duration) // Recalculate end
-        this.isPlanDirty = true // Mark plan as modified
-      } else {
-        console.error('Session not found for update:', payload.sessionId)
+        session.end = calculateEndTime(payload.start, session.duration)
+        this.isPlanDirty = true
       }
     },
 
-    /**
-     * NEW: Moves a session from the scheduled plan to the unscheduled list.
-     */
     unscheduleSession(payload: { sessionId: string }) {
       if (!this.schedule) return
-
       const index = this.schedule.study_plan.findIndex((s) => s.sessionId === payload.sessionId)
-
       if (index > -1) {
-        // Remove from study_plan
         const [session] = this.schedule.study_plan.splice(index, 1)
-
-        // Update status and add to unscheduled_plan
         session.isScheduled = false
         this.schedule.unscheduled_plan.push(session)
-        this.isPlanDirty = true // Mark plan as modified
-      } else {
-        console.error('Session not found for unscheduling:', payload.sessionId)
+        this.isPlanDirty = true
       }
     },
 
-    /**
-     * MODIFIED: Moves an unscheduled item to the scheduled plan with new details.
-     */
     scheduleItemManually(payload: { sessionId: string; date: string; start: string }) {
       if (!this.schedule) return
-
       const index = this.schedule.unscheduled_plan.findIndex(
         (i) => i.sessionId === payload.sessionId,
       )
-
       if (index > -1) {
-        // Remove from unscheduled_plan
         const [itemToSchedule] = this.schedule.unscheduled_plan.splice(index, 1)
-
-        // Update properties and status
         itemToSchedule.date = payload.date
         itemToSchedule.start = payload.start
         itemToSchedule.end = calculateEndTime(payload.start, itemToSchedule.duration)
         itemToSchedule.isScheduled = true
-
-        // Add to the main study plan
         this.schedule.study_plan.push(itemToSchedule)
-        this.isPlanDirty = true // Mark plan as modified
-      } else {
-        console.error('Could not find the item to schedule manually.')
+        this.isPlanDirty = true
       }
     },
 
     async acceptAndSavePlan() {
       if (!this.schedule) return
-
       this.isLoading = true
+      this.error = null
       try {
         await scheduleService.saveSchedule(this.schedule)
         this.isPlanDirty = false
-        this.isNewPlan = false 
-        this.clearPlan()
+        this.isNewPlan = false
+        this.schedule = null // Clear schedule to force a refetch on next load
       } catch (err) {
         this.error = 'Failed to save the plan.'
         console.error(err)
@@ -149,24 +130,22 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
     },
 
     async updateSchedule() {
-      if (!this.schedule) return
-
-      this.isLoading = true
-      try {
-        // Assume you have an updateSchedule method in your service
-        await scheduleService.updateSchedule(this.schedule)
-        this.isPlanDirty = false // Reset dirty flag after successful save
-        // No need to set isNewPlan, it's already false
-      } catch (err) {
-        this.error = 'Failed to update the plan.'
-        console.error(err)
-      } finally {
-        this.isLoading = false
-      }
-    },
+      if (!this.schedule) return
+      this.isLoading = true
+      this.error = null
+      try {
+        await scheduleService.updateSchedule(this.schedule)
+        this.isPlanDirty = false
+      } catch (err) {
+        this.error = 'Failed to update the plan.'
+        console.error(err)
+      } finally {
+        this.isLoading = false
+      }
+    },
 
     clearPlan() {
-      this.$reset()
+      this.schedule = null // Set schedule to null to force a refetch
       this.fetchExistingSchedule()
     },
   },

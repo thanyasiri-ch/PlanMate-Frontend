@@ -12,7 +12,7 @@ import { studySetupService } from '@/services/StudySetupServices' // Import your
 import { cloneDeep } from 'lodash'
 
 export const useStudySetupStore = defineStore('studySetup', {
-  state: (): StudySetupResponseDTO => ({
+  state: (): StudySetupResponseDTO & { isLoading: boolean } => ({
     userUid: '', // Assuming this comes from auth
     term: {
       termId: 0, // Default to 0 for a new term, indicates no ID yet
@@ -22,6 +22,7 @@ export const useStudySetupStore = defineStore('studySetup', {
       courses: [],
     } as TermResponseDTO,
     availabilities: [] as AvailabilityDTO[],
+    isLoading: false,
   }),
 
   getters: {
@@ -57,6 +58,7 @@ export const useStudySetupStore = defineStore('studySetup', {
         return this.term
       }
 
+      this.isLoading = true
       try {
         console.log('STORE ACTION: Fetching current term from server...')
         const response = await studySetupService.getCurrentTerm()
@@ -83,6 +85,8 @@ export const useStudySetupStore = defineStore('studySetup', {
       } catch (error) {
         console.warn('STORE ACTION: No current term found or failed to fetch.')
         return null
+      } finally {
+        this.isLoading = false // Ensure loading state is reset
       }
     },
     /**
@@ -92,6 +96,7 @@ export const useStudySetupStore = defineStore('studySetup', {
      * @returns The saved/updated TermResponseDTO from the server.
      */
     async saveOrUpdateTerm(termData: TermResponseDTO): Promise<TermResponseDTO> {
+      this.isLoading = true
       try {
         let response
         const requestDTO: TermRequestDTO = {
@@ -117,6 +122,8 @@ export const useStudySetupStore = defineStore('studySetup', {
       } catch (error) {
         console.error('STORE ACTION: Failed to save or update term.', error)
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
 
@@ -125,7 +132,7 @@ export const useStudySetupStore = defineStore('studySetup', {
         console.warn('Cannot save courses: Term ID is missing. Save the term first.')
         throw new Error('Term ID is required to save courses. Please save the term details first.')
       }
-
+      this.isLoading = true
       try {
         console.log(`STORE ACTION: Saving all courses for term ID: ${this.term.termId}`)
 
@@ -147,12 +154,22 @@ export const useStudySetupStore = defineStore('studySetup', {
       } catch (error) {
         console.error('STORE ACTION: Failed to save all courses.', error)
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
 
     async deleteCourse(courseId: number): Promise<void> {
-      await studySetupService.deleteCourse(courseId)
-      this.term.courses = this.term.courses.filter((c) => !(c.courseId === courseId))
+      this.isLoading = true
+      try {
+        await studySetupService.deleteCourse(courseId)
+        this.term.courses = this.term.courses.filter((c) => !(c.courseId === courseId))
+      } catch (error) {
+        console.error(`Failed to delete course ${courseId}`, error)
+        throw error
+      } finally {
+        this.isLoading = false
+      }
     },
 
     // The original merge logic was correct but could be made more explicit to
@@ -180,6 +197,7 @@ export const useStudySetupStore = defineStore('studySetup', {
     },
 
     async saveCourseDetails(courseCode: string, updates: CourseDTO): Promise<void> {
+      this.isLoading = true
       try {
         const response = await studySetupService.saveCourseDetails(updates)
         this.updateCourseInTerm(response.data)
@@ -187,6 +205,8 @@ export const useStudySetupStore = defineStore('studySetup', {
       } catch (error) {
         console.error(`STORE ACTION: Failed to save course details for ${courseCode}`, error)
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
     async fetchAndSetAvailabilities(): Promise<void> {
@@ -195,7 +215,7 @@ export const useStudySetupStore = defineStore('studySetup', {
         console.log('STORE ACTION: Availabilities already exist in store. Skipping fetch.')
         return // Exit the function early, using the cached data
       }
-
+      this.isLoading = true
       try {
         console.log('STORE ACTION: Fetching availabilities from server...')
         const response = await studySetupService.getAvailabilities()
@@ -207,6 +227,8 @@ export const useStudySetupStore = defineStore('studySetup', {
         console.error('STORE ACTION: Failed to fetch availabilities.', error)
         // Optionally re-throw or handle the error
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
     async saveAvailabilities(partialUpdates: AvailabilityDTO[]): Promise<void> {
@@ -228,6 +250,8 @@ export const useStudySetupStore = defineStore('studySetup', {
       } catch (error) {
         console.error('STORE ACTION: Failed to save partial availabilities.', error)
         throw error
+      } finally {
+        this.isLoading = false
       }
     },
 

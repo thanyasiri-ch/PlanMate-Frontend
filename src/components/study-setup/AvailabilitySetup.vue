@@ -1,3 +1,4 @@
+<!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useStudySetupStore } from '@/stores/studySetup'
@@ -22,16 +23,22 @@ const currentSelectedEndMinute = ref<string>('00') // Default end minute
 
 onMounted(async () => {
   try {
-    // 1. Fetch data from the store when the component is loaded
+    // 1. Fetch data from the store
     await studySetupStore.fetchAndSetAvailabilities()
 
-    // 2. Populate the component's local state from the store's state
+    // 2. Populate local state from the store
     const localAvailabilities: Record<string, string[]> = {}
+
+    // This now correctly groups multiple time slots per date
     for (const availability of studySetupStore.availabilities) {
-      localAvailabilities[availability.date] = [`${availability.startTime}-${availability.endTime}`]
+      if (!localAvailabilities[availability.date]) {
+        localAvailabilities[availability.date] = [] // Initialize array if it doesn't exist
+      }
+      localAvailabilities[availability.date].push(
+        `${availability.startTime}-${availability.endTime}`,
+      )
     }
     availabilityByDate.value = localAvailabilities
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     errorMessage.value = 'Could not load your existing availabilities.'
   }
@@ -40,7 +47,6 @@ onMounted(async () => {
 const generateAvailabilityDTOs = (): AvailabilityRequestDTO[] => {
   const dtos: AvailabilityRequestDTO[] = []
   for (const date in availabilityByDate.value) {
-    // Only include dates that have time slots defined
     if (availabilityByDate.value[date]?.length > 0) {
       for (const range of availabilityByDate.value[date]) {
         const [startTime, endTime] = range.split('-')
@@ -65,19 +71,20 @@ const formatDateToYYYYMMDD = (date: Date): string => {
 }
 
 const saveAndClose = async () => {
-  errorMessage.value = '' // Clear previous errors
+  errorMessage.value = ''
   try {
     const availabilityDTOs = generateAvailabilityDTOs()
-    // Add a dummy id to each DTO to satisfy the AvailabilityDTO type
-    const availabilityDTOsWithId = availabilityDTOs.map((dto, idx) => ({
+    // The store's saveAvailabilities action expects an array of AvailabilityDTO.
+    // We add a temporary ID here to match the type. Ideally, the backend
+    // would handle ID creation for new availabilities.
+    const availabilityPayload = availabilityDTOs.map((dto, idx) => ({
       ...dto,
-      id: idx, // Assign a temporary id; replace with real id if needed
+      id: idx, // Temporary ID
     }))
-    console.log('Saving availabilities:', availabilityDTOsWithId)
-    await studySetupStore.saveAvailabilities(availabilityDTOsWithId)
-    // After saving, close the modal and clear the selection
+
+    await studySetupStore.saveAvailabilities(availabilityPayload)
+
     closeModalAndClearSelection()
-    // You could also show a success toast/message here
   } catch (error) {
     console.error('Failed to save availabilities:', error)
     errorMessage.value = 'There was an error saving your schedule. Please try again.'
@@ -319,7 +326,10 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
   <div class="h-screen flex flex-col items-center">
     <div class="w-4/5 flex flex-col flex-1 overflow-hidden">
       <div class="flex-1 flex bg-white rounded-2xl p-6 sm:p-8 overflow-hidden">
-        <div class="flex flex-1 flex-col justify-center">
+        <div v-if="studySetupStore.isLoading" class="flex-1 flex items-center justify-center">
+          <p class="text-xl font-semibold text-gray-500 animate-pulse">Loading...</p>
+        </div>
+        <div v-else class="flex flex-1 flex-col justify-center">
           <div class="text-center">
             <p class="text-gray-500 mb-3 mx-auto max-w-2xl">
               Click on a date to select available time slots for that specific day.
@@ -327,7 +337,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
             <button
               v-if="selectedDates.length > 0"
               @click="openBulkTimeSlotModal"
-              class="mb-4 px-6 py-2 bg-[#544BAA]/90 text-white rounded-xl shadow hover:bg-[#544BAA] shadow"
+              class="mb-4 px-6 py-2 bg-[#544BAA]/90 text-white rounded-xl hover:bg-[#544BAA] shadow"
             >
               Set Times for Selected Dates ({{ selectedDates.length }} selected)
             </button>
