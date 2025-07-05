@@ -51,7 +51,7 @@ function closeModal() {
   editingSession.value = null
 }
 
-// --- Helper functions (getSessionTypeStyles, enrichSession) remain the same ---
+// --- Helper functions ---
 function getSessionTypeStyles(type: SessionType) {
   switch (type) {
     case SessionType.CORE_STUDY:
@@ -71,17 +71,26 @@ function enrichSession(session: any) {
   const course = setupStore.term.courses.find((c) => c.courseId === session.courseId)
   const topic = course?.topics?.find((t) => t.id === session.topicId)
   const assignment = course?.assignments?.find((a) => a.id === session.assignmentId)
-  return { ...session, courseCode: course?.courseCode || 'N/A', topicName: topic?.name || null, assignmentName: assignment?.name || null }
+  return {
+    ...session,
+    courseCode: course?.courseCode || 'N/A',
+    courseName: course?.name || 'N/A',
+    topicName: topic?.name || null,
+    assignmentName: assignment?.name || null,
+  }
 }
 
-// --- Computed properties (enrichedStudyPlan, etc.) remain the same ---
+// --- Computed properties ---
 const enrichedStudyPlan = computed(() => {
   if (!planStore.schedule?.study_plan) return []
-  return planStore.schedule.study_plan.map(enrichSession).slice().sort((a, b) => {
-    const dateComparison = a.date.localeCompare(b.date)
-    if (dateComparison !== 0) return dateComparison
-    return a.start.localeCompare(b.start)
-  })
+  return planStore.schedule.study_plan
+    .map(enrichSession)
+    .slice()
+    .sort((a, b) => {
+      const dateComparison = a.date.localeCompare(b.date)
+      if (dateComparison !== 0) return dateComparison
+      return a.start.localeCompare(b.start)
+    })
 })
 
 const enrichedUnscheduledPlan = computed(() => {
@@ -92,20 +101,33 @@ const enrichedUnscheduledPlan = computed(() => {
 const groupedStudyPlan = computed(() => {
   if (!planStore.schedule) return {}
   const examsAsEvents = setupStore.term.courses.flatMap((course) =>
-    (course.exams || []).map((exam) => ({ ...exam, displayType: 'EXAM', courseCode: course.courseCode, name: `${course.courseCode} ${exam.type}` })),
+    (course.exams || []).map((exam) => ({
+      ...exam,
+      displayType: 'EXAM',
+      courseCode: course.courseCode,
+      name: `${course.name}`,
+    })),
   )
-  const allEvents = [...enrichedStudyPlan.value.map((s) => ({ ...s, displayType: 'SESSION' })), ...examsAsEvents]
+  const allEvents = [
+    ...enrichedStudyPlan.value.map((s) => ({ ...s, displayType: 'SESSION' })),
+    ...examsAsEvents,
+  ]
   allEvents.sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date)
     if (dateComparison !== 0) return dateComparison
     return (a.start || a.startTime).localeCompare(b.start || b.startTime)
   })
-  return allEvents.reduce((acc, event) => {
-    const date = event.date
-    if (!acc[date]) { acc[date] = [] }
-    acc[date].push(event)
-    return acc
-  }, {} as Record<string, any[]>)
+  return allEvents.reduce(
+    (acc, event) => {
+      const date = event.date
+      if (!acc[date]) {
+        acc[date] = []
+      }
+      acc[date].push(event)
+      return acc
+    },
+    {} as Record<string, any[]>,
+  )
 })
 </script>
 <template>
@@ -142,23 +164,22 @@ const groupedStudyPlan = computed(() => {
           <h2 class="text-lg font-semibold text-gray-700 mb-4">Scheduled Sessions</h2>
           <div class="space-y-6">
             <div v-for="(sessions, date) in groupedStudyPlan" :key="date">
-              <h3 class="font-semibold text-gray-500 pb-2 border-b">
+              <h3
+                class="font-semibold text-yellow-700 pl-5 pt-1 pb-1 border-b rounded-t-lg bg-yellow-200 border-yellow-700"
+              >
                 {{ new Date(date + 'T00:00:00').toDateString() }}
               </h3>
               <div class="mt-4 space-y-3">
                 <template v-for="item in sessions" :key="item.sessionId || item.id">
                   <div
                     v-if="item.displayType === 'EXAM'"
-                    class="flex items-center gap-x-4 p-3 rounded-lg bg-red-100 border border-red-200 text-red-800"
+                    class="flex items-center gap-x-4 p-4 rounded-xl bg-red-100 border border-red-200 text-red-800"
                   >
-                    <div class="font-mono text-sm font-semibold w-20 text-center">
-                      <div>{{ item.startTime }}</div>
-                      <div class="text-red-400">-</div>
-                      <div>{{ item.endTime }}</div>
+                    <div class="text-sm font-semibold text-center w-24">
+                      <div>{{ item.startTime }} - {{ item.endTime }}</div>
                     </div>
                     <div class="flex-1">
-                      <p class="font-bold">{{ item.name }}</p>
-                      <p class="text-sm">{{ item.courseCode }}</p>
+                      <p class="font-bold">{{ item.courseCode }} - {{ item.name }}</p>
                     </div>
                     <div class="text-xs font-bold px-2 py-1 rounded-full bg-red-500 text-white">
                       EXAM
@@ -167,37 +188,50 @@ const groupedStudyPlan = computed(() => {
 
                   <div
                     v-else
-                    class="flex items-center gap-x-4 p-3 rounded-lg bg-gray-50 border border-gray-200"
+                    class="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 shadow-sm"
                   >
-                    <div class="font-mono text-sm text-indigo-600 w-20 text-center">
-                      <div>{{ item.start }}</div>
-                      <div class="text-gray-400">-</div>
-                      <div>{{ item.end }}</div>
+                    <!-- Time & Duration -->
+                    <div class="text-center w-24">
+                      <div class="text-sm text-indigo-600 font-medium">
+                        {{ item.start }} - {{ item.end }}
+                      </div>
+                      <div class="text-xs text-gray-400 mt-1">{{ item.duration }} mins</div>
                     </div>
-                    <div class="flex-1">
-                      <p class="font-semibold text-gray-800">
+
+                    <!-- Topic / Assignment -->
+                    <div class="flex-1 min-w-0">
+                      <p class="text-base font-semibold text-gray-800 truncate">
                         {{ item.topicName || item.assignmentName }}
-                      </p>
-                      <p class="text-sm text-gray-500 mt-1">{{ item.courseCode }}</p>
-                      <p class="text-xs text-gray-400 mt-1">
-                        <span v-if="item.totalSessionsInGroup > 1"
-                          >Session {{ item.sessionNumber }} of
-                          {{ item.totalSessionsInGroup }} •</span
+                        <span
+                          v-if="item.totalSessionsInGroup > 1"
+                          class="text-gray-400 font-normal"
                         >
-                        {{ item.duration }} mins
+                          ({{ item.sessionNumber }}/{{ item.totalSessionsInGroup }})
+                        </span>
+                      </p>
+                      <p class="text-sm text-gray-500 mt-0.5">
+                        {{ item.courseCode }} {{ item.courseName }}
                       </p>
                     </div>
+
+                    <!-- Session Type Badge -->
                     <div
-                      class="text-xs font-medium px-2 py-1 rounded-full"
+                      class="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap"
                       :class="getSessionTypeStyles(item.type)"
                     >
                       {{ item.type.replace('_', ' ') }}
                     </div>
-                    <div class="flex gap-x-2">
-                      <!-- Edit Button with Colored Pencil Icon -->
-                      <button  @click="openEditModal(item)" class="text-blue-500" title="Edit Session">
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2">
+                      <!-- Edit -->
+                      <button
+                        @click="openEditModal(item)"
+                        class="text-gray-500 hover:text-gray-600 transition-colors"
+                        title="Edit Session"
+                      >
                         <svg
-                          class="h-5 w-5"
+                          class="w-5 h-5"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -211,8 +245,12 @@ const groupedStudyPlan = computed(() => {
                         </svg>
                       </button>
 
-                      <!-- Delete Button with Colored Trash Icon -->
-                      <button @click="planStore.unscheduleSession({ sessionId: item.sessionId })" class="text-red-500" title="Delete Session">
+                      <!-- Delete -->
+                      <button
+                        @click="planStore.unscheduleSession({ sessionId: item.sessionId })"
+                        class="text-red-500 hover:text-red-600 transition-colors"
+                        title="Delete Session"
+                      >
                         <svg
                           class="w-6 h-6"
                           fill="none"
@@ -289,11 +327,11 @@ const groupedStudyPlan = computed(() => {
       <p v-if="planStore.error" class="mt-4 text-sm text-red-600">{{ planStore.error }}</p>
     </div>
 
-  <SessionEditModal
-    :is-open="isModalOpen"
-    :item="editingSession"
-    @close="closeModal"
-    @save="handleSave"
-  />
+    <SessionEditModal
+      :is-open="isModalOpen"
+      :item="editingSession"
+      @close="closeModal"
+      @save="handleSave"
+    />
   </div>
 </template>
