@@ -263,6 +263,4 @@ export const useStudySetupStore = defineStore('studySetup', {
       this.availabilities = []
     },
   },
-
-  persist: true,
 })
