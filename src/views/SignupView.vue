@@ -1,7 +1,8 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { googleSignIn } from '@/services/auth'
+import { googleSignIn, createInitialUser } from '@/services/auth'
 import { useSignupStore } from '@/stores/signupStore'
 import '@/assets/css/auth.css'
 
@@ -16,11 +17,26 @@ const nameValid = ref(true)
 const emailValid = ref(true)
 const passwordValid = ref(true)
 
-const handleNext = () => {
+const handleNext = async () => {
   if (!validateForm()) return
 
-  signupStore.setUserData(displayName.value, email.value, password.value)
-  router.push({ name: 'signupWithImage' })
+  try {
+    // Attempt to create the user first
+    await createInitialUser(email.value, password.value, displayName.value) // If successful, store user data and continue
+
+    signupStore.setUserData(displayName.value, email.value, password.value)
+    router.push({ name: 'signupWithImage' })
+  } catch (error: any) {
+    const message = error?.message || 'Unknown error'
+    console.error('Signup error:', message)
+
+    if (message.includes('auth/email-already-in-use')) {
+      formAlert.value = 'Email already in use. Please use a different email.'
+      emailValid.value = false
+    } else {
+      formAlert.value = 'An error occurred during signup. Please try again.'
+    }
+  }
 }
 
 const validateForm = () => {

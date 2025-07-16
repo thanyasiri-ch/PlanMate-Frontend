@@ -20,6 +20,18 @@ const onFileChange = (e: Event) => {
   if (files && files[0]) {
     const file = files[0]
     const fileSizeMB = file.size / (1024 * 1024)
+    const allowedTypes = ['image/jpeg', 'image/png']
+
+    // Check file type
+    if (!allowedTypes.includes(file.type)) {
+      alert('Unsupported image type. Only JPG and PNG formats are allowed.')
+      imageFile.value = null
+      previewUrl.value = null
+      ;(e.target as HTMLInputElement).value = ''
+      return
+    }
+
+    // Check file size
     if (fileSizeMB > MAX_FILE_SIZE_MB) {
       alert(`File is too large. Max allowed size is ${MAX_FILE_SIZE_MB}MB.`)
       imageFile.value = null
@@ -27,6 +39,7 @@ const onFileChange = (e: Event) => {
       ;(e.target as HTMLInputElement).value = ''
       return
     }
+
     imageFile.value = file
     previewUrl.value = URL.createObjectURL(file)
   }
@@ -319,7 +332,7 @@ div.button {
   align-items: center;
   justify-content: center;
   gap: 15px; /* Space between spinner and text */
-  background-color: #f0f2f5; 
+  background-color: #f0f2f5;
   font-size: 18px;
   color: #333;
   font-weight: bold;
