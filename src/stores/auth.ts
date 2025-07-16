@@ -4,7 +4,6 @@ import { defineStore } from 'pinia'
 import {
   login,
   googleSignIn,
-  createInitialUser,
   updateUserPhoto,
   formatUser, // Make sure this is exported from services/auth.ts
 } from '@/services/auth'
@@ -12,7 +11,6 @@ import apiClient from '@/services/AxiosClient'
 import type { User } from '@/types'
 import { auth, storage } from '@/firebase/firebase' // Import Firebase storage
 import { ref as firebaseStorageRef, uploadBytes, getDownloadURL } from 'firebase/storage' // For image upload
-import type { User as FirebaseUser } from 'firebase/auth' // Import Firebase User type
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -44,21 +42,22 @@ export const useAuthStore = defineStore('auth', {
       displayName: string,
       imageFile: File | null, // Accept the File object
     ) {
-      // Step 1: Create the user with Firebase Auth and set initial display name
-      const firebaseUser: FirebaseUser = await createInitialUser(email, password, displayName)
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        throw new Error('User was not properly created or authenticated.')
+      }
 
       let finalPhotoURL: string | null = null
 
-      // Step 2: If an image file is provided, upload it to Firebase Storage
       if (imageFile) {
         // Use UID in the path for better organization and uniqueness
-        const imagePath = `profileImages/${firebaseUser.uid}_${Date.now()}_${imageFile.name}`
+        const imagePath = `profileImages/${currentUser.uid}_${Date.now()}_${imageFile.name}`
         const imageRef = firebaseStorageRef(storage, imagePath)
         await uploadBytes(imageRef, imageFile)
         finalPhotoURL = await getDownloadURL(imageRef)
 
         // Step 3: Update the user's profile with the new photoURL
-        await updateUserPhoto(firebaseUser, finalPhotoURL)
+        await updateUserPhoto(currentUser, finalPhotoURL)
       }
 
       // Step 4: Get the ID token for the authenticated user

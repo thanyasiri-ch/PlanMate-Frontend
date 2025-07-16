@@ -20,6 +20,18 @@ const onFileChange = (e: Event) => {
   if (files && files[0]) {
     const file = files[0]
     const fileSizeMB = file.size / (1024 * 1024)
+    const allowedTypes = ['image/jpeg', 'image/png']
+
+    // Check file type
+    if (!allowedTypes.includes(file.type)) {
+      alert('Unsupported image type. Only JPG and PNG formats are allowed.')
+      imageFile.value = null
+      previewUrl.value = null
+      ;(e.target as HTMLInputElement).value = ''
+      return
+    }
+
+    // Check file size
     if (fileSizeMB > MAX_FILE_SIZE_MB) {
       alert(`File is too large. Max allowed size is ${MAX_FILE_SIZE_MB}MB.`)
       imageFile.value = null
@@ -27,6 +39,7 @@ const onFileChange = (e: Event) => {
       ;(e.target as HTMLInputElement).value = ''
       return
     }
+
     imageFile.value = file
     previewUrl.value = URL.createObjectURL(file)
   }
@@ -111,6 +124,7 @@ onMounted(() => {
 
       <div class="button">
         <button
+          v-if="!imageFile"
           type="button"
           @click="triggerFileInput"
           class="add-picture-button"
@@ -133,10 +147,20 @@ onMounted(() => {
           v-if="imageFile"
           type="submit"
           @click.prevent="handleSignUpWithImage"
-          class="complete-signup-button"
+          class="done-button"
           :disabled="isLoading"
         >
-          Confirm Sign Up
+          Done
+        </button>
+
+        <button
+          v-if="imageFile"
+          type="button"
+          @click="triggerFileInput"
+          class="change-picture-button"
+          :disabled="isLoading"
+        >
+          Change picture
         </button>
       </div>
     </div>
@@ -221,8 +245,9 @@ div.button {
 }
 
 .add-picture-button,
-.complete-signup-button,
-.not-now-button {
+.done-button,
+.not-now-button,
+.change-picture-button {
   width: 100%;
   padding: 15px;
   border: none;
@@ -250,17 +275,17 @@ div.button {
   cursor: not-allowed;
 }
 
-.complete-signup-button {
-  background-color: #544baa; /* Consistent green for positive actions */
+.done-button {
+  background-color: #57c490; /* Consistent green for positive actions */
   color: white;
 }
 
-.complete-signup-button:hover:not(:disabled) {
-  background-color: #473f90;
-  box-shadow: 0 4px 10px #6f67b7;
+.done-button:hover:not(:disabled) {
+  background-color: #48a076;
+  box-shadow: 0 4px 10px rgba(52, 168, 83, 0.3);
 }
 
-.complete-signup-button:disabled {
+.done-button:disabled {
   background-color: #a5d6a7;
   cursor: not-allowed;
 }
@@ -276,6 +301,22 @@ div.button {
 }
 
 .not-now-button:disabled {
+  background-color: #e0e0e0;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.change-picture-button {
+  background-color: #dcdcdc;
+  color: #333;
+}
+
+.change-picture-button:hover:not(:disabled) {
+  background-color: #c8c8c8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.change-picture-button:disabled {
   background-color: #e0e0e0;
   cursor: not-allowed;
   opacity: 0.7;

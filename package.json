@@ -14,11 +14,11 @@
   },
   "dependencies": {
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
-    "@tailwindcss/vite": "^4.1.7",
+    "@tailwindcss/vite": "^4.1.11",
     "@vueform/slider": "^2.1.10",
     "axios": "^1.9.0",
     "pinia": "^3.0.1",
-    "tailwindcss": "^4.1.7",
+    "tailwindcss": "^4.1.11",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
