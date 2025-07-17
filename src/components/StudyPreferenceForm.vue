@@ -13,42 +13,31 @@ export default {
       type: Object as () => StudyPreference | null,
       default: null,
     },
-    layout: {
-      type: String as () => 'horizontal' | 'vertical',
-      default: 'horizontal',
-    },
   },
-  emits: ['save', 'cancel'], // Declare emitted events
   data() {
     return {
       sessionRange: [45, 90] as [number, number],
-
-      // Use objects to map display text to enum values
       preferredStudyTimeOptions: [
-        { value: 'early morning', display: 'Early Morning' },
-        { value: 'late morning', display: 'Late Morning' },
-        { value: 'afternoon', display: 'Afternoon' },
-        { value: 'evening', display: 'Evening' },
-        { value: 'night', display: 'Night' },
-        { value: 'late night', display: 'Late Night' },
-      ],
+        'early morning',
+        'late morning',
+        'afternoon',
+        'evening',
+        'night',
+        'late night',
+      ] as PreferredStudyTime[],
       selectedPreferredStudyTimes: [] as PreferredStudyTime[],
 
+      minSessionDuration: 45,
+      maxSessionDuration: 90,
+
       revisionFrequencyOptions: [
-        { value: 'single deep review before exam', display: 'Single Deep Review Before Exam' },
-        { value: '2-3 reviews per topic', display: '2-3 Reviews Per Topic' },
-        { value: 'daily review sessions', display: 'Daily Review Sessions' },
-      ],
+        'single deep review before exam',
+        '2-3 reviews per topic',
+        'daily review sessions',
+      ] as RevisionFrequency[],
       selectedRevisionFrequency: '' as RevisionFrequency,
 
-      breakDurationOptions: [
-        { value: 5, display: '5 minutes' },
-        { value: 10, display: '10 minutes' },
-        { value: 15, display: '15 minutes' },
-        { value: 20, display: '20 minutes' },
-        { value: 25, display: '25 minutes' },
-        { value: 30, display: '30 minutes' },
-      ],
+      breakDurationOptions: [5, 10, 15, 20, 25, 30] as BreakDuration[],
       selectedBreakDuration: 0 as BreakDuration,
 
       showErrors: false,
@@ -66,14 +55,14 @@ export default {
       )
     },
   },
-  watch: {
-    // Whenever the existingPref prop changes, this code will run
-    existingPref: {
-      handler(newPref) {
-        this.syncStateFromProp(newPref)
-      },
-      immediate: true, // This runs the handler immediately on component mount
-    },
+  mounted() {
+    if (this.existingPref) {
+      this.selectedPreferredStudyTimes = this.existingPref.preferredStudyTimes
+      this.minSessionDuration = this.existingPref.minSessionDuration
+      this.maxSessionDuration = this.existingPref.maxSessionDuration
+      this.selectedRevisionFrequency = this.existingPref.revisionFrequency
+      this.selectedBreakDuration = this.existingPref.breakDurations
+    }
   },
   methods: {
     togglePreferredStudyTime(time: PreferredStudyTime) {
@@ -93,10 +82,13 @@ export default {
     getValidatedPreferences(): StudyPreference | null {
       this.showErrors = !this.isFormValid
       if (this.showErrors) {
-        return null // Return null if form is invalid
+        // Optionally, could emit an event here to notify the parent about validation failure
+        // e.g., this.$emit('validation-failed');
+        return null
       }
+
       const studyPreferences: StudyPreference = {
-        preferredStudyTimes: [...this.selectedPreferredStudyTimes],
+        preferredStudyTimes: [...this.selectedPreferredStudyTimes], // Send a copy
         minSessionDuration: this.sessionRange[0],
         maxSessionDuration: this.sessionRange[1],
         revisionFrequency: this.selectedRevisionFrequency,
@@ -104,43 +96,30 @@ export default {
       }
       return studyPreferences
     },
-    syncStateFromProp(pref: StudyPreference | null) {
-      if (pref) {
-        this.selectedPreferredStudyTimes = [...pref.preferredStudyTimes]
-        this.selectedRevisionFrequency = pref.revisionFrequency
-        this.selectedBreakDuration = pref.breakDurations
-        this.sessionRange = [pref.minSessionDuration, pref.maxSessionDuration]
-      }
-    },
   },
 }
 </script>
 
 <template>
-  <div
-    :class="[
-      'w-full h-full flex flex-col overflow-y-auto p-10 text-small',
-      layout === 'horizontal' ? 'items-center' : '',
-    ]"
-  >
-    <div :class="['flex-grow space-y-6 px-5', layout === 'horizontal' ? 'w-full max-w-2xl' : '']">
+  <div class="w-full h-full flex flex-col overflow-y-auto p-10 text-small">
+    <div class="flex-grow space-y-6">
       <div>
         <label class="block mb-1 font-semibold text-gray-800"
           >What time of day do you prefer to study?</label
         >
         <div class="flex flex-wrap gap-3">
           <button
-            v-for="option in preferredStudyTimeOptions"
-            :key="option.value"
-            @click="togglePreferredStudyTime(option.value as PreferredStudyTime)"
+            v-for="time in preferredStudyTimeOptions"
+            :key="time"
+            @click="togglePreferredStudyTime(time)"
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm' /* Added text-sm for consistency if text-small is on parent */,
-              selectedPreferredStudyTimes.includes(option.value as PreferredStudyTime)
+              selectedPreferredStudyTimes.includes(time)
                 ? 'bg-[#766BDE] text-white border-[#766BDE]'
                 : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
             ]"
           >
-            {{ option.display }}
+            {{ time }}
           </button>
         </div>
       </div>
@@ -172,17 +151,17 @@ export default {
         >
         <div class="flex flex-wrap gap-3">
           <button
-            v-for="option in revisionFrequencyOptions"
-            :key="option.value"
-            @click="selectRevisionFrequency(option.value as RevisionFrequency)"
+            v-for="frequency in revisionFrequencyOptions"
+            :key="frequency"
+            @click="selectRevisionFrequency(frequency)"
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm',
-              selectedRevisionFrequency === option.value
+              selectedRevisionFrequency === frequency
                 ? 'bg-[#766BDE] text-white border-[#766BDE]'
                 : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
             ]"
           >
-            {{ option.display }}
+            {{ frequency }}
           </button>
         </div>
       </div>
@@ -193,17 +172,17 @@ export default {
         </label>
         <div class="flex flex-wrap gap-3">
           <button
-            v-for="option in breakDurationOptions"
-            :key="option.value"
-            @click="selectBreakDuration(option.value as BreakDuration)"
+            v-for="duration in breakDurationOptions"
+            :key="duration"
+            @click="selectBreakDuration(duration)"
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm',
-              selectedBreakDuration === option.value
+              selectedBreakDuration === duration
                 ? 'bg-[#766BDE] text-white border-[#766BDE]'
                 : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
             ]"
           >
-            {{ option.display }}
+            {{ duration }} minutes
           </button>
         </div>
       </div>
