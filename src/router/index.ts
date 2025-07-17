@@ -4,18 +4,25 @@ import SignupView from '@/views/SignupView.vue'
 import SignupWithImage from '@/views/SignupWithImage.vue'
 import QuestionaireView from '@/views/QuestionnaireView.vue'
 import ProfileView from '@/views/ProfileView.vue'
+import StudySetupView from '@/views/StudySetupView.vue'
+import TermCourseSetup from '@/components/study-setup/TermCourseSetup.vue'
+import CourseDetailsSetup from '@/components/study-setup/CoursDetails.vue'
+import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
+import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
+import PlanView from '@/views/PlanView.vue'
+import nProgress from 'nprogress'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: '/login'
+      redirect: '/login',
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: LoginView,
     },
     {
       path: '/signup',
@@ -25,19 +32,44 @@ const router = createRouter({
     {
       path: '/signupWithImage',
       name: 'signupWithImage',
-      component: SignupWithImage
+      component: SignupWithImage,
     },
     {
       path: '/question-pref',
       name: 'question',
-      component: QuestionaireView
+      component: QuestionaireView,
     },
     {
       path: '/profile',
       name: 'profile',
-      component: ProfileView
+      component: ProfileView,
+    },
+    {
+      path: '/study-setup',
+      component: StudySetupView,
+      children: [
+        { path: 'term', name: 'term', component: TermCourseSetup },
+        { path: 'course', name: 'course', component: TermCourseSetup },
+        { path: 'course-details', name: 'course-details', component: CourseDetailsSetup },
+        { path: 'availability', name: 'availability', component: AvailabilitySetup },
+        { path: 'generate-plan', name: 'generate-plan', component: GeneratePlan },
+        { path: '', redirect: { name: 'term' } },
+      ],
+    },
+    {
+      path: '/plan',
+      name: 'plan',
+      component: PlanView,
     }
   ],
 })
+
+router.beforeEach(() => {
+  nProgress.start();
+});
+
+router.afterEach(() => {
+  nProgress.done();
+});
 
 export default router
