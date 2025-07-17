@@ -7,6 +7,7 @@ import type {
   AvailabilityDTO,
   CourseBaseDTO,
   CourseDTO,
+  AvailabilityRequestDTO,
 } from '@/types'
 import { studySetupService } from '@/services/StudySetupServices' // Import your API service
 import { cloneDeep } from 'lodash'
@@ -231,9 +232,10 @@ export const useStudySetupStore = defineStore('studySetup', {
         this.isLoading = false
       }
     },
-    async saveAvailabilities(partialUpdates: AvailabilityDTO[]): Promise<void> {
+    async saveAvailabilities(partialUpdates: AvailabilityRequestDTO[]): Promise<void> {
       try {
         console.log('STORE ACTION: Saving partial availabilities to server...')
+
         const response = await studySetupService.updateAvailabilities(partialUpdates)
 
         if (response.data) {

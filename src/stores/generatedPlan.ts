@@ -47,7 +47,7 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
         this.isNewPlan = false
       } catch (err: any) {
         if (err.response && err.response.status !== 404) {
-          this.error = 'Failed to load your existing schedule.'
+          this.error = err.response.data.error
           console.error(err)
         } else {
           this.schedule = null
@@ -66,8 +66,8 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
         this.schedule = response.data
         this.isPlanDirty = true
         this.isNewPlan = true
-      } catch (err) {
-        this.error = 'Failed to generate a study plan. Please try again.'
+      } catch (err: any) {
+        this.error = err.response?.data?.error
         console.error(err)
       } finally {
         this.isLoading = false
@@ -120,9 +120,9 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
         await scheduleService.saveSchedule(this.schedule)
         this.isPlanDirty = false
         this.isNewPlan = false
-        this.schedule = null // Clear schedule to force a refetch on next load
-      } catch (err) {
-        this.error = 'Failed to save the plan.'
+        this.schedule = null
+      } catch (err: any) {
+        this.error = err.response?.data?.error || 'Failed to save the plan.'
         console.error(err)
       } finally {
         this.isLoading = false
@@ -136,8 +136,8 @@ export const useGeneratedPlanStore = defineStore('generatedPlan', {
       try {
         await scheduleService.updateSchedule(this.schedule)
         this.isPlanDirty = false
-      } catch (err) {
-        this.error = 'Failed to update the plan.'
+      } catch (err: any) {
+        this.error = err.response?.data?.error || 'Failed to update the plan.'
         console.error(err)
       } finally {
         this.isLoading = false

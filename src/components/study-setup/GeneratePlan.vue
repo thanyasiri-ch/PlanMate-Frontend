@@ -69,12 +69,21 @@ function closeEditModal() {
 }
 
 // --- Helper functions ---
+async function handleGenratePlan() {
+  await planStore.generatePlan()
+  if (planStore.error) {
+    showNotification('error', 'Save Failed', planStore.error)
+    console.error('Error generating plan:', planStore.error)
+  }
+}
+
 async function handleAcceptAndSave() {
   await planStore.acceptAndSavePlan()
   if (planStore.error) {
     showNotification('error', 'Save Failed', planStore.error)
   } else {
     showNotification('success', 'Plan Saved!', 'Your new study plan has been successfully saved.')
+    await planStore.fetchExistingSchedule()
   }
 }
 
@@ -378,14 +387,13 @@ const groupedStudyPlan = computed(() => {
         Click the button below to generate a personalized study schedule.
       </p>
       <button
-        @click="planStore.generatePlan"
+        @click="handleGenratePlan"
         :disabled="planStore.isLoading"
         class="mt-6 px-6 py-3 bg-indigo-600 rounded-lg text-base font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
       >
         <span v-if="planStore.isLoading">Generating Your Plan...</span>
         <span v-else>Generate My Study Plan</span>
       </button>
-      <p v-if="planStore.error" class="mt-4 text-sm text-red-600">{{ planStore.error }}</p>
     </div>
 
     <SessionEditModal

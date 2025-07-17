@@ -82,15 +82,8 @@ const saveAndClose = async () => {
   errorMessage.value = ''
   try {
     const availabilityDTOs = generateAvailabilityDTOs()
-    // The store's saveAvailabilities action expects an array of AvailabilityDTO.
-    // We add a temporary ID here to match the type. Ideally, the backend
-    // would handle ID creation for new availabilities.
-    const availabilityPayload = availabilityDTOs.map((dto, idx) => ({
-      ...dto,
-      id: idx, // Temporary ID
-    }))
 
-    await studySetupStore.saveAvailabilities(availabilityPayload)
+    await studySetupStore.saveAvailabilities(availabilityDTOs)
 
     closeModalAndClearSelection()
   } catch (error) {
@@ -455,8 +448,6 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
               </div>
             </div>
           </div>
-
-          <p v-if="errorMessage" class="mt-8 text-red-500 text-center">{{ errorMessage }}</p>
         </div>
       </div>
     </div>
