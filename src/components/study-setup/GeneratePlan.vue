@@ -133,7 +133,7 @@ const enrichedStudyPlan = computed(() => {
     .slice()
     .sort((a, b) => {
       const dateComparison = a.date.localeCompare(b.date)
-      if (dateComparison !== 0) return
+      if (dateComparison !== 0) return dateComparison
       return a.start.localeCompare(b.start)
     })
 })
