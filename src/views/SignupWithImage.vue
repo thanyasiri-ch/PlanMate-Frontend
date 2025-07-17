@@ -72,7 +72,7 @@ const handleSignUp = async (customImageFile: File | null) => {
 
     signupStore.clear()
     router.push({ name: 'question' })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Sign up failed:', error.message)
     alert(`Sign up process failed: ${error.message || 'Unknown error'}`)
@@ -99,12 +99,6 @@ onMounted(() => {
 <template>
   <div v-if="!isLoading" class="signup-page">
     <div class="signup-container">
-      <div class="main-logo-container">
-        <img src="/src/assets/images/logo.png" alt="PlanMate Logo" class="main-logo" />
-      </div>
-
-      <h2>Add your profile picture</h2>
-
       <div class="profile-image-upload">
         <div class="profile-image-preview">
           <img
@@ -178,8 +172,8 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f0f2f5; /* Your original page background */
-  padding: 20px; /* Provides spacing around the signup-container */
+  background-color: #f0f2f5;
+  padding: 20px;
 }
 
 .signup-container {
@@ -188,14 +182,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: clamp(500px, 80vh, 680px);
-  justify-content: flex-start; /* Aligns flex items from the start; margin-top:auto will handle the push */
+  justify-content: flex-start;
   box-sizing: border-box;
 }
 
 h2 {
   font-size: 28px;
-  color: #333; /* Text color for "Add your profile picture" */
-  margin: 50px 0 24px; /* Increased margin below the title */
+  color: #333;
+  margin: 50px 0 24px;
   font-weight: 600;
 }
 
@@ -204,14 +198,14 @@ h2 {
   flex-direction: column;
   align-items: center;
   gap: 20px;
-  margin-bottom: 30px; /* Space below the profile image preview */
+  margin-bottom: 30px;
+  margin-top: 100px;
 }
 
 .profile-image-preview {
   width: 150px;
   height: 150px;
   border-radius: 50%;
-  background-color: #d0c9e0; /* Slightly darker placeholder background for contrast */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -226,7 +220,6 @@ h2 {
 }
 
 .profile-image-preview img[src*='placeholder'] {
-  /* Assuming 'placeholder' is in default image path */
   width: 60%;
   height: 60%;
   object-fit: contain;
@@ -234,14 +227,14 @@ h2 {
   opacity: 0.6;
 }
 
-/* This is the div that contains your action buttons */
 div.button {
-  width: 100%; /* Ensures the button container spans the width of .signup-container's content area */
-  margin-top: auto; /* This is the key change: pushes this entire div to the bottom of the flex container */
-  padding-top: 20px; /* Adds some space between the content above and the button block */
+  width: 95%;
+  margin-top: auto;
   display: flex;
-  flex-direction: column; /* Stack buttons vertically */
-  gap: 12px; /* Provides space between the "Add picture" and "Not Now" buttons */
+  flex-direction: column;
+  gap: 12px;
+  align-self: center;
+  align-items: center;
 }
 
 .add-picture-button,
@@ -249,9 +242,9 @@ div.button {
 .not-now-button,
 .change-picture-button {
   width: 100%;
-  padding: 15px;
+  padding: 10px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 18px;
   cursor: pointer;
   transition:
@@ -261,7 +254,7 @@ div.button {
 }
 
 .add-picture-button {
-  background-color: #57c490; /* A slightly different green, adjust to your preference */
+  background-color: #57c490;
   color: white;
 }
 
@@ -271,7 +264,7 @@ div.button {
 }
 
 .add-picture-button:disabled {
-  background-color: #a5d6a7; /* Lighter green when disabled */
+  background-color: #a5d6a7;
   cursor: not-allowed;
 }
 

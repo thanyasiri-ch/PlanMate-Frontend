@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '@/views/LoginView.vue'
 import SignupView from '@/views/SignupView.vue'
 import SignupWithImage from '@/views/SignupWithImage.vue'
-import QuestionaireView from '@/views/QuestionaireView.vue'
+import QuestionaireView from '@/views/QuestionnaireView.vue'
 import ProfileView from '@/views/ProfileView.vue'
 
 const router = createRouter({
@@ -10,7 +10,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/login' 
+      redirect: '/login'
     },
     {
       path: '/login',
