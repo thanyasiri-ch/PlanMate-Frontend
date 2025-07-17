@@ -1,20 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useStudyPreferencesStore } from '@/stores/studyPref'
-import StudyPreferencesForm from '@/components/StudyPreferenceForm.vue'
-import type { PreferredStudyTime, RevisionFrequency } from '@/types'
+import Slider from '@vueform/slider'
+import { cloneDeep } from 'lodash-es'
 
 const router = useRouter()
-
-/* ref */
-// == study analytics ==
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const focusStats = ref({
-  completion: '20 times',
-  duration: '26 hrs 34 mins',
-})
+const authStore = useAuthStore()
 
 const barChartData = ref([
   { month: 'Jan', value: 30 },
@@ -37,6 +29,14 @@ const pieChartData = ref([
   { label: 'AI', value: 25, time: '5 hrs 24 mins', colorClass: 'bg-emerald-400' },
 ])
 
+const isEditing = ref(false)
+const editDisplayName = ref(authStore.displayName)
+const editImageFile = ref<File | null>(null)
+const previewUrl = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+const isEditingStudyPreferences = ref(false)
+
 const currentYear = ref(2025)
 const selectedTimeRange = ref('Year')
 const timeRangeOptions = ['Day', 'Week', 'Month', 'Year']
@@ -44,16 +44,8 @@ const timeRangeOptions = ['Day', 'Week', 'Month', 'Year']
 const incrementYear = () => currentYear.value++
 const decrementYear = () => currentYear.value--
 
-// profile
-const authStore = useAuthStore()
-const isEditingProfile = ref(false)
-const editDisplayName = ref(authStore.displayName)
-const editImageFile = ref<File | null>(null)
-const previewUrl = ref<string | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
-
-const editProfile = () => {
-  isEditingProfile.value = true
+const startEditing = () => {
+  isEditing.value = true
   editDisplayName.value = authStore.displayName
   previewUrl.value = authStore.image // Set initial preview to current image
 }
@@ -61,7 +53,7 @@ const editProfile = () => {
 const saveProfile = async () => {
   try {
     await authStore.updateUserProfile(editDisplayName.value, editImageFile.value)
-    isEditingProfile.value = false
+    isEditing.value = false
     editImageFile.value = null
     previewUrl.value = null
   } catch (error) {
@@ -70,11 +62,21 @@ const saveProfile = async () => {
   }
 }
 
-const cancelEditProfile = () => {
-  isEditingProfile.value = false
+const cancelEdit = () => {
+  isEditing.value = false
   editImageFile.value = null
   previewUrl.value = null // Reset preview
 }
+
+onMounted(() => {
+  if (!authStore.user) {
+    authStore.checkAuthStatus()
+  }
+
+  if (!authStore.user) {
+    router.push({ name: 'login' })
+  }
+})
 
 const handleLogout = async () => {
   try {
@@ -83,6 +85,100 @@ const handleLogout = async () => {
   } catch (error) {
     console.error('Error logging out:', (error as Error).message)
   }
+}
+
+const studyPreferences = ref([
+  { id: 'studyTime', label: 'Preferred study times', value: 'Late night' },
+  { id: 'sessionDuration', label: 'Preferred session duration', value: '45–60 mins' },
+  { id: 'reviewStyle', label: 'Review style', value: '2–3 review sessions per topic' },
+  { id: 'breakPreference', label: 'Break preference', value: '10 minutes' },
+])
+
+const studyTimeOptions = [
+  'Early morning',
+  'Late morning',
+  'Afternoon',
+  'Evening',
+  'Night',
+  'Late night',
+]
+const selectedStudyTimes = ref(['Late night'])
+const toggleStudyTime = (time: string) => {
+  if (selectedStudyTimes.value.includes(time)) {
+    selectedStudyTimes.value = selectedStudyTimes.value.filter((t) => t !== time)
+  } else {
+    selectedStudyTimes.value.push(time)
+  }
+}
+
+const sessionDurationRange = ref<[number, number]>([45, 60])
+
+const reviewStyleOptions = [
+  'One deep review session before the exam',
+  '2–3 review sessions per topic',
+  'Daily review sessions',
+]
+const selectedReviewStyle = ref('2–3 review sessions per topic')
+
+const breakOptions = [
+  '5 minutes',
+  '10 minutes',
+  '15 minutes',
+  '20 minutes',
+  '25 minutes',
+  '30 minutes',
+]
+const selectedBreakTime = ref('10 minutes')
+
+let backupStudyPreferences: typeof studyPreferences.value
+
+watch(isEditingStudyPreferences, (val) => {
+  if (val) {
+    backupStudyPreferences = cloneDeep(studyPreferences.value)
+    const studyTime = backupStudyPreferences.find((p) => p.id === 'studyTime')?.value || ''
+    selectedStudyTimes.value = studyTime.split(', ').filter(Boolean)
+
+    const duration = backupStudyPreferences.find((p) => p.id === 'sessionDuration')?.value || ''
+    const [min, max] = duration.replace(' mins', '').split('–').map(Number)
+    sessionDurationRange.value = [min || 45, max || 60]
+
+    selectedReviewStyle.value =
+      backupStudyPreferences.find((p) => p.id === 'reviewStyle')?.value || reviewStyleOptions[0]
+
+    selectedBreakTime.value =
+      backupStudyPreferences.find((p) => p.id === 'breakPreference')?.value || breakOptions[0]
+  }
+})
+
+const saveStudyPreferences = () => {
+  studyPreferences.value = [
+    {
+      id: 'studyTime',
+      label: 'Preferred study times',
+      value: selectedStudyTimes.value.join(', ') || 'None',
+    },
+    {
+      id: 'sessionDuration',
+      label: 'Preferred session duration',
+      value: `${sessionDurationRange.value[0]}–${sessionDurationRange.value[1]} mins`,
+    },
+    {
+      id: 'reviewStyle',
+      label: 'Review style',
+      value: selectedReviewStyle.value,
+    },
+    {
+      id: 'breakPreference',
+      label: 'Break preference',
+      value: selectedBreakTime.value,
+    },
+  ]
+  isEditingStudyPreferences.value = false
+}
+
+const cancelStudyPreferencesEdit = () => {
+  studyPreferences.value = cloneDeep(backupStudyPreferences)
+  isEditingStudyPreferences.value = false
 }
 
 function triggerImageUpload() {
@@ -97,77 +193,6 @@ function handleImageChange(event: Event) {
     previewUrl.value = URL.createObjectURL(file)
   }
 }
-
-// == study pref ==
-const studyPrefStore = useStudyPreferencesStore()
-const studyFormComponent = ref<InstanceType<typeof StudyPreferencesForm> | null>(null)
-const isEditingStudyPreferences = ref(false)
-
-const triggerSave = async () => {
-  if (!studyFormComponent.value) return
-
-  // Call the method on the child component to get its data
-  const newPrefs = studyFormComponent.value.getValidatedPreferences()
-
-  if (newPrefs) {
-    // If the form data is valid, save it using the store
-    const success = await studyPrefStore.saveOrUpdatePreferences(newPrefs)
-    if (success) {
-      isEditingStudyPreferences.value = false
-    } else {
-      alert('Failed to save preferences. Please try again.')
-    }
-  } else {
-    // If the form data is invalid, alert the user
-    alert('Please complete all study preference options.')
-  }
-}
-
-const timeDisplayMap: Record<PreferredStudyTime, string> = {
-  'early morning': 'Early Morning',
-  'late morning': 'Late Morning',
-  afternoon: 'Afternoon',
-  evening: 'Evening',
-  night: 'Night',
-  'late night': 'Late Night',
-}
-
-const revisionDisplayMap: Record<RevisionFrequency, string> = {
-  'single deep review before exam': 'Single Deep Review Before Exam',
-  '2-3 reviews per topic': '2-3 Reviews Per Topic',
-  'daily review sessions': 'Daily Review Sessions',
-}
-
-const displayedPreferences = computed(() => {
-  const prefs = studyPrefStore.preferences
-  if (!prefs) return []
-  return [
-    {
-      label: 'Preferred study times',
-      value:
-        prefs.preferredStudyTimes.map((time) => timeDisplayMap[time] || time).join(', ') || 'None',
-    },
-    {
-      label: 'Preferred session duration',
-      value: `${prefs.minSessionDuration}–${prefs.maxSessionDuration} mins`,
-    },
-    {
-      label: 'Review style',
-      value: revisionDisplayMap[prefs.revisionFrequency] || prefs.revisionFrequency,
-    },
-    { label: 'Break preference', value: `${prefs.breakDurations} minutes` },
-  ]
-})
-
-onMounted(() => {
-  if (!authStore.user) {
-    authStore.checkAuthStatus()
-    router.push({ name: 'login' })
-  } else {
-    // Fetch the preferences when the page loads
-    studyPrefStore.fetchPreferences()
-  }
-})
 </script>
 <template>
   <div class="flex flex-1 h-screen bg-[#F1EFFF]">
@@ -343,7 +368,7 @@ onMounted(() => {
           <!-- Right profile section -->
           <section class="bg-white rounded-2xl p-5 flex flex-col h-full">
             <div
-              class="bg-[#F1EFFF] border-[0.5px] border-[#DCD7FF] p-5 rounded-xl text-center"
+              class="bg-[#F1EFFF] border-[0.5px] border-[#DCD7FF] p-5 rounded-xl text-center min-h-62"
               v-if="!isEditingStudyPreferences"
             >
               <div class="relative w-24 h-24 mx-auto mb-3">
@@ -356,7 +381,7 @@ onMounted(() => {
 
                 <!-- Camera icon appears only in edit mode -->
                 <button
-                  v-if="isEditingProfile"
+                  v-if="isEditing"
                   @click="triggerImageUpload"
                   class="absolute bottom-0 right-0 bg-white border border-gray-300 rounded-full shadow w-7 h-7 flex items-center justify-center"
                 >
@@ -377,7 +402,7 @@ onMounted(() => {
                 @change="handleImageChange"
               />
 
-              <div v-if="isEditingProfile">
+              <div v-if="isEditing">
                 <div class="mt-3 relative w-56 max-w-xs mx-auto">
                   <div class="relative">
                     <span
@@ -424,7 +449,7 @@ onMounted(() => {
                     Done
                   </button>
                   <button
-                    @click="cancelEditProfile"
+                    @click="cancelEdit"
                     class="px-5 py-1 bg-gray-300 text-black text-sm font-semibold rounded-4xl hover:bg-gray-400"
                   >
                     Cancel
@@ -435,8 +460,8 @@ onMounted(() => {
               <div v-else>
                 <h3 class="text-xl font-semibold text-gray-800">{{ authStore.displayName }}</h3>
                 <button
-                  @click="editProfile"
-                  class="mt-5 px-5 py-1 bg-[#FFC84A] text-black text-sm font-semibold rounded-4xl hover:bg-[#ffba4a]"
+                  @click="startEditing"
+                  class="mt-7 px-5 py-1 bg-[#FFC84A] text-black text-sm font-semibold rounded-4xl hover:bg-[#ffba4a]"
                 >
                   Edit Profile
                 </button>
@@ -446,13 +471,19 @@ onMounted(() => {
             <!-- Study Preferences (unchanged) -->
             <div class="p-4 overflow-auto flex-1">
               <div class="flex items-center justify-between">
-                <h3 class="text-md font-extrabold text-gray-700 mb-2">Study Preferences</h3>
+                <h3 class="text-md font-semibold text-gray-700 mb-1">Study Preferences</h3>
                 <button
-                  @click="isEditingStudyPreferences = true"
-                  v-if="!isEditingStudyPreferences && studyPrefStore.preferences"
-                  class="text-gray-400 hover:text-[#6D5BD0] p-1 rounded-md"
+                  class="text-gray-400 hover:text-[#6D5BD0] p-1 rounded-md hover:bg-purple-200/50 transition-colors"
+                  @click="isEditingStudyPreferences = !isEditingStudyPreferences"
+                  v-if="!isEditingStudyPreferences"
                 >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -463,50 +494,115 @@ onMounted(() => {
                 </button>
               </div>
 
-              <div v-if="isEditingStudyPreferences">
-                <StudyPreferencesForm
-                  ref="studyFormComponent"
-                  :existing-pref="studyPrefStore.preferences"
-                  layout="vertical"
-                  class="!p-0"
-                />
+              <!-- เพิ่มเมื่อกดปุ่มแก้ไข -->
+              <div v-if="!isEditingStudyPreferences">
+                <ul class="space-y-1">
+                  <li v-for="pref in studyPreferences" :key="pref.id" class="py-1">
+                    <div>
+                      <div>
+                        <h4 class="text-sm font-medium text-gray-500">{{ pref.label }}</h4>
+                        <span
+                          class="inline-block mt-1 px-2.5 py-1 bg-[#E8E6F9] text-[#6D5BD0] text-sm font-semibold border border-[#6D5BD0] rounded-full"
+                          >{{ pref.value }}</span
+                        >
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <div v-else class="space-y-4">
+                <!-- 1. Preferred study times -->
+                <div>
+                  <h4 class="text-sm font-medium text-gray-500 mb-1">Preferred study times</h4>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="time in studyTimeOptions"
+                      :key="time"
+                      @click="toggleStudyTime(time)"
+                      :class="[
+                        'px-2.5 py-1 rounded-full text-sm border',
+                        selectedStudyTimes.includes(time)
+                          ? 'bg-[#6D5BD0] text-white border-[#6D5BD0]'
+                          : 'bg-white text-[#6D5BD0] border-[#6D5BD0]',
+                      ]"
+                    >
+                      {{ time }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 2. Preferred session duration (range slider) -->
+                <div>
+                  <h4 class="text-sm font-medium text-gray-500 mb-10">
+                    Preferred session duration (minutes)
+                  </h4>
+                  <Slider
+                    v-model="sessionDurationRange"
+                    :min="30"
+                    :max="90"
+                    :step="15"
+                    :range="true"
+                    :tooltips="true"
+                    class="!w-full !text-[#6D5BD0]"
+                  />
+                </div>
+
+                <!-- 3. Review style -->
+                <div>
+                  <h4 class="text-sm font-medium text-gray-500 mb-1">Review style</h4>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="style in reviewStyleOptions"
+                      :key="style"
+                      @click="selectedReviewStyle = style"
+                      :class="[
+                        'px-2.5 py-1 rounded-full text-sm border',
+                        selectedReviewStyle === style
+                          ? 'bg-[#6D5BD0] text-white border-[#6D5BD0]'
+                          : 'bg-white text-[#6D5BD0] border-[#6D5BD0]',
+                      ]"
+                    >
+                      {{ style }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 4. Break preference -->
+                <div>
+                  <h4 class="text-sm font-medium text-gray-500 mb-1">Break preference</h4>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="breakTime in breakOptions"
+                      :key="breakTime"
+                      @click="selectedBreakTime = breakTime"
+                      :class="[
+                        'px-2.5 py-1 rounded-full text-sm border',
+                        selectedBreakTime === breakTime
+                          ? 'bg-[#6D5BD0] text-white border-[#6D5BD0]'
+                          : 'bg-white text-[#6D5BD0] border-[#6D5BD0]',
+                      ]"
+                    >
+                      {{ breakTime }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- DONE BUTTON -->
                 <div class="mt-10 flex justify-center gap-2">
                   <button
-                    @click="triggerSave"
+                    @click="saveStudyPreferences"
                     class="px-5 py-1 bg-[#57C490] text-white text-sm font-semibold rounded-4xl hover:bg-[#3EB37B]"
                   >
                     Done
                   </button>
                   <button
-                    @click="isEditingStudyPreferences = false"
+                    @click="cancelStudyPreferencesEdit"
                     class="px-5 py-1 bg-gray-300 text-black text-sm font-semibold rounded-4xl hover:bg-gray-400"
                   >
                     Cancel
                   </button>
                 </div>
-              </div>
-
-              <div v-else-if="studyPrefStore.preferences">
-                <ul class="space-y-1">
-                  <li v-for="pref in displayedPreferences" :key="pref.label" class="py-1">
-                    <h4 class="text-sm font-medium text-gray-500">{{ pref.label }}</h4>
-                    <span
-                      class="inline-block mt-1 px-2.5 py-1 bg-[#E8E6F9] text-[#6D5BD0] text-sm font-semibold border border-[#6D5BD0] rounded-full"
-                    >
-                      {{ pref.value }}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              <div v-else class="text-center mt-4">
-                <p class="text-gray-500 mb-4">You haven't set your study preferences yet.</p>
-                <button
-                  @click="router.push({ name: 'question' })"
-                  class="px-5 py-2 bg-[#FFC84A] text-black text-sm font-semibold rounded-full hover:bg-[#ffba4a]"
-                >
-                  Set Preferences
-                </button>
               </div>
             </div>
 
