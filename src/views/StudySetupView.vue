@@ -77,7 +77,7 @@ provide('stepNavigator', {
         <button
           @click="nextStep"
           :disabled="subStepIndex >= steps.length - 1"
-          class="px-6 py-2 text-white font-semibold bg-[#57C490] rounded-full shadow-md transition-colors hover:bg-[#589778] focus:outline-none disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
+          class="px-6 py-2 text-white font-semibold bg-[#3CBC6F] rounded-full shadow-md transition-colors focus:outline-none disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
         >
           Next
         </button>

@@ -4,12 +4,12 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background-color: #766BDE;
+  background-color: #7486FB;
 }
 
 /* Left Panel Styling */
 .left-panel {
-  background-color: #766BDE; /* This was #f0f2f9 in previous good versions, you might want to revert this */
+  background-color: #7486FB; /* This was #f0f2f9 in previous good versions, you might want to revert this */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -68,7 +68,7 @@
   padding: 12px 15px;
   border: none;
   border-radius: 25px;
-  background-color: #544BAA;
+  background-color: #4454C0;
   color: #ffffff;
   font-size: 16px;
   box-sizing: border-box;
@@ -102,7 +102,7 @@
 }
 
 .primary-button {
-  background-color: #FFC54D;
+  background-color: #FBCC69;
   color: #333333;
   margin: 35px 0 15px 0;
 }

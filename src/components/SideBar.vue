@@ -1,6 +1,6 @@
 <template>
   <aside
-    class="group w-20 lg:w-60 bg-[#544BAA] text-white p-4 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out"
+    class="group w-20 lg:w-60 bg-[#566BF3] text-white p-4 flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out"
   >
     <div class="flex items-center gap-3 mb-10 shrink-0">
       <img src="/src/assets/images/logo-authenticated.png" alt="Logo" class="h-10" />
@@ -19,7 +19,7 @@
             :class="[
               'flex items-center gap-4 p-3 rounded-lg',
               isActive
-                ? 'bg-[#423C9A] font-semibold'
+                ? 'bg-[#4454C0] font-semibold'
                 : 'hover:bg-white/10',
             ]"
             title="Term"
@@ -39,7 +39,7 @@
             :class="[
               'flex items-center gap-4 p-3 rounded-lg',
               isActive
-                ? 'bg-[#423C9A] font-semibold'
+                ? 'bg-[#4454C0] font-semibold'
                 : 'hover:bg-white/10',
             ]"
             title="Course"
@@ -56,7 +56,7 @@
             :class="[
               'flex items-center gap-4 p-3 rounded-lg',
               isActive
-                ? 'bg-[#423C9A] font-semibold'
+                ? 'bg-[#4454C0] font-semibold'
                 : 'hover:bg-white/10',
             ]"
             title="Topic"
@@ -73,7 +73,7 @@
             :class="[
               'flex items-center gap-4 p-3 rounded-lg',
               isActive
-                ? 'bg-[#423C9A] font-semibold'
+                ? 'bg-[#4454C0] font-semibold'
                 : 'hover:bg-white/10',
             ]"
             title="Availability"
@@ -90,7 +90,7 @@
             :class="[
               'flex items-center gap-4 p-3 rounded-lg',
               isActive
-                ? 'bg-[#423C9A] font-semibold'
+                ? 'bg-[#4454C0] font-semibold'
                 : 'hover:bg-white/10',
             ]"
             title="Generate Plan"
@@ -111,7 +111,7 @@
             :class="[
               'flex items-center gap-4 p-3 rounded-lg',
               isActive
-                ? 'bg-[#423C9A] font-semibold'
+                ? 'bg-[#4454C0] font-semibold'
                 : 'hover:bg-white/10',
             ]"
             title="Plan"

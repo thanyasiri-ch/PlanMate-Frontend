@@ -283,7 +283,7 @@ watchEffect(() => {
                 :class="[
                   'py-1 px-6 rounded-full text-sm',
                   selectedExamType === ExamType.MIDTERM
-                    ? 'bg-[#FFC84A] text-[#2F2159] shadow font-bold'
+                    ? 'bg-[#FBCC69] text-[#2F2159] shadow font-bold'
                     : 'bg-[#FFF1D1] text-[#A3A3A3] font-md',
                 ]"
               >
@@ -294,7 +294,7 @@ watchEffect(() => {
                 :class="[
                   'py-1 px-6 rounded-full text-sm',
                   selectedExamType === ExamType.FINAL
-                    ? 'bg-[#FFC84A] text-[#2F2159] shadow font-bold'
+                    ? 'bg-[#FBCC69] text-[#2F2159] shadow font-bold'
                     : 'bg-[#FFF1D1] text-[#A3A3A3] font-md',
                 ]"
               >
@@ -374,10 +374,10 @@ watchEffect(() => {
 
             <div
               v-if="selectedExamDetails"
-              class="p-2 rounded-xl bg-yellow-100 border border-yellow-300 mb-4 text-gray-800"
+              class="p-2 rounded-xl bg-[#fbcd6957] border border-[#FBCC69] mb-4 text-gray-800"
             >
               <div v-if="!isEditing" class="flex items-center gap-4">
-                <div class="flex items-center justify-center w-8 h-8 bg-yellow-200 rounded-full">
+                <div class="flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-5 w-5 text-yellow-700"
@@ -448,7 +448,7 @@ watchEffect(() => {
               <div
                 v-for="topic in filteredTopics"
                 :key="topic.id"
-                class="bg-purple-50 rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
+                class="bg-[#e2ecffa6] rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
               >
                 <div class="col-span-4">
                   <input
@@ -467,7 +467,7 @@ watchEffect(() => {
                       :class="[
                         'w-5 h-5',
                         isEditing ? 'cursor-pointer' : '',
-                        i <= topic.difficulty ? 'text-[#FFC84A]' : 'text-[#FFC84A] opacity-[.4]',
+                        i <= topic.difficulty ? 'text-[#FBCC69]' : 'text-[#FBCC69] opacity-[.4]',
                       ]"
                       fill="currentColor"
                       viewBox="0 0 20 20"
@@ -485,7 +485,7 @@ watchEffect(() => {
                       :class="[
                         'w-5 h-5',
                         isEditing ? 'cursor-pointer' : '',
-                        i <= topic.confidence ? 'text-[#FFC84A]' : 'text-[#FFC84A] opacity-[.4]',
+                        i <= topic.confidence ? 'text-[#FBCC69]' : 'text-[#FBCC69] opacity-[.4]',
                       ]"
                       fill="currentColor"
                       viewBox="0 0 20 20"
@@ -533,11 +533,11 @@ watchEffect(() => {
 
               <div
                 v-if="isEditing"
-                class="bg-purple-50 p-4 rounded-lg space-y-3 mt-2 hover:opacity-75"
+                class="bg-[#e2ecffa6] p-4 rounded-lg space-y-3 mt-2 hover:opacity-75"
               >
                 <button
                   @click="addTopic"
-                  class="text-[#5856D6] px-3 py-1 text-md font-bold rounded-lg"
+                  class="text-[#4454C0] px-3 py-1 text-md font-bold rounded-lg"
                 >
                   + Add Topic
                 </button>
@@ -549,7 +549,7 @@ watchEffect(() => {
             <div>
               <div
                 v-if="isEditing || filteredAssignments.length > 0"
-                class="inline-block bg-[#FFC84A] text-[#2F2159] font-semibold py-1 px-4 rounded-full text-sm mb-4"
+                class="inline-block bg-[#FBCC69] text-[#2F2159] font-semibold py-1 px-4 rounded-full text-sm mb-4"
               >
                 Assignment
               </div>
@@ -570,7 +570,7 @@ watchEffect(() => {
                 <div
                   v-for="assignment in filteredAssignments"
                   :key="assignment.id"
-                  class="bg-purple-50 rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
+                  class="bg-[#e2ecffa6] rounded-lg p-4 grid grid-cols-12 gap-4 items-center"
                 >
                   <div class="col-span-1 flex justify-start">
                     <span
@@ -596,7 +596,7 @@ watchEffect(() => {
                     <span
                       v-else
                       @click="isEditing && (assignment.completed = true)"
-                      class="h-6 w-6 rounded-full bg-[#FFC84A]"
+                      class="h-6 w-6 rounded-full bg-[#FBCC69]"
                       :class="[isEditing ? 'cursor-pointer' : '']"
                     ></span>
                   </div>
@@ -637,7 +637,7 @@ watchEffect(() => {
                       <span
                         v-for="(topicName, index) in getAssociatedTopicNames(assignment)"
                         :key="assignment.associatedTopicIds[index]"
-                        class="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full font-medium"
+                        class="text-xs bg-[#7486fb38] text-[#5668e0] px-2 py-1 rounded-full font-medium"
                       >
                         {{ topicName }}
                       </span>
@@ -698,11 +698,11 @@ watchEffect(() => {
                 </div>
                 <div
                   v-if="isEditing"
-                  class="bg-purple-50 p-4 rounded-lg space-y-3 mt-2 hover:opacity-75"
+                  class="bg-[#e2ecffa6] p-4 rounded-lg space-y-3 mt-2 hover:opacity-75"
                 >
                   <button
                     @click="addAssignment"
-                    class="text-[#5856D6] px-3 py-1 text-md font-bold rounded-lg"
+                    class="text-[#4454C0] px-3 py-1 text-md font-bold rounded-lg"
                   >
                     + Add Assignment
                   </button>
@@ -726,7 +726,7 @@ watchEffect(() => {
           </p>
           <router-link
             to="/study-setup/term"
-            class="mt-6 inline-block px-6 py-2 text-sm font-semibold text-black bg-[#FFC84A] rounded-full shadow-md hover:bg-[#fbc331]"
+            class="mt-6 inline-block px-6 py-2 text-sm font-semibold text-black bg-[#FBCC69] rounded-full shadow-md hover:bg-[#fbc331]"
           >
             Go to Course Setup
           </router-link>

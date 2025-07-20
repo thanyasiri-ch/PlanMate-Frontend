@@ -114,8 +114,8 @@ export default {
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm' /* Added text-sm for consistency if text-small is on parent */,
               selectedPreferredStudyTimes.includes(time)
-                ? 'bg-[#766BDE] text-white border-[#766BDE]'
-                : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
+                ? 'bg-[#7486FB] text-white border-[#7486FB]'
+                : 'bg-white text-[#7486FB] border-[#7486FB] hover:bg-gray-100',
             ]"
           >
             {{ time }}
@@ -156,8 +156,8 @@ export default {
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm',
               selectedRevisionFrequency === frequency
-                ? 'bg-[#766BDE] text-white border-[#766BDE]'
-                : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
+                ? 'bg-[#7486FB] text-white border-[#7486FB]'
+                : 'bg-white text-[#7486FB] border-[#7486FB] hover:bg-gray-100',
             ]"
           >
             {{ frequency }}
@@ -177,8 +177,8 @@ export default {
             :class="[
               'px-3 py-1 rounded-full border transition-colors duration-150 ease-in-out text-sm',
               selectedBreakDuration === duration
-                ? 'bg-[#766BDE] text-white border-[#766BDE]'
-                : 'bg-white text-[#766BDE] border-[#766BDE] hover:bg-gray-100',
+                ? 'bg-[#7486FB] text-white border-[#7486FB]'
+                : 'bg-white text-[#7486FB] border-[#7486FB] hover:bg-gray-100',
             ]"
           >
             {{ duration }} minutes

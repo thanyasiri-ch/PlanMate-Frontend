@@ -21,12 +21,11 @@ const currentSelectedStartMinute = ref<string>('00') // Default start minute
 const currentSelectedEndHour = ref<string>('17') // Default end hour
 const currentSelectedEndMinute = ref<string>('00') // Default end minute
 
-
 const isDateInPast = (dateStr: string): boolean => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Set time to midnight to compare dates accurately
-  const dateToCompare = new Date(dateStr + 'T00:00:00');
-  return dateToCompare < today;
+  const today = new Date()
+  today.setHours(0, 0, 0, 0) // Set time to midnight to compare dates accurately
+  const dateToCompare = new Date(dateStr + 'T00:00:00')
+  return dateToCompare < today
 }
 
 onMounted(async () => {
@@ -212,7 +211,11 @@ const isDateSelected = (dateStr: string): boolean => {
 }
 
 // Toggle date selection on calendar click
-const toggleDateSelection = (day: { dateStr: string, isCurrentMonth: boolean, isPast: boolean }) => {
+const toggleDateSelection = (day: {
+  dateStr: string
+  isCurrentMonth: boolean
+  isPast: boolean
+}) => {
   if (!day.isCurrentMonth || day.isPast) return // Prevent selecting past or non-current-month dates
 
   const index = selectedDates.value.indexOf(day.dateStr)
@@ -354,7 +357,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
             <div class="flex items-center justify-between mb-3">
               <button
                 @click="previousMonth"
-                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FFC84A] text-gray-700 rounded-full shadow hover:shadow-md transition font-medium"
+                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FBCC69] text-gray-700 rounded-full shadow hover:shadow-md transition font-medium"
               >
                 <div class="flex items-center justify-center">
                   <svg
@@ -372,7 +375,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
               <h3 class="text-2xl font-bold">{{ monthYear }}</h3>
               <button
                 @click="nextMonth"
-                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FFC84A] text-gray-700 rounded-full shadow hover:shadow-md transition font-medium"
+                class="flex items-center justify-center gap-2 px-3 py-1 bg-[#FBCC69] text-gray-700 rounded-full shadow hover:shadow-md transition font-medium"
               >
                 <div class="flex items-center justify-center">
                   <span>{{ nextMonthName }}</span>
@@ -394,7 +397,7 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
                 <div
                   v-for="day in weekDays"
                   :key="day"
-                  class="p-2 font-semibold text-white bg-[#8A98DD] text-sm sm:text-base rounded-t-md shadow-sm"
+                  class="p-2 font-semibold text-white bg-[#7486FB] text-sm sm:text-base rounded-t-md shadow-sm"
                 >
                   {{ day }}
                 </div>
@@ -403,24 +406,29 @@ const getRangesOfFirstSelectedDate = computed<string[]>(() => {
                   :key="day.dateStr"
                   class="h-17 border-gray-200 cursor-pointer transition-colors duration-150 ease-in-out flex flex-col p-2"
                   :class="[
-                    { 'bg-gray-100 text-gray-400 cursor-not-allowed': day.isPast && day.isCurrentMonth },
-                    { 'bg-gray-50 text-gray-400 cursor-not-allowed': !day.isCurrentMonth },,
+                    {
+                      'bg-gray-100 text-gray-400 cursor-not-allowed':
+                        day.isPast && day.isCurrentMonth,
+                    },
+                    { 'bg-gray-50 text-gray-400 cursor-not-allowed': !day.isCurrentMonth },
+                    ,
                     {
                       'bg-[#facdd4]/50 hover:bg-[#facdd4]':
                         hasAvailability(day.dateStr) &&
                         day.isCurrentMonth &&
                         !isDateSelected(day.dateStr) &&
-                        !day.isPast
+                        !day.isPast,
                     },
                     {
-                      'bg-[#8A98DD]/30  hover:bg-[#8A98DD]/80':
+                      'bg-[#E2ECFF]/80 hover:bg-[#7486FB]/40':
                         !hasAvailability(day.dateStr) &&
                         day.isCurrentMonth &&
                         !isDateSelected(day.dateStr) &&
-                        !day.isPast
+                        !day.isPast,
                     },
                     {
-                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]': isDateSelected(day.dateStr) && !day.isPast, // Highlight selected dates
+                      'bg-[#DCD7FF] ring-2 ring-[#a598fb]':
+                        isDateSelected(day.dateStr) && !day.isPast, // Highlight selected dates
                     },
                   ]"
                   @click="toggleDateSelection(day)"

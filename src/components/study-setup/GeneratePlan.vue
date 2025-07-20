@@ -218,7 +218,7 @@ const groupedStudyPlan = computed(() => {
           <button
             v-if="planStore.isNewPlan"
             @click="handleAcceptAndSave"
-            class="px-4 py-2 bg-[#FFC84A] rounded-2xl text-sm font-bold text-gray-700 hover:bg-[#ffa51f]"
+            class="px-4 py-2 bg-[#FBCC69] rounded-2xl text-sm font-bold text-gray-700 hover:bg-[#ffa51f]"
           >
             Accept & Save Plan
           </button>
@@ -237,7 +237,7 @@ const groupedStudyPlan = computed(() => {
           <div class="space-y-6">
             <div v-for="(sessions, date) in groupedStudyPlan" :key="date">
               <h3
-                class="font-semibold text-yellow-700 pl-5 py-1 border-b rounded-t-lg bg-yellow-200 border-yellow-700"
+                class="font-semibold text-yellow-700 pl-5 py-1 border-b rounded-t-lg bg-[#FBCC69]/30 border-yellow-700"
               >
                 {{ new Date(date + 'T00:00:00').toDateString() }}
               </h3>
@@ -275,7 +275,7 @@ const groupedStudyPlan = computed(() => {
                     class="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 shadow-sm"
                   >
                     <div class="text-center w-24">
-                      <div class="text-sm text-indigo-600 font-medium">
+                      <div class="text-sm text-[#7486FB] font-medium">
                         {{ item.start }} - {{ item.end }}
                       </div>
                       <div class="text-xs text-gray-400 mt-1">{{ item.duration }} mins</div>
@@ -300,7 +300,7 @@ const groupedStudyPlan = computed(() => {
                     <div class="flex gap-2">
                       <button
                         @click="openEditModal(item)"
-                        class="text-gray-500 hover:text-gray-600 transition-colors"
+                        class="text-[#4454C0]/70 hover:text-[#4454C0]/80 transition-colors"
                         title="Edit Session"
                       >
                         <svg
@@ -355,7 +355,7 @@ const groupedStudyPlan = computed(() => {
             <div
               v-for="item in enrichedUnscheduledPlan"
               :key="item.sessionId"
-              class="p-3 rounded-lg border bg-yellow-50 border-yellow-200"
+              class="p-3 rounded-lg border bg-[#FBCC69]/50 border-[#FBCC69]"
             >
               <p class="font-semibold text-gray-800">{{ item.topicName || item.assignmentName }}</p>
               <p class="text-sm text-gray-500">
@@ -389,7 +389,7 @@ const groupedStudyPlan = computed(() => {
       <button
         @click="handleGenratePlan"
         :disabled="planStore.isLoading"
-        class="mt-6 px-6 py-3 bg-indigo-600 rounded-lg text-base font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+        class="mt-6 px-6 py-3 bg-[#7486FB] rounded-lg text-base font-semibold text-white hover:bg-[#6977D3] disabled:opacity-50"
       >
         <span v-if="planStore.isLoading">Generating Your Plan...</span>
         <span v-else>Generate My Study Plan</span>

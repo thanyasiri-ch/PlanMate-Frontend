@@ -188,7 +188,7 @@ async function removeCourse(index: number) {
         @click="isTermEditing ? stepNavigator?.activateStep('term') : null"
         class="bg-white rounded-2xl p-6 sm:p-8 transition-all duration-300 border-2"
         :class="{
-          'border-[#5856D6]': stepNavigator?.subStepIndex.value === 0,
+          'border-[#4454C0]': stepNavigator?.subStepIndex.value === 0,
           'border-transparent': stepNavigator?.subStepIndex.value !== 0,
           'cursor-pointer': isTermEditing,
           'cursor-default': !isTermEditing,
@@ -231,7 +231,7 @@ async function removeCourse(index: number) {
               v-else
               @click.stop="enterTermEditMode"
               type="button"
-              class="text-gray-500 hover:text-[#5856D6] p-2 rounded-full hover:bg-purple-100"
+              class="text-gray-500 hover:text-[#4454C0] p-2 rounded-full hover:bg-blue-100"
               title="Edit Term"
             >
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -254,7 +254,7 @@ async function removeCourse(index: number) {
                 type="text"
                 id="term"
                 v-model="localTerm.name"
-                class="w-full h-10 border bg-[#F1EFFF] text-[#5856D6] font-semibold rounded-xl focus:outline-none sm:text-sm px-3 transition-colors disabled:border-transparent disabled:cursor-not-allowed"
+                class="w-full h-10 border bg-[#7486fb15] text-[#4454C0] font-semibold rounded-xl focus:outline-none sm:text-sm px-3 transition-colors disabled:border-transparent disabled:cursor-not-allowed"
                 placeholder="e.g., 1/2025"
                 required
                 :disabled="!isTermEditing"
@@ -268,7 +268,7 @@ async function removeCourse(index: number) {
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
-                    class="w-5 h-5 text-[#5856D6]"
+                    class="w-5 h-5 text-[#4454C0]"
                     :class="{ 'opacity-50': !isTermEditing }"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -286,13 +286,13 @@ async function removeCourse(index: number) {
                   type="date"
                   id="start-date"
                   v-model="localTerm.startDate"
-                  class="block w-full h-10 pl-10 pr-3 py-2 border bg-[#F1EFFF] font-semibold rounded-xl focus:outline-none sm:text-sm transition-colors disabled:border-transparent disabled:cursor-not-allowed"
+                  class="block w-full h-10 pl-10 pr-3 py-2 border bg-[#7486fb15] font-semibold rounded-xl focus:outline-none sm:text-sm transition-colors disabled:border-transparent disabled:cursor-not-allowed"
                   :class="[
                     {
                       'text-gray-400': !localTerm.startDate,
-                      'text-[#5856D6]': localTerm.startDate,
+                      'text-[#4454C0]': localTerm.startDate,
                     },
-                    isTermEditing ? 'border-[#5856D6]' : 'border-transparent',
+                    isTermEditing ? 'border-[#4454C0]' : 'border-transparent',
                   ]"
                   :disabled="!isTermEditing"
                 />
@@ -306,7 +306,7 @@ async function removeCourse(index: number) {
               <div class="relative">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
-                    class="w-5 h-5 text-[#5856D6]"
+                    class="w-5 h-5 text-[#4454C0]"
                     :class="{ 'opacity-50': !isTermEditing }"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -324,10 +324,10 @@ async function removeCourse(index: number) {
                   type="date"
                   id="end-date"
                   v-model="localTerm.endDate"
-                  class="block w-full h-10 pl-10 pr-3 py-2 border bg-[#F1EFFF] font-semibold rounded-xl focus:outline-none sm:text-sm transition-colors disabled:border-transparent disabled:cursor-not-allowed"
+                  class="block w-full h-10 pl-10 pr-3 py-2 border bg-[#7486fb15] font-semibold rounded-xl focus:outline-none sm:text-sm transition-colors disabled:border-transparent disabled:cursor-not-allowed"
                   :class="[
-                    { 'text-gray-400': !localTerm.endDate, 'text-[#5856D6]': localTerm.endDate },
-                    isTermEditing ? 'border-[#5856D6]' : 'border-transparent',
+                    { 'text-gray-400': !localTerm.endDate, 'text-[#4454C0]': localTerm.endDate },
+                    isTermEditing ? 'border-[#4454C0]' : 'border-transparent',
                   ]"
                   :disabled="!isTermEditing"
                 />
@@ -341,7 +341,7 @@ async function removeCourse(index: number) {
         @click="isCoursesEditing ? stepNavigator?.activateStep('course') : null"
         class="flex-1 overflow-hidden bg-white rounded-2xl p-6 sm:p-8 flex flex-col transition-all duration-300 border-2"
         :class="{
-          'border-[#5856D6]': stepNavigator?.subStepIndex.value === 1,
+          'border-[#4454C0]': stepNavigator?.subStepIndex.value === 1,
           'border-transparent': stepNavigator?.subStepIndex.value !== 1,
           'cursor-pointer': isCoursesEditing,
           'cursor-default': !isCoursesEditing,
@@ -384,7 +384,7 @@ async function removeCourse(index: number) {
             v-else
             @click.stop="enterCoursesEditMode"
             type="button"
-            class="text-gray-500 hover:text-[#5856D6] p-2 rounded-full hover:bg-purple-100"
+            class="text-gray-500 hover:text-[#4454C0] p-2 rounded-full hover:bg-purple-100"
             title="Edit Courses"
           >
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -412,21 +412,21 @@ async function removeCourse(index: number) {
             <input
               v-model="c.courseCode"
               type="text"
-              class="col-span-3 h-8 px-3 border border-[#5856D6] bg-[#F1EFFF] text-[#5856D6] font-semibold rounded-xl focus:outline-none sm:text-sm disabled:border-transparent disabled:cursor-not-allowed"
+              class="col-span-3 h-8 px-3 border border-[#4454C0] bg-[#7486fb15] text-[#4454C0] font-semibold rounded-xl focus:outline-none sm:text-sm disabled:border-transparent disabled:cursor-not-allowed"
               placeholder="e.g. CS101"
               :disabled="!isCoursesEditing"
             />
             <input
               v-model="c.name"
               type="text"
-              class="col-span-6 h-8 px-3 border border-[#5856D6] bg-[#F1EFFF] text-[#5856D6] font-semibold rounded-xl focus:outline-none sm:text-sm disabled:border-transparent disabled:cursor-not-allowed"
+              class="col-span-6 h-8 px-3 border border-[#4454C0] bg-[#7486fb15] text-[#4454C0] font-semibold rounded-xl focus:outline-none sm:text-sm disabled:border-transparent disabled:cursor-not-allowed"
               placeholder="e.g. Computer Science"
               :disabled="!isCoursesEditing"
             />
             <input
               v-model.number="c.credit"
               type="number"
-              class="col-span-2 h-8 px-3 border border-[#5856D6] bg-[#F1EFFF] text-[#5856D6] font-semibold rounded-xl focus:outline-none sm:text-sm d disabled:border-transparent disabled:cursor-not-allowed"
+              class="col-span-2 h-8 px-3 border border-[#4454C0] bg-[#7486fb15] text-[#4454C0] font-semibold rounded-xl focus:outline-none sm:text-sm d disabled:border-transparent disabled:cursor-not-allowed"
               placeholder="e.g. 3"
               :disabled="!isCoursesEditing"
             />
@@ -460,7 +460,7 @@ async function removeCourse(index: number) {
           <button
             @click="addCourse"
             type="button"
-            class="inline-flex items-center gap-2 px-4 py-1 bg-[#5856D6] text-white font-bold rounded-xl shadow-md hover:bg-[#4b49b4] transition-colors"
+            class="inline-flex items-center gap-2 px-4 py-1 bg-[#7486FB] text-white font-bold rounded-xl shadow-md hover:bg-[#6977D3] transition-colors"
           >
             <svg
               class="w-5 h-5"

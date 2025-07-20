@@ -9,7 +9,7 @@ export type PreferredStudyTime =
 
 export type RevisionFrequency =
   | 'single deep review before exam'
-  | '2-3 reviews per topic'
+  | '2-3 reviews sessions per topic'
   | 'daily review sessions'
 
 export type BreakDuration = 5 | 10 | 15 | 20 | 25 | 30
