@@ -10,6 +10,7 @@ import CourseDetailsSetup from '@/components/study-setup/CoursDetails.vue'
 import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
 import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
 import PlanView from '@/views/PlanView.vue'
+import GroupView from '@/views/GroupView.vue'
 import nProgress from 'nprogress'
 
 const router = createRouter({
@@ -60,6 +61,11 @@ const router = createRouter({
       path: '/plan',
       name: 'plan',
       component: PlanView,
+    },
+    {
+      path: '/group',
+      name: 'group',
+      component: GroupView,
     }
   ],
 })
