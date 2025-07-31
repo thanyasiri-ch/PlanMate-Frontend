@@ -1,61 +1,35 @@
 <script setup lang="ts">
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useGroupStore } from '@/stores/useGroupStore'
 
 const joinCode = ref('')
-const isLoading = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
+const groupStore = useGroupStore()
+
+onMounted(() => {
+  groupStore.fetchGroup()
+})
 
 const handleJoinGroup = async () => {
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  // ตรวจสอบว่ามีการใส่ join code และเป็นตัวเลข 6 หลัก
-  const codePattern = /^\d{6}$/
+  // Validate join code format (6-digit numeric)
+  const codePattern = /^[A-Za-z0-9]{6}$/
   if (!codePattern.test(joinCode.value)) {
-    errorMessage.value = 'Invalid join code. Please enter 6-digit numeric code.'
+    groupStore.error = 'Invalid join code. Please enter 6-digit numeric code.'
     return
   }
 
-  isLoading.value = true
-  try {
-    // ส่ง join code ไปยัง backend API
-    const response = await fetch('/api/join-group', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ joinCode: joinCode.value }),
-    })
-
-    if (!response.ok) {
-      if (response.status === 400) {
-        // A1: Invalid join code
-        errorMessage.value = 'Invalid join code. Please try again.'
-      } else {
-        // E1: Network or unknown issue
-        errorMessage.value = 'Network issue. Please try again.'
-      }
-      return
-    }
-
-    const data = await response.json()
-    successMessage.value = 'Successfully joined the group: ' + data.groupName
-
-    // groupInfo.value = data.group
-  } catch (error) {
-    // E1: Network error
-    errorMessage.value = 'Network issue. Please try again.'
-  } finally {
-    isLoading.value = false
-  }
+  await groupStore.joinGroup(joinCode.value)
 }
 
-const groupInfo = ref({
-  name: 'UI Study Buddies',
-  image: 'https://i.pravatar.cc/150?img=56',
-  members: 7,
+const groupInfo = computed(() => {
+  const g = groupStore.group
+  return g
+    ? {
+        name: g.name,
+        image: g.imageUrl,
+        members: g.members.length,
+      }
+    : null
 })
 </script>
 <template>
@@ -72,20 +46,20 @@ const groupInfo = ref({
               type="text"
               placeholder="Enter group code..."
               maxlength="6"
-              class="flex-1 bg-transparent outline-none text-gray-700 placeholder-gray-400 rounded-full"
+              class="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder-gray-400 rounded-full"
             />
 
             <button
               @click="handleJoinGroup"
-              :disabled="isLoading"
+              :disabled="groupStore.isLoading"
               class="ml-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-semibold px-4 py-2 rounded-full transition duration-200"
             >
-              {{ isLoading ? 'Joining...' : 'Join' }}
+              {{ groupStore.isLoading ? 'Joining...' : 'Join' }}
             </button>
           </div>
-          <!-- Message -->
-          <p v-if="errorMessage" class="text-red-500 mt-2">{{ errorMessage }}</p>
-          <p v-if="successMessage" class="text-green-600 mt-2">{{ successMessage }}</p>
+          <!-- Success/Error Messages -->
+          <p v-if="groupStore.error" class="text-red-500 mt-2">{{ groupStore.error }}</p>
+          <p v-if="groupStore.success" class="text-green-600 mt-2">{{ groupStore.success }}</p>
 
           <!-- Group Info Section -->
           <div v-if="groupInfo" class="mt-5 flex items-center border-b border-gray-300 pb-2">
