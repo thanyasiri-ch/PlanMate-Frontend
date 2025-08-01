@@ -6,7 +6,7 @@ import type { StudyGroupResponseDTO } from '@/types'
 import { groupService } from '@/services/GroupService'
 
 export const useGroupStore = defineStore('group', () => {
-  const group = ref<StudyGroupResponseDTO | null>(null)
+  const groups = ref<StudyGroupResponseDTO[]>([])
   const isLoading = ref(false)
   const error = ref('')
   const success = ref('')
@@ -16,10 +16,10 @@ export const useGroupStore = defineStore('group', () => {
     error.value = ''
     try {
       const res = await groupService.getGroup()
-      group.value = res.data
+      groups.value = res.data
     } catch (err) {
-      error.value = 'Failed to fetch group.'
-      group.value = null
+      error.value = 'Failed to fetch groups.'
+      groups.value = []
     } finally {
       isLoading.value = false
     }
@@ -63,7 +63,7 @@ export const useGroupStore = defineStore('group', () => {
   }
 
   return {
-    group,
+    groups,
     isLoading,
     error,
     success,

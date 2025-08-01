@@ -2,10 +2,13 @@
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useGroupStore } from '@/stores/useGroupStore'
-import CreateGroup from '/src/components/CreateGroup.vue'
+import CreateGroup from '@/components/CreateGroup.vue'
+import { uploadImageToFirebase } from '@/firebase/uploadImageToFirebase'
 
 const joinCode = ref('')
 const groupStore = useGroupStore()
+const isCreateModalOpen = ref(false)
+const groups = computed(() => groupStore.groups)
 
 onMounted(() => {
   groupStore.fetchGroup()
@@ -22,22 +25,22 @@ const handleJoinGroup = async () => {
   await groupStore.joinGroup(joinCode.value)
 }
 
-const groupInfo = computed(() => {
-  const g = groupStore.group
-  return g
-    ? {
-        name: g.name,
-        image: g.imageUrl,
-        members: g.members.length,
-      }
-    : null
-})
+const handleGroupSubmit = async (payload: { name: string; image: File | null }) => {
+  try {
+    let imageUrl = ''
+    if (payload.image) {
+      console.log('Uploading file:', payload.image)
+      imageUrl = await uploadImageToFirebase(payload.image)
+      console.log('Image uploaded successfully:', imageUrl)
+    }
 
-const isCreateModalOpen = ref(false)
-
-const handleGroupSubmit = (payload: { name: string; image: File | null }) => {
-  console.log('Creating group...', payload)
-  // TODO: เชื่อมกับ groupStore.createGroup() หรือ API อื่น ๆ
+    await groupStore.createGroup({
+      groupName: payload.name,
+      imageUrl,
+    })
+  } catch (e) {
+    console.error('Group creation failed:', e)
+  }
 }
 </script>
 <template>
@@ -87,19 +90,36 @@ const handleGroupSubmit = (payload: { name: string; image: File | null }) => {
               </button>
             </div>
 
-            <!-- Group Info Section -->
-            <div v-if="groupInfo" class="mt-5 flex items-center border-b border-gray-300 pb-2">
-              <!-- Group Image -->
-              <img
-                :src="groupInfo.image"
-                alt="Group Avatar"
-                class="w-10 h-10 rounded-full mr-4 object-cover border-2 border-indigo-300"
-              />
+            <!-- Group List -->
+            <div class="flex-1 overflow-y-auto pr-1">
+              <!-- Loading State -->
+              <div v-if="groupStore.isLoading" class="text-center text-gray-500 text-sm py-4">
+                Loading groups...
+              </div>
 
-              <!-- Group Info -->
-              <div class="flex-1">
-                <p class="text-gray-800 font-medium text-base">{{ groupInfo.name }}</p>
-                <p class="text-gray-500 text-sm">{{ groupInfo.members }} members</p>
+              <!-- Groups Loaded -->
+              <div v-else-if="groups.length > 0" class="space-y-4">
+                <div
+                  v-for="group in groups"
+                  :key="group.id"
+                  class="flex items-center border-b border-gray-300 pb-2"
+                >
+                  <img
+                    :src="group.imageUrl"
+                    alt="Group Avatar"
+                    class="w-10 h-10 rounded-full mr-4 object-cover border-2 border-indigo-300"
+                  />
+
+                  <div class="flex-1">
+                    <p class="text-gray-800 font-medium text-base">{{ group.name }}</p>
+                    <p class="text-gray-500 text-sm">{{ group.members?.length || 0 }} members</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- No Groups -->
+              <div v-else class="text-gray-500 text-sm text-center py-4">
+                You haven't joined any groups yet.
               </div>
             </div>
           </div>

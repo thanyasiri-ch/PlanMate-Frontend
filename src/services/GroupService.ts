@@ -3,7 +3,7 @@ import type { GroupRequestDTO, JoinGroupRequestDTO, StudyGroupResponseDTO } from
 
 export const groupService = {
   getGroup: () => {
-    return apiClient.get<StudyGroupResponseDTO>('/groups')
+    return apiClient.get<StudyGroupResponseDTO[]>('/groups')
   },
   createGroup: (data: GroupRequestDTO) => {
     return apiClient.post('/groups', data)

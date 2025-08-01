@@ -1,3 +1,67 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+
+defineProps<{
+  visible: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'submit', payload: { name: string; image: File | null }): void
+}>()
+
+const groupName = ref('')
+const groupImage = ref<File | null>(null)
+const previewUrl = ref<string | null>(null)
+const error = ref('')
+const loading = ref(false)
+
+const fileInput = ref<HTMLInputElement | null>(null)
+
+function onFileChange(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0] || null
+  groupImage.value = file
+  previewUrl.value = file ? URL.createObjectURL(file) : null
+}
+
+function triggerImageUpload() {
+  fileInput.value?.click()
+}
+
+function createGroup() {
+  if (!groupName.value.trim()) {
+    error.value = 'Please enter a group name.'
+    return
+  }
+
+  error.value = ''
+  loading.value = true
+
+  setTimeout(() => {
+    emit('submit', {
+      name: groupName.value.trim(),
+      image: groupImage.value,
+    })
+    resetForm()
+    emit('close')
+  }, 1000)
+}
+
+function handleCancel() {
+  resetForm()
+  emit('close')
+}
+
+function resetForm() {
+  groupName.value = ''
+  groupImage.value = null
+  previewUrl.value = null
+  error.value = ''
+  loading.value = false
+}
+</script>
+
 <template>
   <transition name="fade-scale">
     <div
@@ -81,70 +145,6 @@
     </div>
   </transition>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-
-const props = defineProps<{
-  visible: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'submit', payload: { name: string; image: File | null }): void
-}>()
-
-const groupName = ref('')
-const groupImage = ref<File | null>(null)
-const previewUrl = ref<string | null>(null)
-const error = ref('')
-const loading = ref(false)
-
-const fileInput = ref<HTMLInputElement | null>(null)
-
-function onFileChange(e: Event) {
-  const target = e.target as HTMLInputElement
-  const file = target.files?.[0] || null
-  groupImage.value = file
-  previewUrl.value = file ? URL.createObjectURL(file) : null
-}
-
-function triggerImageUpload() {
-  fileInput.value?.click()
-}
-
-function createGroup() {
-  if (!groupName.value.trim()) {
-    error.value = 'Please enter a group name.'
-    return
-  }
-
-  error.value = ''
-  loading.value = true
-
-  setTimeout(() => {
-    emit('submit', {
-      name: groupName.value.trim(),
-      image: groupImage.value,
-    })
-    resetForm()
-    emit('close')
-  }, 1000)
-}
-
-function handleCancel() {
-  resetForm()
-  emit('close')
-}
-
-function resetForm() {
-  groupName.value = ''
-  groupImage.value = null
-  previewUrl.value = null
-  error.value = ''
-  loading.value = false
-}
-</script>
 
 <style scoped>
 .fade-scale-enter-active,
