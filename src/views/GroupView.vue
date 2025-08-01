@@ -2,6 +2,7 @@
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useGroupStore } from '@/stores/useGroupStore'
+import CreateGroup from '/src/components/CreateGroup.vue'
 
 const joinCode = ref('')
 const groupStore = useGroupStore()
@@ -31,49 +32,75 @@ const groupInfo = computed(() => {
       }
     : null
 })
+
+const isCreateModalOpen = ref(false)
+
+const handleGroupSubmit = (payload: { name: string; image: File | null }) => {
+  console.log('Creating group...', payload)
+  // TODO: เชื่อมกับ groupStore.createGroup() หรือ API อื่น ๆ
+}
 </script>
 <template>
   <DefaultLayout>
     <div class="h-full overflow-hidden">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full px-6 py-4 box-border">
         <!-- Left Box (1/3) -->
-        <section class="bg-white rounded-2xl p-6 flex flex-col h-full overflow-auto">
-          <div
-            class="flex items-center bg-white border border-[#DCD7FF] shadow-sm rounded-2xl px-4 py-3"
-          >
-            <input
-              v-model="joinCode"
-              type="text"
-              placeholder="Enter group code..."
-              maxlength="6"
-              class="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder-gray-400 rounded-full"
-            />
-
-            <button
-              @click="handleJoinGroup"
-              :disabled="groupStore.isLoading"
-              class="ml-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-semibold px-4 py-2 rounded-full transition duration-200"
+        <section class="flex flex-col h-full gap-4">
+          <!-- Top Box: Join Group -->
+          <div class="bg-white rounded-2xl p-6 border border-[#DCD7FF] shadow-sm">
+            <div
+              class="flex items-center bg-white border border-[#DCD7FF] shadow-sm rounded-2xl px-4 py-3"
             >
-              {{ groupStore.isLoading ? 'Joining...' : 'Join' }}
-            </button>
+              <input
+                v-model="joinCode"
+                type="text"
+                placeholder="Enter group code..."
+                maxlength="6"
+                class="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder-gray-400 rounded-full"
+              />
+
+              <button
+                @click="handleJoinGroup"
+                :disabled="groupStore.isLoading"
+                class="ml-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-semibold px-4 py-2 rounded-full transition duration-200"
+              >
+                {{ groupStore.isLoading ? 'Joining...' : 'Join' }}
+              </button>
+            </div>
+            <!-- Success/Error Messages -->
+            <p v-if="groupStore.error" class="text-red-500 mt-2">{{ groupStore.error }}</p>
+            <p v-if="groupStore.success" class="text-green-600 mt-2">{{ groupStore.success }}</p>
           </div>
-          <!-- Success/Error Messages -->
-          <p v-if="groupStore.error" class="text-red-500 mt-2">{{ groupStore.error }}</p>
-          <p v-if="groupStore.success" class="text-green-600 mt-2">{{ groupStore.success }}</p>
 
-          <!-- Group Info Section -->
-          <div v-if="groupInfo" class="mt-5 flex items-center border-b border-gray-300 pb-2">
-            <!-- Group Image -->
-            <img
-              :src="groupInfo.image"
-              alt="Group Avatar"
-              class="w-10 h-10 rounded-full mr-4 object-cover border-2 border-indigo-300"
-            />
+          <!-- Bottom Box: My Groups -->
+          <div
+            class="flex-1 bg-white rounded-2xl p-6 border border-[#DCD7FF] shadow-sm overflow-auto flex flex-col"
+          >
+            <!-- Header with create button -->
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold text-gray-800">My Groups</h2>
+              <button
+                @click="isCreateModalOpen = true"
+                class="bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-semibold px-4 py-2 rounded-full transition duration-200"
+              >
+                + Create Group
+              </button>
+            </div>
 
-            <!-- Group Info -->
-            <div class="flex-1">
-              <p class="text-gray-800 font-medium text-base">{{ groupInfo.name }}</p>
-              <p class="text-gray-500 text-sm">{{ groupInfo.members }} members</p>
+            <!-- Group Info Section -->
+            <div v-if="groupInfo" class="mt-5 flex items-center border-b border-gray-300 pb-2">
+              <!-- Group Image -->
+              <img
+                :src="groupInfo.image"
+                alt="Group Avatar"
+                class="w-10 h-10 rounded-full mr-4 object-cover border-2 border-indigo-300"
+              />
+
+              <!-- Group Info -->
+              <div class="flex-1">
+                <p class="text-gray-800 font-medium text-base">{{ groupInfo.name }}</p>
+                <p class="text-gray-500 text-sm">{{ groupInfo.members }} members</p>
+              </div>
             </div>
           </div>
         </section>
@@ -239,4 +266,9 @@ const groupInfo = computed(() => {
       </div>
     </div>
   </DefaultLayout>
+  <CreateGroup
+    :visible="isCreateModalOpen"
+    @close="isCreateModalOpen = false"
+    @submit="handleGroupSubmit"
+  />
 </template>
