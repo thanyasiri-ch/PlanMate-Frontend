@@ -11,6 +11,8 @@ import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
 import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
 import PlanView from '@/views/PlanView.vue'
 import GroupView from '@/views/GroupView.vue'
+import FocusView from '@/views/FocusView.vue'
+import FocusModeView from '@/views/FocusModeView.vue'
 import nProgress from 'nprogress'
 
 const router = createRouter({
@@ -66,7 +68,17 @@ const router = createRouter({
       path: '/group',
       name: 'group',
       component: GroupView,
-    }
+    },
+    {
+      path: '/focus',
+      name: 'focus',
+      component: FocusView,
+    },
+    {
+      path: '/focus-mode',
+      name: 'focus-mode',
+      component: FocusModeView,
+    },
   ],
 })
 
