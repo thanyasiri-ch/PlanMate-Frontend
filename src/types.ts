@@ -146,3 +146,22 @@ export interface ScheduleDTO {
   study_plan: SessionDTO[]
   unscheduled_plan: SessionDTO[]
 }
+
+export interface FocusSession {
+  id: string
+  session: SessionDTO
+  focusStart: string
+  focusEnd?: string
+  elapsedSeconds?: number
+  status: 'FOCUSING' | 'COMPLETED'
+}
+
+export interface StartFocusSessionDTO {
+  sessionId: string
+}
+
+export interface ToDoListResponseDTO {
+  today: SessionDTO[]
+  tomorrow: SessionDTO[]
+  upcoming: SessionDTO[]
+}
