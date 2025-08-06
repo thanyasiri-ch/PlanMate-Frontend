@@ -10,15 +10,40 @@ const groupStore = useGroupStore()
 const isCreateModalOpen = ref(false)
 const groups = computed(() => groupStore.groups)
 
+// Ref to track which group's code has been copied
+const copiedCodeId = ref<string | null>(null)
+
 onMounted(() => {
   groupStore.fetchGroup()
 })
 
+// Function to handle copying to clipboard
+const copyToClipboard = async (group: { id: string; joinCode: string }) => {
+  if (!group.joinCode || !navigator.clipboard) {
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(group.joinCode)
+    copiedCodeId.value = group.id // Set the id of the copied group
+
+    // Reset the "copied" state after 2 seconds
+    setTimeout(() => {
+      // Only clear if the user hasn't clicked another copy button in the meantime
+      if (copiedCodeId.value === group.id) {
+        copiedCodeId.value = null
+      }
+    }, 2000)
+  } catch (err) {
+    console.error('Failed to copy code: ', err)
+  }
+}
+
 const handleJoinGroup = async () => {
-  // Validate join code format (6-digit numeric)
+  // Validate join code format (e.g., 6-character alphanumeric)
   const codePattern = /^[A-Za-z0-9]{6}$/
   if (!codePattern.test(joinCode.value)) {
-    groupStore.error = 'Invalid join code. Please enter 6-digit numeric code.'
+    groupStore.error = 'Invalid join code. Please enter a 6-character code.'
     return
   }
 
@@ -43,13 +68,12 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
   }
 }
 </script>
+
 <template>
   <DefaultLayout>
     <div class="h-full overflow-hidden">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full px-6 py-4 box-border">
-        <!-- Left Box (1/3) -->
         <section class="flex flex-col h-full gap-4">
-          <!-- Top Box: Join Group -->
           <div class="bg-white rounded-2xl p-6 border border-[#DCD7FF] shadow-sm">
             <div
               class="flex items-center bg-white border border-[#DCD7FF] shadow-sm rounded-2xl px-4 py-3"
@@ -59,7 +83,7 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 type="text"
                 placeholder="Enter group code..."
                 maxlength="6"
-                class="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder-gray-400 rounded-full"
+                class="flex-1 bg-transparent outline-none text-gray-700 text-sm placeholder-gray-400 rounded-full px-1"
               />
 
               <button
@@ -70,16 +94,13 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 {{ groupStore.isLoading ? 'Joining...' : 'Join' }}
               </button>
             </div>
-            <!-- Success/Error Messages -->
             <p v-if="groupStore.error" class="text-red-500 mt-2">{{ groupStore.error }}</p>
             <p v-if="groupStore.success" class="text-green-600 mt-2">{{ groupStore.success }}</p>
           </div>
 
-          <!-- Bottom Box: My Groups -->
           <div
             class="flex-1 bg-white rounded-2xl p-6 border border-[#DCD7FF] shadow-sm overflow-auto flex flex-col"
           >
-            <!-- Header with create button -->
             <div class="flex justify-between items-center mb-4">
               <h2 class="text-lg font-semibold text-gray-800">My Groups</h2>
               <button
@@ -90,34 +111,72 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
               </button>
             </div>
 
-            <!-- Group List -->
             <div class="flex-1 overflow-y-auto pr-1">
-              <!-- Loading State -->
               <div v-if="groupStore.isLoading" class="text-center text-gray-500 text-sm py-4">
                 Loading groups...
               </div>
 
-              <!-- Groups Loaded -->
-              <div v-else-if="groups.length > 0" class="space-y-4">
+              <div v-else-if="groups.length > 0" class="space-y-2">
                 <div
                   v-for="group in groups"
                   :key="group.id"
-                  class="flex items-center border-b border-gray-300 pb-2"
+                  class="flex items-center justify-between border-b border-gray-300 pb-2"
                 >
-                  <img
-                    :src="group.imageUrl"
-                    alt="Group Avatar"
-                    class="w-10 h-10 rounded-full mr-4 object-cover border-2 border-indigo-300"
-                  />
+                  <div class="flex items-center">
+                    <img
+                      :src="group.imageUrl || 'https://via.placeholder.com/40'"
+                      alt="Group Avatar"
+                      class="w-10 h-10 rounded-full mr-4 object-cover border-2 border-indigo-300"
+                    />
+                    <div>
+                      <p class="text-gray-800 font-medium text-base">{{ group.name }}</p>
+                      <p class="text-gray-500 text-sm mt-1">
+                        {{ group.members?.length || 0 }} members
+                      </p>
+                    </div>
+                  </div>
 
-                  <div class="flex-1">
-                    <p class="text-gray-800 font-medium text-base">{{ group.name }}</p>
-                    <p class="text-gray-500 text-sm">{{ group.members?.length || 0 }} members</p>
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded-md"
+                      >{{ group.joinCode }}</span
+                    >
+                    <button
+                      @click="copyToClipboard(group)"
+                      class="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                      title="Copy join code"
+                    >
+                      <svg
+                        v-if="copiedCodeId === group.id"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 text-green-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 text-gray-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
 
-              <!-- No Groups -->
               <div v-else class="text-gray-500 text-sm text-center py-4">
                 You haven't joined any groups yet.
               </div>
@@ -125,18 +184,13 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
           </div>
         </section>
 
-        <!-- Right Box (2/3) -->
         <section class="lg:col-span-2 bg-white rounded-2xl p-6 flex flex-col h-full overflow-auto">
-          <!-- Podium Section -->
           <div class="flex flex-col items-center h-full">
-            <!-- Header -->
             <div class="flex justify-between w-full items-center mb-4">
               <h2 class="text-xl font-semibold text-gray-800">Leaderboard</h2>
             </div>
 
-            <!-- Podium -->
             <div class="flex items-end justify-center w-full gap-15 mb-8 relative">
-              <!-- Second Place -->
               <div
                 class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
               >
@@ -163,7 +217,6 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 </div>
               </div>
 
-              <!-- First Place -->
               <div
                 class="flex flex-col items-center z-20 transition-transform duration-300 hover:scale-110"
               >
@@ -198,7 +251,6 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 </div>
               </div>
 
-              <!-- Third Place -->
               <div
                 class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
               >
@@ -226,15 +278,12 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
               </div>
             </div>
 
-            <!-- Others (4th, 5th, etc.) -->
             <div class="w-full space-y-2">
               <div
                 class="flex items-center gap-6 px-4 py-2 rounded-lg bg-gray-100 transition-all duration-300 hover:scale-[1.01] hover:shadow"
               >
-                <!-- Rank -->
                 <div class="text-gray-500 font-bold text-lg w-4 text-right">4</div>
 
-                <!-- Avatar + Info -->
                 <div class="flex items-center gap-3 flex-1">
                   <img src="https://i.pravatar.cc/40?img=4" class="w-8 h-8 rounded-full" />
                   <div>
@@ -242,7 +291,6 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                   </div>
                 </div>
 
-                <!-- Energy Bar + Points -->
                 <div class="flex items-center gap-3 w-48">
                   <div
                     class="w-full bg-[#cbf3f0] rounded-full h-3 shadow-inner transition-all duration-300"

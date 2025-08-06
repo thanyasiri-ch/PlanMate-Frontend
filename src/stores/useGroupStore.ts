@@ -53,7 +53,7 @@ export const useGroupStore = defineStore('group', () => {
     try {
       const res = await groupService.createGroup(data)
       success.value =
-        typeof res.data === 'string' ? `Group created: ${res.data}` : 'Group created successfully.'
+      typeof res.data === 'string' ? `Group created: ${res.data}` : 'Group created successfully.'
       await fetchGroup()
     } catch (err: any) {
       error.value = 'Failed to create group.'
