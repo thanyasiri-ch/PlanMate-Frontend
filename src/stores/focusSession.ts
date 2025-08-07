@@ -7,6 +7,7 @@ import type { SessionDTO, FocusSession, ToDoListResponseDTO } from '@/types'
 interface FocusSessionState {
   sessions: ToDoListResponseDTO
   focusSession: FocusSession | null
+  enrichedSession: any | null // manually enriched SessionDTO
   isLoading: boolean
   error: string | null
 }
@@ -19,6 +20,7 @@ export const useFocusSessionStore = defineStore('focusSession', {
       upcoming: [],
     },
     focusSession: null,
+    enrichedSession: null,
     isLoading: false,
     error: null,
   }),
@@ -43,6 +45,10 @@ export const useFocusSessionStore = defineStore('focusSession', {
         progress: `${session.sessionNumber}/${session.totalSessionsInGroup}`,
         displayName: topic?.name || assignment?.name || 'Untitled',
       }
+    },
+
+    setEnrichedSession(session: any) {
+      this.enrichedSession = session
     },
 
     async fetchSessions() {
@@ -82,6 +88,26 @@ export const useFocusSessionStore = defineStore('focusSession', {
         console.error('Failed to start focus session:', err)
         this.error = err.message || 'Failed to start session'
         return null
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async endSession() {
+      if (!this.focusSession?.id) {
+        this.error = 'No active focus session to end.'
+        return
+      }
+
+      this.isLoading = true
+      this.error = null
+
+      try {
+        await FocusSessionService.endSession(this.focusSession.id)
+        this.clearFocusSession()
+      } catch (err: any) {
+        console.error('Failed to end session:', err)
+        this.error = err.message || 'Failed to end session'
       } finally {
         this.isLoading = false
       }

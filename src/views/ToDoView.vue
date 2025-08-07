@@ -8,7 +8,6 @@ import book1 from '../assets/images/book1.png'
 import book2 from '../assets/images/book2.png'
 import book3 from '../assets/images/book3.png'
 import { SessionType, type SessionDTO } from '@/types'
-
 import { useStudySetupStore } from '@/stores/studySetup'
 
 const setupStore = useStudySetupStore()
@@ -134,6 +133,7 @@ const startFocus = async () => {
   isFocusing.value = false
 
   if (res?.focusSessionId) {
+    todoStore.setEnrichedSession(currentTask.value!)
     router.push({
       path: '/focus-mode',
       query: {

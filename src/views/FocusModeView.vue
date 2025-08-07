@@ -3,15 +3,39 @@ import studentImage from '@/assets/images/students.png'
 import { useRoute, useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { UserPlusIcon, XMarkIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/solid'
+import { useFocusSessionStore } from '@/stores/focusSession'
+import type { SessionType } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
-const taskName = route.query.task as string
 
-const timeLeft = ref(25 * 60)
+const timeLeft = ref(0)
 let timer: ReturnType<typeof setInterval> | null = null
 
 const isPaused = ref(false)
+
+const focusStore = useFocusSessionStore()
+const focusSession = focusStore.enrichedSession
+
+const taskName = computed(() => focusSession?.displayName ?? 'Unknown Task')
+const taskType = computed(() => focusSession?.type ?? 'Unknown Type')
+
+function handleTimerEnd() {
+  const focusSessionId = route.query.focusSessionId as string
+  if (focusSessionId) {
+    focusStore
+      .endSession()
+      .then(() => {
+        alert('Session complete! Well done 🎉')
+        router.push({ name: 'todo' })
+      })
+      .catch(() => {
+        alert('Failed to end session properly.')
+      })
+  } else {
+    router.push({ name: 'todo' })
+  }
+}
 
 const formattedTime = computed(() => {
   const minutes = Math.floor(timeLeft.value / 60)
@@ -22,15 +46,14 @@ const formattedTime = computed(() => {
 function startTimer() {
   if (timer) return
   timer = setInterval(() => {
-    if (isPaused.value) {
-      return
-    }
+    if (isPaused.value) return
 
     if (timeLeft.value > 0) {
       timeLeft.value--
     } else {
       clearInterval(timer!)
       timer = null
+      handleTimerEnd()
     }
   }, 1000)
 }
@@ -44,10 +67,12 @@ function closeFocus() {
     clearInterval(timer)
     timer = null
   }
-  router.push({ name: 'focus' })
+  router.push({ name: 'todo' })
 }
 
 onMounted(() => {
+  const durationInMinutes = focusSession?.duration ?? 25
+  timeLeft.value = durationInMinutes * 60
   startTimer()
 })
 
@@ -89,7 +114,7 @@ function addFriendToScreen(friend: { id: number; name: string; avatar: string })
 
   const newFriend = {
     ...friend,
-    timeLeft: 25 * 60,
+    timeLeft: (focusSession?.duration ?? 25) * 60,
     timer: null,
   }
 
@@ -119,6 +144,13 @@ const formatFriendTime = (time: number) => {
   const minutes = Math.floor(time / 60)
   const seconds = time % 60
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+}
+
+function formatSessionType(type: SessionType): string {
+  const words = type.split('_').map((word) => {
+    return word.charAt(0) + word.slice(1).toLowerCase()
+  })
+  return words.join(' ')
 }
 </script>
 
@@ -203,7 +235,7 @@ const formatFriendTime = (time: number) => {
         {{ formattedTime }}
       </h1>
       <p class="text-xl md:text-2xl text-slate-500 mt-2">
-        Focusing on: <span class="font-semibold">{{ taskName }}</span>
+        Focusing on: <span class="font-semibold">{{ taskName }} ({{ formatSessionType(taskType) }})</span>
       </p>
     </main>
 
