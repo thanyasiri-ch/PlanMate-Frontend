@@ -1,56 +1,71 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineStore } from 'pinia'
-import type { FocusSession, StartFocusSessionDTO } from '@/types'
-import SessionService from '@/services/SessionService.ts'
+import SessionService from '@/services/SessionService'
+import { useStudySetupStore } from '@/stores/studySetup'
+import type { SessionDTO, ToDoListResponseDTO } from '@/types'
 
 interface SessionState {
-  activeSession: FocusSession | null
+  sessions: ToDoListResponseDTO
+  enrichedSession: any | null
   isLoading: boolean
   error: string | null
 }
 
-export const useSessionStore = defineStore('session', {
+export const useSessionStore = defineStore('sessionStore', {
   state: (): SessionState => ({
-    activeSession: null,
+    sessions: { today: [], tomorrow: [], upcoming: [] },
+    enrichedSession: null,
     isLoading: false,
     error: null,
   }),
 
   getters: {
-    isFocusing: (state) => state.activeSession?.status === 'FOCUSING',
-    elapsedSeconds: (state) => state.activeSession?.elapsedSeconds ?? 0,
-    sessionType: (state) => state.activeSession?.session.type ?? null,
+    today: (state) => state.sessions.today,
+    tomorrow: (state) => state.sessions.tomorrow,
+    upcoming: (state) => state.sessions.upcoming,
   },
 
   actions: {
-    async startFocusSession(payload: StartFocusSessionDTO) {
-      this.isLoading = true
-      this.error = null
-      try {
-        const response = await SessionService.startFocus(payload)
-        this.activeSession = response.data
-      } catch (error: any) {
-        this.error = error.message || 'Failed to start focus session.'
-      } finally {
-        this.isLoading = false
+    enrichSession(session: SessionDTO) {
+      const setupStore = useStudySetupStore()
+      const course = setupStore.term?.courses?.find(c => c.courseId === session.courseId)
+      const topic = course?.topics?.find(t => t.id === session.topicId)
+      const assignment = course?.assignments?.find(a => a.id === session.assignmentId)
+
+      return {
+        ...session,
+        courseCode: course?.courseCode ?? 'N/A',
+        courseName: course?.name ?? 'N/A',
+        topicName: topic?.name ?? null,
+        assignmentName: assignment?.name ?? null,
+        progress: `${session.sessionNumber}/${session.totalSessionsInGroup}`,
+        displayName: topic?.name || assignment?.name || 'Untitled',
       }
     },
 
-    async stopFocusSession(sessionId: string) {
+    setEnrichedSession(session: any) {
+      this.enrichedSession = session
+    },
+
+    async fetchSessions() {
       this.isLoading = true
       this.error = null
       try {
-        const response = await SessionService.stopFocus(sessionId)
-        this.activeSession = response.data
-      } catch (error: any) {
-        this.error = error.message || 'Failed to stop focus session.'
+        const res = await SessionService.getToDoList()
+        const enrichList = (list: SessionDTO[] = []) => list.map(this.enrichSession)
+
+        this.sessions = {
+          today: enrichList(res.data.today),
+          tomorrow: enrichList(res.data.tomorrow),
+          upcoming: enrichList(res.data.upcoming),
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch sessions:', err)
+        this.error = err.message || 'Failed to load sessions'
+        this.sessions = { today: [], tomorrow: [], upcoming: [] }
       } finally {
         this.isLoading = false
       }
-    },
-
-    clearSession() {
-      this.activeSession = null
-      this.error = null
     },
   },
 })

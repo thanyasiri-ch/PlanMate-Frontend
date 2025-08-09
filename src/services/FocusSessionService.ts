@@ -2,13 +2,13 @@ import apiClient from './AxiosClient'
 import type { StartFocusSessionDTO } from '@/types'
 
 export default {
-  getToDoList() {
-    return apiClient.get('/sessions/todo')
+  fetchActiveSession() {
+    return apiClient.get('/focus/active');
   },
   startSession(data: StartFocusSessionDTO) {
-    return apiClient.post('/sessions/start', data)
+    return apiClient.post('/focus/start', data)
   },
   endSession(focusSessionId: string) {
-    return apiClient.post('/sessions/end', { focusSessionId })
+    return apiClient.post('/focus/end', { focusSessionId })
   }
 }

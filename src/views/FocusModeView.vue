@@ -1,30 +1,58 @@
 <script setup lang="ts">
 import studentImage from '@/assets/images/students.png'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { UserPlusIcon, XMarkIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/solid'
 import { useFocusSessionStore } from '@/stores/focusSession'
 import type { SessionType } from '@/types'
+import dayjs from 'dayjs'
 
-const route = useRoute()
 const router = useRouter()
 
 const timeLeft = ref(0)
-let timer: ReturnType<typeof setInterval> | null = null
-
 const isPaused = ref(false)
 
 const focusStore = useFocusSessionStore()
-const focusSession = focusStore.enrichedSession
 
-const taskName = computed(() => focusSession?.displayName ?? 'Unknown Task')
-const taskType = computed(() => focusSession?.type ?? 'Unknown Type')
+// Computed values from store
+const focusSession = computed(() => focusStore.activeSession)
+const enrichedFocusSession = computed(() => focusStore.enrichedFocusSession)
+
+// Task name from enriched session (already resolved in store)
+const taskName = computed(() => enrichedFocusSession.value?.displayName ?? 'Unnamed Task')
+const taskType = computed(() => enrichedFocusSession.value?.sessionType ?? 'Unknown Type')
+let timer: number | null = null
+
+// Formatted timer
+const formattedTime = computed(() => {
+  const minutes = Math.floor(timeLeft.value / 60)
+  const seconds = timeLeft.value % 60
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+})
+
+onMounted(async () => {
+  try {
+    await focusStore.fetchActiveFocusSession()
+    if (focusSession.value) {
+      const now = dayjs()
+      const start = dayjs(focusSession.value.focusStart)
+      const elapsed = now.diff(start, 'second')
+      const remaining = (focusSession.value.plannedDuration * 60) - elapsed
+      timeLeft.value = Math.max(remaining, 0)
+      startTimer()
+    } else {
+      router.push({ name: 'todo' })
+    }
+  } catch (e) {
+    console.error('Failed to fetch focus session', e)
+    router.push({ name: 'todo' })
+  }
+})
 
 function handleTimerEnd() {
-  const focusSessionId = route.query.focusSessionId as string
-  if (focusSessionId) {
+  if (focusSession.value?.id) {
     focusStore
-      .endSession()
+      .endFocusSession()
       .then(() => {
         alert('Session complete! Well done 🎉')
         router.push({ name: 'todo' })
@@ -37,17 +65,10 @@ function handleTimerEnd() {
   }
 }
 
-const formattedTime = computed(() => {
-  const minutes = Math.floor(timeLeft.value / 60)
-  const seconds = timeLeft.value % 60
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-})
-
 function startTimer() {
   if (timer) return
   timer = setInterval(() => {
     if (isPaused.value) return
-
     if (timeLeft.value > 0) {
       timeLeft.value--
     } else {
@@ -63,31 +84,20 @@ function togglePause() {
 }
 
 async function closeFocus() {
-  console.log('Closing focus mode...')
-  if (!focusStore.focusSession) {
-    console.warn('No active focus session found, skipping endSession call')
-  } else {
+  if (focusSession.value?.id) {
     try {
-      await focusStore.endSession()
+      await focusStore.endFocusSession()
     } catch {
       alert('Failed to end session properly.')
     }
   }
-
   isPaused.value = false
   if (timer) {
     clearInterval(timer)
     timer = null
   }
-
   router.push({ name: 'todo' })
 }
-
-onMounted(() => {
-  const durationInMinutes = focusSession?.duration ?? 25
-  timeLeft.value = durationInMinutes * 60
-  startTimer()
-})
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
@@ -96,8 +106,8 @@ onUnmounted(() => {
   })
 })
 
+// --- Friends Panel ---
 const showFriendPanel = ref(false)
-
 const onlineFriends = ref([
   { id: 1, name: 'Ploy', avatar: 'https://i.pravatar.cc/100?img=1' },
   { id: 2, name: 'Bas', avatar: 'https://i.pravatar.cc/100?img=2' },
@@ -124,13 +134,11 @@ const selectedFriends = ref<
 
 function addFriendToScreen(friend: { id: number; name: string; avatar: string }) {
   if (selectedFriends.value.some((f) => f.id === friend.id)) return
-
   const newFriend = {
     ...friend,
-    timeLeft: (focusSession?.duration ?? 25) * 60,
+    timeLeft: (focusSession.value?.plannedDuration ?? 25) * 60,
     timer: null,
   }
-
   newFriend.timer = setInterval(() => {
     const target = selectedFriends.value.find((f) => f.id === friend.id)
     if (target && target.timeLeft > 0) {
@@ -139,7 +147,6 @@ function addFriendToScreen(friend: { id: number; name: string; avatar: string })
       if (target?.timer) clearInterval(target.timer)
     }
   }, 1000)
-
   selectedFriends.value.push(newFriend)
 }
 
@@ -160,9 +167,7 @@ const formatFriendTime = (time: number) => {
 }
 
 function formatSessionType(type: SessionType): string {
-  const words = type.split('_').map((word) => {
-    return word.charAt(0) + word.slice(1).toLowerCase()
-  })
+  const words = type.split('_').map((word) => word.charAt(0) + word.slice(1).toLowerCase())
   return words.join(' ')
 }
 </script>

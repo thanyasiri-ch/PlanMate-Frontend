@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSessionStore } from '@/stores/useSessionStore'
 import { useFocusSessionStore } from '@/stores/focusSession'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import book1 from '../assets/images/book1.png'
@@ -11,7 +12,8 @@ import { SessionType, type SessionDTO } from '@/types'
 import { useStudySetupStore } from '@/stores/studySetup'
 
 const setupStore = useStudySetupStore()
-const todoStore = useFocusSessionStore()
+const todoStore = useSessionStore()
+const focusStore = useFocusSessionStore()
 const router = useRouter()
 
 const selectedTaskId = ref<string | null>(null)
@@ -128,21 +130,23 @@ watch(selectedTaskId, (newVal, oldVal) => {
 const startFocus = async () => {
   if (!selectedTaskId.value) return
 
-  isFocusing.value = true
-  const res = await todoStore.startSession(selectedTaskId.value)
-  isFocusing.value = false
+  const task = currentTask.value
+  if (!task) return
 
-  if (res?.focusSessionId) {
-    todoStore.setEnrichedSession(currentTask.value!)
+  isFocusing.value = true
+  try {
+    // If your startFocusSession expects StartFocusSessionDTO,
+    // pass the expected shape, example: { sessionId: string }
+    await focusStore.startFocusSession({ sessionId: selectedTaskId.value })
+
+    todoStore.setEnrichedSession(task)
     router.push({
-      path: '/focus-mode',
-      query: {
-        focusSessionId: res.focusSessionId,
-        sessionId: res.sessionId,
-      },
+      path: '/focus-mode'
     })
-  } else {
-    alert('Failed to start focus session')
+  } catch {
+    alert('Error starting focus session')
+  } finally {
+    isFocusing.value = false
   }
 }
 

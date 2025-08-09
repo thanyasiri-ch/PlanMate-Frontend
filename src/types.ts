@@ -147,13 +147,26 @@ export interface ScheduleDTO {
   unscheduled_plan: SessionDTO[]
 }
 
-export interface FocusSession {
+export enum FocusStatus {
+  INCOMPLETE,
+  FOCUSING,
+  COMPLETED,
+  CANCELLED,
+  INTERRUPTED
+}
+
+export interface FocusSessionDTO {
   id: string
   session: SessionDTO
+  courseId?: number
+  topicId?: string | null
+  assignmentId?: string | null
   focusStart: string
-  focusEnd?: string
+  focusEnd?: string | null
   elapsedSeconds?: number
-  status: 'FOCUSING' | 'COMPLETED'
+  plannedDuration: number
+  status: FocusStatus
+  sessionType: SessionType
 }
 
 export interface StartFocusSessionDTO {
