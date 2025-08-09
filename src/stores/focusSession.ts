@@ -82,7 +82,10 @@ export const useFocusSessionStore = defineStore('focusSession', {
       this.error = null
       try {
         const res = await FocusSessionService.startSession({ sessionId })
-        this.focusSession = res.data
+        this.focusSession = {
+          ...res.data,
+          id: res.data.focusSessionId, // Ensure we have focussSessionId
+        }
         return res.data
       } catch (err: any) {
         console.error('Failed to start focus session:', err)
@@ -103,6 +106,7 @@ export const useFocusSessionStore = defineStore('focusSession', {
       this.error = null
 
       try {
+        console.log('Ending focus session:', this.focusSession.id)
         await FocusSessionService.endSession(this.focusSession.id)
         this.clearFocusSession()
       } catch (err: any) {

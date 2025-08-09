@@ -62,11 +62,24 @@ function togglePause() {
   isPaused.value = !isPaused.value
 }
 
-function closeFocus() {
+async function closeFocus() {
+  console.log('Closing focus mode...')
+  if (!focusStore.focusSession) {
+    console.warn('No active focus session found, skipping endSession call')
+  } else {
+    try {
+      await focusStore.endSession()
+    } catch {
+      alert('Failed to end session properly.')
+    }
+  }
+
+  isPaused.value = false
   if (timer) {
     clearInterval(timer)
     timer = null
   }
+
   router.push({ name: 'todo' })
 }
 
@@ -165,11 +178,10 @@ function formatSessionType(type: SessionType): string {
         <UserPlusIcon class="h-6 w-6 text-slate-600" />
       </button>
       <button
-        @click="closeFocus"
         class="p-2 rounded-full hover:bg-slate-200 transition-colors"
         aria-label="Close Focus Mode"
       >
-        <XMarkIcon class="h-6 w-6 text-slate-600" />
+        <XMarkIcon class="h-6 w-6 text-slate-600" @click="closeFocus" />
       </button>
     </div>
 
@@ -235,7 +247,8 @@ function formatSessionType(type: SessionType): string {
         {{ formattedTime }}
       </h1>
       <p class="text-xl md:text-2xl text-slate-500 mt-2">
-        Focusing on: <span class="font-semibold">{{ taskName }} ({{ formatSessionType(taskType) }})</span>
+        Focusing on:
+        <span class="font-semibold">{{ taskName }} ({{ formatSessionType(taskType) }})</span>
       </p>
     </main>
 
