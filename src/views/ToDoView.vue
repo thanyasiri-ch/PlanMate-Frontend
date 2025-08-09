@@ -141,7 +141,7 @@ const startFocus = async () => {
 
     todoStore.setEnrichedSession(task)
     router.push({
-      path: '/focus-mode'
+      path: '/focus-mode',
     })
   } catch {
     alert('Error starting focus session')
@@ -151,22 +151,37 @@ const startFocus = async () => {
 }
 
 const groupedTasks = computed(() => {
-  const groups: Record<string, EnrichedSession[]> = {}
+  const pendingGroups: Record<string, EnrichedSession[]> = {}
+  const completedGroups: Record<string, EnrichedSession[]> = {}
 
   for (const task of tasks.value) {
-    const date = task.date || 'Undated'
-    if (!groups[date]) {
-      groups[date] = []
+    if (task.isCompleted) {
+      // group by course name
+      const courseKey = task.courseName || 'No Course'
+      if (!completedGroups[courseKey]) {
+        completedGroups[courseKey] = []
+      }
+      completedGroups[courseKey].push(task)
+    } else {
+      // group by date
+      const dateKey = task.date || 'Undated'
+      if (!pendingGroups[dateKey]) {
+        pendingGroups[dateKey] = []
+      }
+      pendingGroups[dateKey].push(task)
     }
-    groups[date].push(task)
   }
 
-  return Object.entries(groups)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, sessions]) => ({
+  return {
+    pending: Object.entries(pendingGroups).map(([date, tasks]) => ({
       date,
-      sessions: sessions.sort((a, b) => (a.start || '').localeCompare(b.start || '')),
-    }))
+      tasks: tasks.sort((a, b) => (a.start || '').localeCompare(b.start || '')),
+    })),
+    completed: Object.entries(completedGroups).map(([courseName, tasks]) => ({
+      courseName,
+      tasks: tasks.sort((a, b) => (a.start || '').localeCompare(b.start || '')),
+    })),
+  }
 })
 
 function formatFullDate(dateStr: string): string {
@@ -177,6 +192,13 @@ function formatFullDate(dateStr: string): string {
     month: 'long',
     year: 'numeric',
   })
+}
+
+function scrollToCompleted() {
+  const section = document.getElementById('completed-section')
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth' })
+  }
 }
 
 function getSessionTypeStyles(type: SessionType) {
@@ -212,25 +234,36 @@ function formatSessionType(type: SessionType): string {
         >
           <div class="flex justify-between items-center">
             <h2 class="text-[20px] font-semibold text-gray-800">To-do list</h2>
-            <select
-              v-model="selectedDateGroup"
-              class="border border-gray-300 rounded-xl px-3 py-1 text-sm text-gray-600"
-            >
-              <option value="today">Today</option>
-              <option value="tomorrow">Tomorrow</option>
-              <option value="upcoming">Upcoming</option>
-            </select>
+
+            <div class="flex gap-3 items-center">
+              <!-- Completed navigation -->
+              <button @click="scrollToCompleted" class="text-sm text-blue-600 hover:underline">
+                Completed
+              </button>
+
+              <!-- Date filter -->
+              <select
+                v-model="selectedDateGroup"
+                class="border border-gray-300 rounded-xl px-3 py-1 text-sm text-gray-600"
+              >
+                <option value="today">Today</option>
+                <option value="tomorrow">Tomorrow</option>
+                <option value="upcoming">Upcoming</option>
+              </select>
+            </div>
           </div>
 
           <div class="mt-6 flex flex-col gap-4 text-[15px] text-gray-700 overflow-auto">
-            <div v-for="{ date, sessions } in groupedTasks" :key="date">
+            <!-- Pending tasks by date -->
+            <div v-for="{ date, tasks } in groupedTasks.pending" :key="date">
               <div
                 class="bg-gray-100 text-gray-800 text-sm font-semibold px-3 py-1 rounded-full w-fit mb-2 mt-4"
               >
                 {{ formatFullDate(date) }}
               </div>
+
               <label
-                v-for="task in sessions"
+                v-for="task in tasks"
                 :key="task.sessionId"
                 class="flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors mb-2"
                 :class="{
@@ -252,7 +285,6 @@ function formatSessionType(type: SessionType): string {
                       <span class="mx-2 text-gray-300">|</span>
                       {{ task.displayName || 'Untitled' }}
                     </span>
-
                     <span class="text-sm text-gray-500 truncate block">
                       {{ task.courseName }}
                     </span>
@@ -280,6 +312,60 @@ function formatSessionType(type: SessionType): string {
                 </div>
               </label>
             </div>
+
+            <!-- Completed task by course -->
+            <div id="completed-section" class="mt-6">
+              <h3 class="text-gray-600 font-semibold text-sm mb-2">Completed Sessions</h3>
+
+              <div
+                v-for="{ courseName, tasks } in groupedTasks.completed"
+                :key="courseName"
+                class="mb-4"
+              >
+                <div class="text-gray-500 font-medium mb-2">{{ courseName }}</div>
+
+                <label
+                  v-for="task in tasks"
+                  :key="task.sessionId"
+                  class="flex items-center justify-between p-4 mb-2 rounded-xl bg-green-50 border border-green-200"
+                >
+                  <!-- Left -->
+                  <div class="flex items-center gap-3 overflow-hidden">
+                    <input type="checkbox" checked disabled class="accent-green-500 h- w-4" />
+                    <div class="flex flex-col truncate w-full max-w-[250px]">
+                      <span class="font-semibold text-green-800 truncate block">
+                        {{ task.start }} - {{ task.end }}
+                        <span class="mx-2 text-green-300">|</span>
+                        {{ task.displayName || 'Untitled' }}
+                      </span>
+                      <span class="text-sm text-green-500 truncate block">
+                        {{ task.courseName }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Right -->
+                  <div class="flex flex-col items-end">
+                    <div
+                      class="text-xs text-gray-500 p-1 px-2 mb-2 rounded-xl"
+                      :class="getSessionTypeStyles(task.type)"
+                    >
+                      {{ formatSessionType(task.type) }}
+                    </div>
+                    <div class="flex justify-end gap-1">
+                      <div
+                        v-for="(isCompleted, index) in progressDots(
+                          `${task.sessionNumber}/${task.totalSessionsInGroup}`,
+                        )"
+                        :key="index"
+                        class="w-3 h-3 rounded-full"
+                        :class="{ 'bg-[#277851]': isCompleted, 'bg-gray-300': !isCompleted }"
+                      ></div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -296,7 +382,9 @@ function formatSessionType(type: SessionType): string {
                 {{ currentTask?.displayName || 'Untitled' }}
               </h1>
               <h3 class="text-2xl font-extrabold text-[#343e83e0]">
-                {{ currentTask?.duration }} mins ({{ currentTask?.type ? formatSessionType(currentTask.type) : 'Session' }})
+                {{ currentTask?.duration }} mins ({{
+                  currentTask?.type ? formatSessionType(currentTask.type) : 'Session'
+                }})
               </h3>
               <div class="flex justify-center items-center gap-2">
                 <div

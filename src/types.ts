@@ -129,6 +129,7 @@ export interface SessionDTO {
   duration: number
   type: SessionType
   isScheduled: boolean
+  isCompleted: boolean
   date: string
   start: string
   end: string
