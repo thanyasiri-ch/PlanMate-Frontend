@@ -64,6 +64,19 @@ const progressDots = computed(() => (taskProgress: string) => {
   return Array.from({ length: total }, (_, i) => i < completed)
 })
 
+const completedTasks = computed(() => {
+  const groups: Record<string, ReturnType<typeof todoStore.enrichSession>[]> = {}
+  for (const task of todoStore.completedSessions) {
+    const courseKey = task.courseName || 'No Course'
+    if (!groups[courseKey]) groups[courseKey] = []
+    groups[courseKey].push(task)
+  }
+  return Object.entries(groups).map(([courseName, tasks]) => ({
+    courseName,
+    tasks: tasks.sort((a, b) => (a.start || '').localeCompare(b.start || '')),
+  }))
+})
+
 onMounted(async () => {
   // Wait for course/term/topic data to be available
   await setupStore.fetchAndSetTerm()
@@ -135,8 +148,6 @@ const startFocus = async () => {
 
   isFocusing.value = true
   try {
-    // If your startFocusSession expects StartFocusSessionDTO,
-    // pass the expected shape, example: { sessionId: string }
     await focusStore.startFocusSession({ sessionId: selectedTaskId.value })
 
     todoStore.setEnrichedSession(task)
@@ -152,17 +163,9 @@ const startFocus = async () => {
 
 const groupedTasks = computed(() => {
   const pendingGroups: Record<string, EnrichedSession[]> = {}
-  const completedGroups: Record<string, EnrichedSession[]> = {}
 
   for (const task of tasks.value) {
-    if (task.isCompleted) {
-      // group by course name
-      const courseKey = task.courseName || 'No Course'
-      if (!completedGroups[courseKey]) {
-        completedGroups[courseKey] = []
-      }
-      completedGroups[courseKey].push(task)
-    } else {
+    if (task.isCompleted == false) {
       // group by date
       const dateKey = task.date || 'Undated'
       if (!pendingGroups[dateKey]) {
@@ -175,10 +178,6 @@ const groupedTasks = computed(() => {
   return {
     pending: Object.entries(pendingGroups).map(([date, tasks]) => ({
       date,
-      tasks: tasks.sort((a, b) => (a.start || '').localeCompare(b.start || '')),
-    })),
-    completed: Object.entries(completedGroups).map(([courseName, tasks]) => ({
-      courseName,
       tasks: tasks.sort((a, b) => (a.start || '').localeCompare(b.start || '')),
     })),
   }
@@ -317,11 +316,7 @@ function formatSessionType(type: SessionType): string {
             <div id="completed-section" class="mt-6">
               <h3 class="text-gray-600 font-semibold text-sm mb-2">Completed Sessions</h3>
 
-              <div
-                v-for="{ courseName, tasks } in groupedTasks.completed"
-                :key="courseName"
-                class="mb-4"
-              >
+              <div v-for="{ courseName, tasks } in completedTasks" :key="courseName" class="mb-4">
                 <div class="text-gray-500 font-medium mb-2">{{ courseName }}</div>
 
                 <label
