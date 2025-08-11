@@ -22,11 +22,12 @@
     "nprogress": "^0.2.0",
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.4.1",
+    "swiper": "^11.2.10",
     "tailwindcss": "^4.1.7",
     "uuid": "^11.1.0",
     "vue": "^3.5.13",
     "vue-cal": "^4.10.2",
-    "vue-router": "^4.5.0"
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.1",
