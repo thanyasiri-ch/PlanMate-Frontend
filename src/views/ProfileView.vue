@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useStudyPreferencesStore } from '@/stores/studyPref'
+import { useStudyAnalyticsStore } from '@/stores/studyAnalytics'
 import type { PreferredStudyTime, RevisionFrequency, BreakDuration, StudyPreference } from '@/types'
 import Slider from '@vueform/slider'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
@@ -10,41 +11,104 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-/* ref */
 // == study analytics ==
-const barChartData = ref([
-  { month: 'Jan', value: 30 },
-  { month: 'Feb', value: 50 },
-  { month: 'Mar', value: 75 },
-  { month: 'Apr', value: 65 },
-  { month: 'May', value: 85 },
-  { month: 'Jun', value: 50 },
-  { month: 'Jul', value: 35 },
-  { month: 'Aug', value: 0 },
-  { month: 'Sep', value: 0 },
-  { month: 'Oct', value: 0 },
-  { month: 'Nov', value: 0 },
-  { month: 'Dec', value: 0 },
-])
-
-const pieChartData = ref([
-  { label: 'Eng 2', value: 40, time: '10 hrs 37 mins', colorClass: 'bg-orange-400' },
-  { label: 'UI', value: 35, time: '8 hrs 45 mins', colorClass: 'bg-yellow-400' },
-  { label: 'AI', value: 25, time: '5 hrs 24 mins', colorClass: 'bg-emerald-400' },
-])
+const totalFocusDuration = computed(() => analyticsStore.totalFocusDuration)
+const totalFocusCompletion = computed(() => analyticsStore.totalCompletedFocusSessions)
+const barChartData = computed(() => analyticsStore.barChartData)
+const pieChartData = computed(() => analyticsStore.pieChartData)
 
 const isEditing = ref(false)
+const selectedTimeRange = ref<'Day' | 'Week' | 'Month' | 'Year'>('Month')
+const analyticsStore = useStudyAnalyticsStore()
+
+const currentDate = ref(new Date())
+const timeRangeOptions: Array<'Day' | 'Week' | 'Month' | 'Year'> = ['Day', 'Week', 'Month', 'Year']
+
+const displayDateLabel = computed(() => {
+  const options: Intl.DateTimeFormatOptions =
+    selectedTimeRange.value === 'Day'
+      ? { year: 'numeric', month: 'short', day: 'numeric' }
+      : selectedTimeRange.value === 'Week'
+        ? {} // We'll manually format week range below
+        : selectedTimeRange.value === 'Month'
+          ? { year: 'numeric', month: 'short' }
+          : { year: 'numeric' }
+
+  if (selectedTimeRange.value === 'Week') {
+    const start = new Date(currentDate.value)
+    const day = start.getDay()
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1) // Start on Monday
+    const weekStart = new Date(start.setDate(diff))
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+
+    const fmt = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' })
+    return `${fmt.format(weekStart)} – ${fmt.format(weekEnd)}, ${weekEnd.getFullYear()}`
+  }
+
+  return new Intl.DateTimeFormat('en', options).format(currentDate.value)
+})
+
+const incrementDate = () => {
+  const d = new Date(currentDate.value)
+  if (selectedTimeRange.value === 'Day') {
+    d.setDate(d.getDate() + 1)
+  } else if (selectedTimeRange.value === 'Week') {
+    d.setDate(d.getDate() + 7)
+  } else if (selectedTimeRange.value === 'Month') {
+    d.setMonth(d.getMonth() + 1)
+  } else if (selectedTimeRange.value === 'Year') {
+    d.setFullYear(d.getFullYear() + 1)
+  }
+  currentDate.value = d
+}
+
+const decrementDate = () => {
+  const d = new Date(currentDate.value)
+  if (selectedTimeRange.value === 'Day') {
+    d.setDate(d.getDate() - 1)
+  } else if (selectedTimeRange.value === 'Week') {
+    d.setDate(d.getDate() - 7)
+  } else if (selectedTimeRange.value === 'Month') {
+    d.setMonth(d.getMonth() - 1)
+  } else if (selectedTimeRange.value === 'Year') {
+    d.setFullYear(d.getFullYear() - 1)
+  }
+  currentDate.value = d
+}
+
+const pieGradientStyle = computed(() => {
+  if (!analyticsStore.pieChartData.length) return ''
+
+  const gradientParts: string[] = []
+  let currentPercent = 0
+
+  analyticsStore.pieChartData.forEach((item) => {
+    const start = currentPercent
+    const end = currentPercent + item.value // item.value is already percentage
+    gradientParts.push(`${getColorFromClass(item.colorClass)} ${start}% ${end}%`)
+    currentPercent = end
+  })
+
+  return `conic-gradient(${gradientParts.join(', ')})`
+})
+
+// Map Tailwind bg classes to actual colors
+function getColorFromClass(colorClass: string) {
+  const colorMap: Record<string, string> = {
+    'bg-orange-400': '#ff9f40',
+    'bg-yellow-400': '#ffee58',
+    'bg-emerald-400': '#66bb6a',
+    'bg-blue-400': '#42a5f5',
+  }
+  return colorMap[colorClass] || '#ccc'
+}
+
+// == profile ==
 const editDisplayName = ref(authStore.displayName)
 const editImageFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-
-const currentYear = ref(2025)
-const selectedTimeRange = ref('Year')
-const timeRangeOptions = ['Day', 'Week', 'Month', 'Year']
-
-const incrementYear = () => currentYear.value++
-const decrementYear = () => currentYear.value--
 
 const startEditing = () => {
   isEditing.value = true
@@ -70,15 +134,13 @@ const cancelEdit = () => {
   previewUrl.value = null // Reset preview
 }
 
-onMounted(() => {
-  if (!authStore.user) {
-    authStore.checkAuthStatus()
-  }
-
-  if (!authStore.user) {
-    router.push({ name: 'login' })
-  }
-})
+watch(
+  [selectedTimeRange, currentDate],
+  ([range, date]) => {
+    analyticsStore.fetchAnalytics(range, date)
+  },
+  { immediate: true },
+)
 
 const handleLogout = async () => {
   try {
@@ -202,7 +264,7 @@ const timeDisplayMap: Record<PreferredStudyTime, string> = {
 
 const revisionDisplayMap: Record<RevisionFrequency, string> = {
   'single deep review before exam': 'Single Deep Review Before Exam',
-  '2-3 reviews per topic': '2-3 Reviews Per Topic',
+  '2-3 reviews sessions per topic': '2-3 Reviews Per Topic',
   'daily review sessions': 'Daily Review Sessions',
 }
 
@@ -253,7 +315,7 @@ onMounted(() => {
           <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
             <!-- Year controls -->
             <div class="flex items-center gap-2 text-lg font-semibold text-gray-700">
-              <button @click="decrementYear" class="p-1 text-white bg-[#2F2159] rounded-full">
+              <button @click="decrementDate" class="p-1 text-white bg-[#2F2159] rounded-full">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -263,8 +325,8 @@ onMounted(() => {
                   />
                 </svg>
               </button>
-              <span class="font-extrabold">{{ currentYear }}</span>
-              <button @click="incrementYear" class="p-1 text-white bg-[#2F2159] rounded-full">
+              <span class="font-extrabold">{{ displayDateLabel }}</span>
+              <button @click="incrementDate" class="p-1 text-white bg-[#2F2159] rounded-full">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -301,13 +363,13 @@ onMounted(() => {
                 <!-- Focus Completion Box -->
                 <div class="bg-[#E2EAFC] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs">
                   <h3 class="text-sm font-medium text-black mb-1">Focus completion</h3>
-                  <p class="text-lg font-bold text-[#544BAA]">20 times</p>
+                  <p class="text-lg font-bold text-[#544BAA]">{{ totalFocusCompletion }} sessions</p>
                 </div>
 
                 <!-- Focus Duration Box -->
                 <div class="bg-[#E2EAFC] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs">
                   <h3 class="text-sm font-medium text-black mb-1">Focus duration</h3>
-                  <p class="text-lg font-bold text-[#544BAA]">26 hrs 34 mins</p>
+                  <p class="text-lg font-bold text-[#544BAA]">{{ totalFocusDuration }}</p>
                 </div>
               </div>
             </div>
@@ -320,20 +382,18 @@ onMounted(() => {
                 <div class="flex items-end justify-between h-40 px-2 border-b-2 border-gray-300">
                   <div
                     v-for="item in barChartData"
-                    :key="item.month"
+                    :key="item.date"
                     class="flex flex-col justify-end items-center w-[calc(100%/12-0.5rem)] h-full text-center"
                   >
                     <div
                       class="bg-[#4454C0] w-full rounded-t transition-all duration-300"
-                      :style="{ height: item.value + '%' }"
-                      :title="item.value > 0 ? `${item.value}%` : ''"
+                      :style="{ height: item.heightPercent + '%' }"
+                      :title="item.minutes > 0 ? `${item.minutes} min` : 'No activity'"
                     ></div>
-                    <span class="text-xs text-gray-500 mt-1">{{ item.month }}</span>
+                    <span class="text-xs text-gray-500 mt-1">{{ item.label }}</span>
                   </div>
                 </div>
-                <p class="text-center text-xs text-gray-400 mt-2">
-                  Monthly focus activity placeholder
-                </p>
+                <p class="text-center text-xs text-gray-400 mt-2">Monthly focus activity</p>
               </div>
             </div>
           </div>
@@ -346,10 +406,9 @@ onMounted(() => {
                 <div class="w-36 h-36 relative">
                   <div
                     class="absolute inset-0 rounded-full"
-                    style="
-                      background: conic-gradient(#ff9f40 0% 40%, #ffee58 40% 75%, #66bb6a 75% 100%);
-                      transform: rotate(-90deg);
-                    "
+                    :style="{
+                      background: pieGradientStyle
+                    }"
                   ></div>
                   <div class="absolute inset-3 bg-[#E2EAFC] rounded-full"></div>
                 </div>

@@ -179,3 +179,18 @@ export interface ToDoListResponseDTO {
   tomorrow: SessionDTO[]
   upcoming: SessionDTO[]
 }
+
+export interface FocusSessionDetailDTO {
+  id: string
+  courseName: string
+  focusStart: string
+  focusEnd: string
+  elapsed: number
+}
+
+export interface StudyAnalyticsDTO {
+  totalCompletedFocusSessions: number
+  totalFocusDuration: number
+  subjectBreakdown: Record<string, number>
+  focusSessions: FocusSessionDetailDTO[]
+}
