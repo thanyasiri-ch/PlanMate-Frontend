@@ -2,11 +2,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { StudyGroupResponseDTO } from '@/types'
+import type { GroupMemberProgressDTO, StudyGroupResponseDTO } from '@/types'
 import { groupService } from '@/services/GroupService'
 
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<StudyGroupResponseDTO[]>([])
+  const groupProgress = ref<GroupMemberProgressDTO[]>([])
   const isLoading = ref(false)
   const error = ref('')
   const success = ref('')
@@ -20,6 +21,20 @@ export const useGroupStore = defineStore('group', () => {
     } catch (err) {
       error.value = 'Failed to fetch groups.'
       groups.value = []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const fetchGroupProgress = async (groupId: number) => {
+    isLoading.value = true
+    error.value = ''
+    try {
+      const res = await groupService.getGroupProgress(groupId)
+      groupProgress.value = Array.isArray(res.data) ? res.data : []
+    } catch (err) {
+      error.value = 'Failed to fetch group progress.'
+      groupProgress.value = []
     } finally {
       isLoading.value = false
     }
@@ -53,7 +68,7 @@ export const useGroupStore = defineStore('group', () => {
     try {
       const res = await groupService.createGroup(data)
       success.value =
-      typeof res.data === 'string' ? `Group created: ${res.data}` : 'Group created successfully.'
+        typeof res.data === 'string' ? `Group created: ${res.data}` : 'Group created successfully.'
       await fetchGroup()
     } catch (err: any) {
       error.value = 'Failed to create group.'
@@ -64,10 +79,12 @@ export const useGroupStore = defineStore('group', () => {
 
   return {
     groups,
+    groupProgress,
     isLoading,
     error,
     success,
     fetchGroup,
+    fetchGroupProgress,
     joinGroup,
     createGroup,
   }

@@ -6,32 +6,48 @@ import CreateGroup from '@/components/CreateGroup.vue'
 import { uploadImageToFirebase } from '@/firebase/uploadImageToFirebase'
 
 const joinCode = ref('')
-const groupStore = useGroupStore()
 const isCreateModalOpen = ref(false)
+const copiedJoinCode = ref<string | null>(null)
+const selectedGroupId = ref<number | null>(null)
+
+const groupStore = useGroupStore()
 const groups = computed(() => groupStore.groups)
 
-// Ref to track which group's code has been copied
-const copiedCodeId = ref<string | null>(null)
+onMounted(async () => {
+  await groupStore.fetchGroup()
+  if (groupStore.groups.length > 0) {
+    selectedGroupId.value = groupStore.groups[0].id
+    await groupStore.fetchGroupProgress(selectedGroupId.value)
+  }
+})
 
-onMounted(() => {
-  groupStore.fetchGroup()
+const selectGroup = async (groupId: number) => {
+  if (selectedGroupId.value === groupId) return
+  selectedGroupId.value = groupId
+  await groupStore.fetchGroupProgress(groupId)
+}
+
+const leaderboardData = computed(() => {
+  return groupStore.groupProgress.map(p => ({
+    uid: p.member.memberId,
+    name: p.member.displayName,
+    avatarUrl: p.member.photoUrl,
+    points: p.points,
+    progress: p.percentageCompleted,
+  }))
 })
 
 // Function to handle copying to clipboard
-const copyToClipboard = async (group: { id: string; joinCode: string }) => {
-  if (!group.joinCode || !navigator.clipboard) {
-    return
-  }
+const copyToClipboard = async (group: { id: number; joinCode: string }) => {
+  if (!group.joinCode || !navigator.clipboard) return
 
   try {
     await navigator.clipboard.writeText(group.joinCode)
-    copiedCodeId.value = group.id // Set the id of the copied group
+    copiedJoinCode.value = group.joinCode
 
-    // Reset the "copied" state after 2 seconds
     setTimeout(() => {
-      // Only clear if the user hasn't clicked another copy button in the meantime
-      if (copiedCodeId.value === group.id) {
-        copiedCodeId.value = null
+      if (copiedJoinCode.value === group.joinCode) {
+        copiedJoinCode.value = null
       }
     }, 2000)
   } catch (err) {
@@ -120,7 +136,9 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 <div
                   v-for="group in groups"
                   :key="group.id"
-                  class="flex items-center justify-between border-b border-gray-300 pb-2"
+                  class="flex items-center justify-between border-b border-gray-300 pb-2 cursor-pointer hover:bg-gray-50 transition-colors"
+                  :class="{ 'bg-indigo-50 rounded-lg': selectedGroupId === group.id }"
+                  @click="selectGroup(group.id)"
                 >
                   <div class="flex items-center">
                     <img
@@ -147,7 +165,7 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                       title="Copy join code"
                     >
                       <svg
-                        v-if="copiedCodeId === group.id"
+                        v-if="copiedJoinCode === group.joinCode"
                         xmlns="http://www.w3.org/2000/svg"
                         class="h-4 w-4 text-green-500"
                         fill="none"
@@ -188,146 +206,150 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
           <div class="flex flex-col items-center h-full">
             <div class="flex justify-between w-full items-center mb-4">
               <h2 class="text-xl font-semibold text-gray-800">Leaderboard</h2>
+              <span
+                v-if="groups.find((g) => g.id === selectedGroupId)"
+                class="text-gray-500 text-sm"
+              >
+                {{ groups.find((g) => g.id === selectedGroupId)?.name }}
+              </span>
             </div>
-
-            <div class="flex items-end justify-center w-full gap-15 mb-8 relative">
-              <div
-                class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
-              >
-                <img
-                  src="https://i.pravatar.cc/60?img=2"
-                  class="w-16 h-16 rounded-full border-2 border-white mb-2"
-                />
-                <div class="text-sm font-semibold text-gray-800">Alena Donin</div>
-                <div class="w-24">
-                  <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
-                    <div
-                      class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
-                      style="width: 80%"
-                    ></div>
+            <div v-if="groupStore.isLoading" class="text-center text-gray-500 py-4">
+              Loading leaderboard...
+            </div>
+            <div v-else-if="leaderboardData.length > 0" class="w-full flex-1 flex flex-col">
+              <div class="flex items-end justify-center w-full gap-8 mb-8 relative">
+                <div
+                  v-if="leaderboardData[1]"
+                  class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
+                >
+                  <img
+                    :src="leaderboardData[1].avatarUrl || 'https://via.placeholder.com/60'"
+                    class="w-16 h-16 rounded-full border-2 border-white mb-2"
+                  />
+                  <div class="text-sm font-semibold text-gray-800">
+                    {{ leaderboardData[1].name }}
+                  </div>
+                  <div class="w-24">
+                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
+                      <div
+                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
+                        :style="{ width: leaderboardData[1].progress + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div
+                    class="bg-white rounded-t-xl w-24 h-36 shadow-[inset_0_-4px_0_#D6BBFB] shadow-md flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-400 to-purple-500"
+                  >
+                    <div class="flex-1 flex items-center justify-center text-3xl font-extrabold">
+                      2
+                    </div>
+                    <div class="w-full text-center text-sm font-medium text-white pb-2">
+                      {{ leaderboardData[1].points }} pts
+                    </div>
                   </div>
                 </div>
+
                 <div
-                  class="bg-white rounded-t-xl w-24 h-36 shadow-[inset_0_-4px_0_#D6BBFB] shadow-md flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-400 to-purple-500"
+                  v-if="leaderboardData[0]"
+                  class="flex flex-col items-center z-20 transition-transform duration-300 hover:scale-110"
                 >
-                  <div class="flex-1 flex items-center justify-center text-3xl font-extrabold">
-                    2
+                  <img
+                    :src="leaderboardData[0].avatarUrl || 'https://via.placeholder.com/60'"
+                    class="w-20 h-20 rounded-full border-4 border-yellow-400 mb-2 shadow-lg ring-4 ring-yellow-300"
+                  />
+                  <img
+                    src="/src/assets/images/Crown.png"
+                    alt="Crown"
+                    class="absolute w-12 h-6 top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    style="top: -13px"
+                  />
+                  <div class="text-sm font-semibold text-gray-800">
+                    {{ leaderboardData[0].name }}
                   </div>
-                  <div class="w-full text-center text-sm font-medium text-white pb-2">980 pts</div>
+                  <div class="w-28">
+                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
+                      <div
+                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
+                        :style="{ width: leaderboardData[0].progress + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div
+                    class="bg-white rounded-t-xl w-28 h-44 shadow-[inset_0_-4px_0_#FDE68A] shadow-lg flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-yellow-300 to-yellow-500"
+                  >
+                    <div class="flex-1 flex items-center justify-center text-4xl font-extrabold">
+                      1
+                    </div>
+                    <div class="w-full text-center text-sm font-medium text-white pb-2">
+                      {{ leaderboardData[0].points }} pts
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="leaderboardData[2]"
+                  class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
+                >
+                  <img
+                    :src="leaderboardData[2].avatarUrl || 'https://via.placeholder.com/60'"
+                    class="w-16 h-16 rounded-full border-2 border-white mb-2"
+                  />
+                  <div class="text-sm font-semibold text-gray-800">
+                    {{ leaderboardData[2].name }}
+                  </div>
+                  <div class="w-24">
+                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
+                      <div
+                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
+                        :style="{ width: leaderboardData[2].progress + '%' }"
+                      ></div>
+                    </div>
+                  </div>
+                  <div
+                    class="bg-white rounded-t-xl w-24 h-28 shadow-[inset_0_-4px_0_#C4B5FD] shadow-md flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-300 to-purple-600"
+                  >
+                    <div class="flex-1 flex items-center justify-center text-3xl font-extrabold">
+                      3
+                    </div>
+                    <div class="w-full text-center text-sm font-medium text-white pb-2">
+                      {{ leaderboardData[2].points }} pts
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div
-                class="flex flex-col items-center z-20 transition-transform duration-300 hover:scale-110"
-              >
-                <img
-                  src="https://i.pravatar.cc/60?img=1"
-                  class="w-20 h-20 rounded-full border-4 border-yellow-400 mb-2 shadow-lg ring-4 ring-yellow-300"
-                />
-                <img
-                  src="/src/assets/images/Crown.png"
-                  alt="Crown"
-                  class="absolute w-12 h-6 top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                  style="top: -13px"
-                />
-                <div class="text-sm font-semibold text-gray-800">Davis Curtis</div>
-                <div class="w-28">
-                  <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
-                    <div
-                      class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
-                      style="width: 80%"
-                    ></div>
-                  </div>
-                </div>
+              <div class="flex-1 overflow-y-auto w-full space-y-2">
                 <div
-                  class="bg-white rounded-t-xl w-28 h-44 shadow-[inset_0_-4px_0_#FDE68A] shadow-lg flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-yellow-300 to-yellow-500"
+                  v-for="(member, index) in leaderboardData.slice(3)"
+                  :key="member.uid"
+                  class="flex items-center gap-6 px-4 py-2 rounded-lg bg-gray-100 transition hover:scale-[1.01] hover:shadow"
                 >
-                  <div class="flex-1 flex items-center justify-center text-4xl font-extrabold">
-                    1
+                  <div class="text-gray-500 font-bold text-lg w-4 text-right">{{ index + 4 }}</div>
+                  <div class="flex items-center gap-3 flex-1">
+                    <img
+                      :src="member.avatarUrl || 'https://via.placeholder.com/40'"
+                      class="w-8 h-8 rounded-full"
+                    />
+                    <div>
+                      <div class="text-sm font-medium text-gray-800">{{ member.name }}</div>
+                    </div>
                   </div>
-                  <div class="w-full text-center text-sm font-medium text-white pb-2">
-                    1,200 pts
+                  <div class="flex items-center gap-3 w-48">
+                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 shadow-inner">
+                      <div
+                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all"
+                        :style="{ width: member.progress + '%' }"
+                      ></div>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-600 flex-shrink-0"
+                      >{{ member.points }} pts</span
+                    >
                   </div>
-                </div>
-              </div>
-
-              <div
-                class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
-              >
-                <img
-                  src="https://i.pravatar.cc/60?img=3"
-                  class="w-16 h-16 rounded-full border-2 border-white mb-2"
-                />
-                <div class="text-sm font-semibold text-gray-800">Craig Gouse</div>
-                <div class="w-24">
-                  <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
-                    <div
-                      class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
-                      style="width: 80%"
-                    ></div>
-                  </div>
-                </div>
-                <div
-                  class="bg-white rounded-t-xl w-24 h-28 shadow-[inset_0_-4px_0_#C4B5FD] shadow-md flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-300 to-purple-600"
-                >
-                  <div class="flex-1 flex items-center justify-center text-3xl font-extrabold">
-                    3
-                  </div>
-                  <div class="w-full text-center text-sm font-medium text-white pb-2">880 pts</div>
                 </div>
               </div>
             </div>
-
-            <div class="w-full space-y-2">
-              <div
-                class="flex items-center gap-6 px-4 py-2 rounded-lg bg-gray-100 transition-all duration-300 hover:scale-[1.01] hover:shadow"
-              >
-                <div class="text-gray-500 font-bold text-lg w-4 text-right">4</div>
-
-                <div class="flex items-center gap-3 flex-1">
-                  <img src="https://i.pravatar.cc/40?img=4" class="w-8 h-8 rounded-full" />
-                  <div>
-                    <div class="text-sm font-medium text-gray-800">Madelyn Dias</div>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-3 w-48">
-                  <div
-                    class="w-full bg-[#cbf3f0] rounded-full h-3 shadow-inner transition-all duration-300"
-                  >
-                    <div
-                      class="h-3 rounded-full bg-[#2ec4b6] shadow-md brightness-110 transition-all duration-300"
-                      style="width: 75%"
-                    ></div>
-                  </div>
-                  <span class="text-sm font-semibold text-gray-600 flex-shrink-0">590 pts</span>
-                </div>
-              </div>
-
-              <div
-                class="flex items-center gap-6 px-4 py-2 rounded-lg bg-gray-100 transition-all duration-300 hover:scale-[1.01] hover:shadow"
-              >
-                <div class="text-gray-500 font-bold text-lg w-4 text-right">5</div>
-
-                <div class="flex items-center gap-3 flex-1">
-                  <img src="https://i.pravatar.cc/40?img=5" class="w-8 h-8 rounded-full" />
-                  <div>
-                    <div class="text-sm font-medium text-gray-800">Madelyn Dias</div>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-3 w-48">
-                  <div
-                    class="w-full bg-[#cbf3f0] rounded-full h-3 shadow-inner transition-all duration-300"
-                  >
-                    <div
-                      class="h-3 rounded-full bg-[#2ec4b6] shadow-md brightness-110 transition-all duration-300"
-                      style="width: 75%"
-                    ></div>
-                  </div>
-                  <span class="text-sm font-semibold text-gray-600 flex-shrink-0">590 pts</span>
-                </div>
-              </div>
+            <div v-else class="text-gray-500 text-sm text-center py-4">
+              No progress data for this group.
             </div>
           </div>
         </section>

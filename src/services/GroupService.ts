@@ -1,5 +1,10 @@
 import apiClient from './AxiosClient'
-import type { GroupRequestDTO, JoinGroupRequestDTO, StudyGroupResponseDTO } from '@/types'
+import type {
+  GroupRequestDTO,
+  JoinGroupRequestDTO,
+  StudyGroupResponseDTO,
+  GroupMemberProgressDTO,
+} from '@/types'
 
 export const groupService = {
   getGroup: () => {
@@ -12,4 +17,7 @@ export const groupService = {
   joinGroup: (data: JoinGroupRequestDTO) => {
     return apiClient.post('/groups/join', data)
   },
+
+  getGroupProgress: (groupId: number) =>
+    apiClient.get<GroupMemberProgressDTO[]>(`/groups/${groupId}/progress`),
 }

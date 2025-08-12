@@ -164,6 +164,20 @@ export interface StudyGroupResponseDTO {
   members: GroupMemberDTO[]
 }
 
+export interface MemberProfileDTO {
+  memberId: string
+  displayName: string
+  photoUrl: string
+}
+
+export interface GroupMemberProgressDTO {
+  member: MemberProfileDTO
+  completedSessions: number
+  totalFocusSeconds: number
+  percentageCompleted: number
+  points: number
+}
+
 export interface GroupMemberDTO {
   id: number
   user: User
