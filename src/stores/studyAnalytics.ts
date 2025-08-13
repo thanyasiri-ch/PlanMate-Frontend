@@ -55,37 +55,38 @@ export const useStudyAnalyticsStore = defineStore('studyAnalytics', {
       if (range === 'day') {
         const targetDateKey = normalizeKey(now)
 
-        // Filter sessions for the selected day and sort them by start time
-        const daySessions = state.analytics.focusSessions
+        const hours = Array.from({ length: 24 }, (_, h) => ({
+          date: `${targetDateKey}_${h}`,
+          label: h.toString(),
+          minutes: 0,
+        }))
+
+        state.analytics.focusSessions
           .filter((s) => s.focusStart.startsWith(targetDateKey))
-          .sort((a, b) => new Date(a.focusStart).getTime() - new Date(b.focusStart).getTime())
+          .forEach((session) => {
+            const start = new Date(session.focusStart)
+            const end = new Date(start.getTime() + session.elapsed * 60 * 1000)
 
-        if (daySessions.length === 0) return []
+            let cursor = new Date(start)
+            while (cursor < end) {
+              const hourIndex = cursor.getHours()
+              const endOfHour = new Date(cursor)
+              endOfHour.setMinutes(59, 59, 999)
 
-        // Helper to format a Date object into 'HH:mm'
-        const formatTime = (date: Date) => {
-          const hours = date.getHours().toString().padStart(2, '0')
-          const minutes = date.getMinutes().toString().padStart(2, '0')
-          return `${hours}:${minutes}`
-        }
+              const chunkEnd = end < endOfHour ? end : endOfHour
+              const minutesInThisHour = Math.round((chunkEnd.getTime() - cursor.getTime()) / 60000)
 
-        const entries = daySessions.map((session) => {
-          const startTime = new Date(session.focusStart)
-          // Calculate end time using the start time and elapsed seconds
-          const endTime = new Date(startTime.getTime() + session.elapsed * 60 * 1000)
+              hours[hourIndex].minutes += minutesInThisHour
 
-          return {
-            date: session.focusStart, // Use ISO string for a unique key
-            label: `${formatTime(startTime)} - ${formatTime(endTime)}`,
-            minutes: Math.round(session.elapsed),
-          }
-        })
+              cursor = new Date(endOfHour.getTime() + 1)
+            }
+          })
 
-        const maxMinutes = Math.max(...entries.map((e) => e.minutes), 1)
+        const maxMinutes = Math.max(...hours.map((h) => h.minutes), 1)
 
-        return entries.map((e) => ({
-          ...e,
-          heightPercent: Math.round((e.minutes / maxMinutes) * 100),
+        return hours.map((h) => ({
+          ...h,
+          heightPercent: Math.round((h.minutes / maxMinutes) * 100),
         }))
       } else if (range === 'week') {
         // 7 days starting from Monday
