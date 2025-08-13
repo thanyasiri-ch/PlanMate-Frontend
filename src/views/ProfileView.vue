@@ -356,29 +356,24 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="flex gap-4 items-stretch mb-4 min-h-[180px]">
-            <!-- Summary Box -->
-            <div class="flex-[1]">
-              <div class="flex flex-col items-center gap-4">
-                <!-- Focus Completion Box -->
-                <div class="bg-[#E2EAFC] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs">
+          <div class="flex-1 overflow-auto">
+            <div class="flex flex-col gap-4 mb-4">
+              <div class="flex justify-between gap-4">
+                <div class="bg-[#E2EAFC] rounded-xl p-4 text-center text-[#544BAA] flex-1 max-w-s">
                   <h3 class="text-sm font-medium text-black mb-1">Focus completion</h3>
-                  <p class="text-lg font-bold text-[#544BAA]">{{ totalFocusCompletion }} sessions</p>
+                  <p class="text-lg font-bold text-[#544BAA]">
+                    {{ totalFocusCompletion }} sessions
+                  </p>
                 </div>
 
-                <!-- Focus Duration Box -->
-                <div class="bg-[#E2EAFC] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs">
+                <div class="bg-[#E2EAFC] rounded-xl p-4 text-center text-[#544BAA] flex-1 max-w-s">
                   <h3 class="text-sm font-medium text-black mb-1">Focus duration</h3>
                   <p class="text-lg font-bold text-[#544BAA]">{{ totalFocusDuration }}</p>
                 </div>
               </div>
-            </div>
 
-            <!-- Bar Chart Box -->
-            <div class="flex-[3]">
-              <div class="bg-[#E2EAFC] rounded-xl p-4 h-full flex flex-col justify-between">
+              <div class="bg-[#E2EAFC] rounded-xl p-4 flex flex-col">
                 <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
-
                 <div class="flex items-end justify-between h-40 px-2 border-b-2 border-gray-300">
                   <div
                     v-for="item in barChartData"
@@ -396,19 +391,14 @@ onMounted(() => {
                 <p class="text-center text-xs text-gray-400 mt-2">Monthly focus activity</p>
               </div>
             </div>
-          </div>
 
-          <!-- Chart area -->
-          <div class="flex-1 overflow-auto">
-            <div class="flex-1 bg-[#E2EAFC] p-12 rounded-xl">
+            <div class="bg-[#E2EAFC] p-12 rounded-xl">
               <h3 class="text-lg font-bold text-gray-700 mb-4 text-center">Pie chart</h3>
               <div class="flex flex-col md:flex-row items-center gap-6">
                 <div class="w-36 h-36 relative">
                   <div
                     class="absolute inset-0 rounded-full"
-                    :style="{
-                      background: pieGradientStyle
-                    }"
+                    :style="{ background: pieGradientStyle }"
                   ></div>
                   <div class="absolute inset-3 bg-[#E2EAFC] rounded-full"></div>
                 </div>
