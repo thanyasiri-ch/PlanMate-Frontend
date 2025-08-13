@@ -374,7 +374,7 @@ onMounted(() => {
 
               <div class="bg-[#E2EAFC] rounded-xl p-4 flex flex-col">
                 <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
-                <div class="flex items-end justify-between h-40 px-2 border-b-2 border-gray-300">
+                <div class="flex items-end justify-between h-40 px-2">
                   <div
                     v-for="item in barChartData"
                     :key="item.date"
@@ -385,8 +385,13 @@ onMounted(() => {
                       :style="{ height: item.heightPercent + '%' }"
                       :title="item.minutes > 0 ? `${item.minutes} min` : 'No activity'"
                     ></div>
-                    <span class="text-xs text-gray-500 mt-1">{{ item.label }}</span>
                   </div>
+                </div>
+                <div class="border-t-2 border-gray-300 w-full my-1"></div>
+                <div class="flex justify-between px-3">
+                  <span v-for="item in barChartData" :key="item.date" class="text-xs text-gray-500">
+                    {{ item.label }}
+                  </span>
                 </div>
                 <p class="text-center text-xs text-gray-400 mt-2">Monthly focus activity</p>
               </div>
