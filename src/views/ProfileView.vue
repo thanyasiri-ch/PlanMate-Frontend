@@ -374,25 +374,38 @@ onMounted(() => {
 
               <div class="bg-[#E2EAFC] rounded-xl p-4 flex flex-col">
                 <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
-                <div class="flex items-end justify-between h-40 px-2">
+
+                <div class="flex justify-center h-40 w-full">
                   <div
                     v-for="item in barChartData"
                     :key="item.date"
-                    class="flex flex-col justify-end items-center w-[calc(100%/12-0.5rem)] h-full text-center"
+                    class="flex flex-col items-center justify-end"
+                    :style="{
+                      width: `calc(100% / ${barChartData.length})`,
+                      padding: '0 4px',
+                    }"
                   >
                     <div
-                      class="bg-[#4454C0] w-full rounded-t transition-all duration-300"
+                      class="bg-[#4454C0] rounded-t transition-all duration-300 w-full"
                       :style="{ height: item.heightPercent + '%' }"
                       :title="item.minutes > 0 ? `${item.minutes} min` : 'No activity'"
                     ></div>
                   </div>
                 </div>
+
                 <div class="border-t-2 border-gray-300 w-full my-1"></div>
-                <div class="flex justify-between px-3">
-                  <span v-for="item in barChartData" :key="item.date" class="text-xs text-gray-500">
-                    {{ item.label }}
-                  </span>
+
+                <div class="flex justify-center w-full">
+                  <div
+                    v-for="item in barChartData"
+                    :key="item.date + '-label'"
+                    class="flex justify-center"
+                    :style="{ width: `calc(100% / ${barChartData.length})` }"
+                  >
+                    <span class="text-xs text-gray-500">{{ item.label }}</span>
+                  </div>
                 </div>
+
                 <p class="text-center text-xs text-gray-400 mt-2">Monthly focus activity</p>
               </div>
             </div>
