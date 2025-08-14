@@ -319,6 +319,21 @@ const barGap = computed(() => {
       return 2
   }
 })
+
+const timeRangeLabel = computed(() => {
+  switch (selectedTimeRange.value) {
+    case 'Day':
+      return 'Daily focus activity'
+    case 'Week':
+      return 'Weekly focus activity'
+    case 'Month':
+      return 'Monthly focus activity'
+    case 'Year':
+      return 'Yearly focus activity'
+    default:
+      return 'Focus activity'
+  }
+})
 </script>
 <template>
   <DefaultLayout>
@@ -422,7 +437,9 @@ const barGap = computed(() => {
                   </div>
                 </div>
 
-                <p class="text-center text-xs text-gray-400 mt-2">Monthly focus activity</p>
+                <p class="text-center text-xs text-gray-400 mt-2">
+                  {{ timeRangeLabel }}
+                </p>
               </div>
             </div>
 
