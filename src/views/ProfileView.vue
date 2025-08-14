@@ -304,6 +304,21 @@ onMounted(() => {
     }
   }
 })
+
+const barGap = computed(() => {
+  switch (selectedTimeRange.value) {
+    case 'Day':
+      return 6
+    case 'Week':
+      return 20
+    case 'Month':
+      return 4
+    case 'Year':
+      return 10
+    default:
+      return 2
+  }
+})
 </script>
 <template>
   <DefaultLayout>
@@ -375,15 +390,14 @@ onMounted(() => {
               <div class="bg-[#E2EAFC] rounded-xl p-4 flex flex-col">
                 <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
 
-                <div class="flex justify-center h-40 w-full">
+                <div
+                  class="flex justify-center h-40 w-full px-2"
+                  :style="{ gap: barGap + 'px', paddingLeft: '8px', paddingRight: '8px' }"
+                >
                   <div
                     v-for="item in barChartData"
                     :key="item.date"
-                    class="flex flex-col items-center justify-end"
-                    :style="{
-                      width: `calc(100% / ${barChartData.length})`,
-                      padding: '0 4px',
-                    }"
+                    class="flex flex-col items-center justify-end flex-1"
                   >
                     <div
                       class="bg-[#4454C0] rounded-t transition-all duration-300 w-full"
@@ -395,12 +409,14 @@ onMounted(() => {
 
                 <div class="border-t-2 border-gray-300 w-full my-1"></div>
 
-                <div class="flex justify-center w-full">
+                <div
+                  class="flex justify-center w-full px-2"
+                  :style="{ gap: barGap + 'px', paddingLeft: '8px', paddingRight: '8px' }"
+                >
                   <div
                     v-for="item in barChartData"
                     :key="item.date + '-label'"
-                    class="flex justify-center"
-                    :style="{ width: `calc(100% / ${barChartData.length})` }"
+                    class="flex justify-center flex-1"
                   >
                     <span class="text-xs text-gray-500">{{ item.label }}</span>
                   </div>
