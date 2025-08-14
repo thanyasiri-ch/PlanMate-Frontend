@@ -37,7 +37,7 @@ onMounted(async () => {
       const now = dayjs()
       const start = dayjs(focusSession.value.focusStart)
       const elapsed = now.diff(start, 'second')
-      const remaining = (focusSession.value.plannedDuration * 60) - elapsed
+      const remaining = focusSession.value.plannedDuration * 60 - elapsed
       timeLeft.value = Math.max(remaining, 0)
       startTimer()
     } else {
@@ -170,6 +170,21 @@ function formatSessionType(type: SessionType): string {
   const words = type.split('_').map((word) => word.charAt(0) + word.slice(1).toLowerCase())
   return words.join(' ')
 }
+
+const showEndSessionModal = ref(false)
+
+function confirmEndSession() {
+  showEndSessionModal.value = true
+}
+
+function cancelEndSession() {
+  showEndSessionModal.value = false
+}
+
+async function endSessionConfirmed() {
+  showEndSessionModal.value = false
+  await closeFocus()
+}
 </script>
 
 <template>
@@ -185,8 +200,9 @@ function formatSessionType(type: SessionType): string {
       <button
         class="p-2 rounded-full hover:bg-slate-200 transition-colors"
         aria-label="Close Focus Mode"
+        @click="confirmEndSession"
       >
-        <XMarkIcon class="h-6 w-6 text-slate-600" @click="closeFocus" />
+        <XMarkIcon class="h-6 w-6 text-slate-600" />
       </button>
     </div>
 
@@ -296,6 +312,43 @@ function formatSessionType(type: SessionType): string {
         </template>
       </button>
     </footer>
+    <transition name="fade-in">
+      <div
+        v-if="showEndSessionModal"
+        class="fixed inset-0 bg-sky-50 bg-opacity-20 backdrop-blur-md flex items-center justify-center z-50 p-4"
+      >
+        <div
+          class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-left border border-slate-200 animate-fade-in"
+        >
+          <div class="mb-6 -ml-11">
+            <div class="flex items-start gap-3">
+              <ExclamationTriangleIcon class="h-8 w-8 text-red-500 flex-shrink-0 mt-1" />
+              <div>
+                <h2 class="text-2xl font-bold text-slate-800">Are you sure?</h2>
+                <p class="text-md text-slate-500 mt-2">
+                  Ending the session will stop the timer and your progress won't be saved.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-between gap-4">
+            <button
+              @click="cancelEndSession"
+              class="flex-1 px-4 py-3 rounded-lg bg-slate-200 text-slate-800 font-semibold hover:bg-slate-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="endSessionConfirmed"
+              class="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-md"
+            >
+              End Session
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -326,5 +379,29 @@ function formatSessionType(type: SessionType): string {
 .slide-enter-from,
 .slide-leave-to {
   transform: translateX(-100%);
+}
+.fade-in-enter-active,
+.fade-in-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-in-enter-from,
+.fade-in-leave-to {
+  opacity: 0;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 </style>
