@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import studentImage from '@/assets/images/students.png'
 import { useRouter } from 'vue-router'
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { UserPlusIcon, XMarkIcon, PauseIcon, PlayIcon } from '@heroicons/vue/24/solid'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import {
+  UserPlusIcon,
+  XMarkIcon,
+  PauseIcon,
+  PlayIcon,
+  ExclamationTriangleIcon
+} from '@heroicons/vue/24/solid'
 import { useFocusSessionStore } from '@/stores/focusSession'
 import type { SessionType } from '@/types'
 import dayjs from 'dayjs'
+import { db } from '@/firebase/firebase.ts'
+import { ref as dbRef, onValue, get } from 'firebase/database'
+import { getCurrentUser } from '@/services/auth'
+import defaultImage from '@/assets/images/default_image.webp'
 
 const router = useRouter()
 
@@ -22,6 +32,7 @@ const enrichedFocusSession = computed(() => focusStore.enrichedFocusSession)
 const taskName = computed(() => enrichedFocusSession.value?.displayName ?? 'Unnamed Task')
 const taskType = computed(() => enrichedFocusSession.value?.sessionType ?? 'Unknown Type')
 let timer: number | null = null
+let friendsTimer: number | null = null
 
 // Formatted timer
 const formattedTime = computed(() => {
@@ -40,11 +51,37 @@ onMounted(async () => {
       const remaining = focusSession.value.plannedDuration * 60 - elapsed
       timeLeft.value = Math.max(remaining, 0)
       startTimer()
+      startFriendsTimer()
+      
+      // Get the current user directly from the auth state.
+      const currentUser = await getCurrentUser()
+      if (currentUser) {
+        const currentUserId = currentUser.uid
+        const userRef = dbRef(db, `activeUsers/${currentUserId}`)
+        const userSnap = await get(userRef)
+
+        if (userSnap.exists()) {
+          const userData = userSnap.val()
+          const groupsData = userData.groups
+          let groupIds: string[] = []
+          if (Array.isArray(groupsData)) {
+            groupIds = groupsData.reduce((acc, val, index) => {
+              if (val === true) acc.push(index.toString())
+              return acc
+            }, [] as string[])
+          } else if (typeof groupsData === 'object' && groupsData !== null) {
+            groupIds = Object.keys(groupsData)
+          }
+          if (groupIds.length > 0) {
+            subscribeToFriends(groupIds, currentUserId)
+          }
+        }
+      }
     } else {
       router.push({ name: 'todo' })
     }
   } catch (e) {
-    console.error('Failed to fetch focus session', e)
+    console.error('Failed to fetch focus session or user data', e)
     router.push({ name: 'todo' })
   }
 })
@@ -79,6 +116,17 @@ function startTimer() {
   }, 1000)
 }
 
+function startFriendsTimer() {
+  if (friendsTimer) return
+  friendsTimer = setInterval(() => {
+    selectedFriends.value.forEach((friend) => {
+      if (friend.status === 'FOCUSING' && friend.timeLeft > 0) {
+        friend.timeLeft--
+      }
+    })
+  }, 1000)
+}
+
 function togglePause() {
   isPaused.value = !isPaused.value
 }
@@ -101,18 +149,74 @@ async function closeFocus() {
 
 onUnmounted(() => {
   if (timer) clearInterval(timer)
-  selectedFriends.value.forEach((friend) => {
-    if (friend.timer) clearInterval(friend.timer)
-  })
+  if (friendsTimer) clearInterval(friendsTimer)
 })
 
 // --- Friends Panel ---
 const showFriendPanel = ref(false)
-const onlineFriends = ref([
-  { id: 1, name: 'Ploy', avatar: 'https://i.pravatar.cc/100?img=1' },
-  { id: 2, name: 'Bas', avatar: 'https://i.pravatar.cc/100?img=2' },
-  { id: 3, name: 'Mark', avatar: 'https://i.pravatar.cc/100?img=3' },
-])
+const onlineFriends = ref<
+  { id: string; name: string; image: string; timeLeft: number; status?: string }[]
+>([])
+
+watch(
+  onlineFriends,
+  (newFriendsList) => {
+    selectedFriends.value.forEach((selectedFriend, index) => {
+      const updatedData = newFriendsList.find((f) => f.id === selectedFriend.id)
+      if (updatedData) {
+        selectedFriends.value[index] = { ...selectedFriend, ...updatedData }
+      }
+    })
+  },
+  { deep: true }
+)
+
+function subscribeToFriends(groupIds: string[], currentUserId: string) {
+  groupIds.forEach((groupId) => {
+    const groupRef = dbRef(db, `activeGroups/${groupId}`)
+    onValue(groupRef, (snapshot) => {
+      const members = snapshot.val() || {}
+      const memberIds = Object.keys(members).filter((uid) => uid !== currentUserId)
+
+      onlineFriends.value = memberIds.map((uid) => ({
+        id: uid,
+        name: 'Loading...',
+        image: '',
+        timeLeft: 0,
+        status: 'UNKNOWN'
+      }))
+
+      memberIds.forEach((uid) => {
+        const userRef = dbRef(db, `activeUsers/${uid}`)
+        onValue(userRef, (snap) => {
+          const userData = snap.val()
+          const friendIndex = onlineFriends.value.findIndex((f) => f.id === uid)
+          if (!userData || friendIndex === -1) return
+
+          onlineFriends.value[friendIndex].name = userData.name
+          onlineFriends.value[friendIndex].image = userData.image || defaultImage
+
+          if (userData.focusSessionId) {
+            const sessionRef = dbRef(db, `focusSessions/${userData.focusSessionId}`)
+            onValue(sessionRef, (sessionSnap) => {
+              const session = sessionSnap.val()
+              const idx = onlineFriends.value.findIndex((f) => f.id === uid)
+              if (!session || idx === -1) return
+
+              const remaining = dayjs(session.endsAt).diff(dayjs(), 'second')
+
+              onlineFriends.value[idx].timeLeft = Math.max(0, remaining)
+              onlineFriends.value[idx].status = session.status
+            })
+          } else {
+            onlineFriends.value[friendIndex].status = 'ONLINE'
+            onlineFriends.value[friendIndex].timeLeft = 0
+          }
+        })
+      })
+    })
+  })
+}
 
 function toggleFriendPanel() {
   showFriendPanel.value = !showFriendPanel.value
@@ -124,38 +228,28 @@ function closeFriendPanel() {
 
 const selectedFriends = ref<
   {
-    id: number
+    id: string
     name: string
-    avatar: string
+    image: string
     timeLeft: number
-    timer: ReturnType<typeof setInterval> | null
+    status?: string
   }[]
 >([])
 
-function addFriendToScreen(friend: { id: number; name: string; avatar: string }) {
+function addFriendToScreen(friend: {
+  id: string
+  name: string
+  image: string
+  timeLeft: number
+  status?: string
+}) {
   if (selectedFriends.value.some((f) => f.id === friend.id)) return
-  const newFriend = {
-    ...friend,
-    timeLeft: (focusSession.value?.plannedDuration ?? 25) * 60,
-    timer: null,
-  }
-  newFriend.timer = setInterval(() => {
-    const target = selectedFriends.value.find((f) => f.id === friend.id)
-    if (target && target.timeLeft > 0) {
-      target.timeLeft--
-    } else {
-      if (target?.timer) clearInterval(target.timer)
-    }
-  }, 1000)
-  selectedFriends.value.push(newFriend)
+  selectedFriends.value.push({ ...friend })
 }
 
-function removeFriendFromScreen(friendId: number) {
+function removeFriendFromScreen(friendId: string) {
   const index = selectedFriends.value.findIndex((f) => f.id === friendId)
   if (index !== -1) {
-    if (selectedFriends.value[index].timer) {
-      clearInterval(selectedFriends.value[index].timer!)
-    }
     selectedFriends.value.splice(index, 1)
   }
 }
@@ -167,6 +261,7 @@ const formatFriendTime = (time: number) => {
 }
 
 function formatSessionType(type: SessionType): string {
+  if (!type) return ''
   const words = type.split('_').map((word) => word.charAt(0) + word.slice(1).toLowerCase())
   return words.join(' ')
 }
@@ -230,7 +325,7 @@ async function endSessionConfirmed() {
             <div class="flex items-center space-x-3 flex-grow">
               <div class="relative">
                 <img
-                  :src="friend.avatar"
+                  :src="friend.image"
                   alt="Profile"
                   class="w-10 h-10 rounded-full object-cover"
                 />
@@ -280,7 +375,7 @@ async function endSessionConfirmed() {
             class="sprite"
             :style="{
               backgroundImage: `url(${studentImage})`,
-              animationPlayState: isPaused ? 'paused' : 'running',
+              animationPlayState: isPaused ? 'paused' : 'running'
             }"
           ></div>
           <p class="mt-2 text-md font-semibold text-slate-700">You</p>
@@ -293,7 +388,11 @@ async function endSessionConfirmed() {
           <div class="sprite" :style="{ backgroundImage: `url(${studentImage})` }"></div>
           <p class="mt-2 text-md font-semibold text-slate-600">{{ friend.name }}</p>
           <p class="text-sm font-mono text-slate-500 bg-slate-200/70 rounded px-2 py-0.5">
-            {{ formatFriendTime(friend.timeLeft) }}
+            <span v-if="friend.status === 'PAUSED'">⏸ Paused</span>
+            <span v-else-if="friend.status === 'FOCUSING'">{{
+              formatFriendTime(friend.timeLeft)
+            }}</span>
+            <span v-else>&nbsp;</span>
           </p>
         </div>
       </div>
@@ -320,20 +419,18 @@ async function endSessionConfirmed() {
         <div
           class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-left border border-slate-200 animate-fade-in"
         >
-          <div class="mb-6 -ml-11">
-            <div class="flex items-start gap-3">
-              <ExclamationTriangleIcon class="h-8 w-8 text-red-500 flex-shrink-0 mt-1" />
-              <div>
-                <h2 class="text-2xl font-bold text-slate-800">Are you sure?</h2>
-                <p class="text-md text-slate-500 mt-2">
-                  Ending the session will save your progress, but your focus time will be shorter
-                  than scheduled.
-                </p>
-              </div>
+          <div class="flex items-start gap-4">
+            <ExclamationTriangleIcon class="h-8 w-8 text-red-500 flex-shrink-0 mt-1" />
+            <div>
+              <h2 class="text-2xl font-bold text-slate-800">Are you sure?</h2>
+              <p class="text-md text-slate-500 mt-2">
+                Ending the session will save your progress, but your focus time will be shorter
+                than scheduled.
+              </p>
             </div>
           </div>
 
-          <div class="flex justify-between gap-4">
+          <div class="flex justify-between gap-4 mt-6">
             <button
               @click="cancelEndSession"
               class="flex-1 px-4 py-3 rounded-lg bg-slate-200 text-slate-800 font-semibold hover:bg-slate-300 transition-colors"
@@ -357,7 +454,8 @@ async function endSessionConfirmed() {
 .sprite {
   width: 170.67px;
   height: 272px;
-  background-image: url('../assets/images/student.png');
+  /* The image path is relative to the component file */
+  background-image: url('../assets/images/students.png');
   background-repeat: no-repeat;
   background-position: 0 0;
   animation: walk 1s steps(3, start) infinite;
