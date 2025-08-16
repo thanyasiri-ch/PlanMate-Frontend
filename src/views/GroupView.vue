@@ -28,7 +28,7 @@ const selectGroup = async (groupId: number) => {
 }
 
 const leaderboardData = computed(() => {
-  return groupStore.groupProgress.map(p => ({
+  return groupStore.groupProgress.map((p) => ({
     uid: p.member.memberId,
     name: p.member.displayName,
     avatarUrl: p.member.photoUrl,
@@ -89,7 +89,7 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
   <DefaultLayout>
     <div class="h-full overflow-hidden">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full px-6 py-4 box-border">
-        <section class="flex flex-col h-full gap-4">
+        <section class="flex flex-col h-full gap-4 overflow-y-auto">
           <div class="bg-white rounded-2xl p-6 border border-[#DCD7FF] shadow-sm">
             <div
               class="flex items-center bg-white border border-[#DCD7FF] shadow-sm rounded-2xl px-4 py-3"
@@ -204,7 +204,7 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
 
         <section class="lg:col-span-2 bg-white rounded-2xl p-6 flex flex-col h-full overflow-auto">
           <div class="flex flex-col items-center h-full">
-            <div class="flex justify-between w-full items-center mb-4">
+            <div class="flex justify-between w-full items-center mb-10">
               <h2 class="text-xl font-semibold text-gray-800">Leaderboard</h2>
               <span
                 v-if="groups.find((g) => g.id === selectedGroupId)"
@@ -217,102 +217,108 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
               Loading leaderboard...
             </div>
             <div v-else-if="leaderboardData.length > 0" class="w-full flex-1 flex flex-col">
-              <div class="flex items-end justify-center w-full gap-8 mb-8 relative">
-                <div
-                  v-if="leaderboardData[1]"
-                  class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
-                >
-                  <img
-                    :src="leaderboardData[1].avatarUrl || 'https://via.placeholder.com/60'"
-                    class="w-16 h-16 rounded-full border-2 border-white mb-2"
-                  />
-                  <div class="text-sm font-semibold text-gray-800">
-                    {{ leaderboardData[1].name }}
-                  </div>
-                  <div class="w-24">
-                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
-                      <div
-                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
-                        :style="{ width: leaderboardData[1].progress + '%' }"
-                      ></div>
-                    </div>
-                  </div>
+              <div class="flex items-end justify-center w-full gap-16 mb-8 relative">
+                <div class="w-24">
                   <div
-                    class="bg-white rounded-t-xl w-24 h-36 shadow-[inset_0_-4px_0_#D6BBFB] shadow-md flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-400 to-purple-500"
+                    v-if="leaderboardData[1]"
+                    class="flex flex-col items-center z-10 transition-all duration-300 hover:scale-105 hover:-translate-y-2 relative"
                   >
-                    <div class="flex-1 flex items-center justify-center text-3xl font-extrabold">
-                      2
+                    <img
+                      :src="leaderboardData[1].avatarUrl || 'https://via.placeholder.com/60'"
+                      class="w-16 h-16 rounded-full border-2 border-white mb-2 shadow-lg"
+                    />
+                    <div class="text-sm font-semibold text-gray-800">
+                      {{ leaderboardData[1].name }}
                     </div>
-                    <div class="w-full text-center text-sm font-medium text-white pb-2">
-                      {{ leaderboardData[1].points }} pts
+                    <div class="w-24">
+                      <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
+                        <div
+                          class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
+                          :style="{ width: leaderboardData[1].progress + '%' }"
+                        ></div>
+                      </div>
+                    </div>
+                    <div
+                      class="bg-white rounded-t-xl w-24 h-36 shadow-[inset_0_-4px_0_#D6BBFB,0_10px_20px_rgba(0,0,0,0.1)] flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-400 to-purple-500"
+                    >
+                      <div class="flex-1 flex items-center justify-center text-4xl font-extrabold">
+                        2
+                      </div>
+                      <div class="w-full text-center text-sm font-medium text-white pb-2">
+                        {{ leaderboardData[1].points }} pts
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div
-                  v-if="leaderboardData[0]"
-                  class="flex flex-col items-center z-20 transition-transform duration-300 hover:scale-110"
-                >
-                  <img
-                    :src="leaderboardData[0].avatarUrl || 'https://via.placeholder.com/60'"
-                    class="w-20 h-20 rounded-full border-4 border-yellow-400 mb-2 shadow-lg ring-4 ring-yellow-300"
-                  />
-                  <img
-                    src="/src/assets/images/Crown.png"
-                    alt="Crown"
-                    class="absolute w-12 h-6 top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                    style="top: -13px"
-                  />
-                  <div class="text-sm font-semibold text-gray-800">
-                    {{ leaderboardData[0].name }}
-                  </div>
-                  <div class="w-28">
-                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
-                      <div
-                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
-                        :style="{ width: leaderboardData[0].progress + '%' }"
-                      ></div>
-                    </div>
-                  </div>
+                <div class="w-28">
                   <div
-                    class="bg-white rounded-t-xl w-28 h-44 shadow-[inset_0_-4px_0_#FDE68A] shadow-lg flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-yellow-300 to-yellow-500"
+                    v-if="leaderboardData[0]"
+                    class="flex flex-col items-center z-20 transition-all duration-300 hover:scale-110 hover:-translate-y-4 relative"
                   >
-                    <div class="flex-1 flex items-center justify-center text-4xl font-extrabold">
-                      1
+                    <img
+                      :src="leaderboardData[0].avatarUrl || 'https://via.placeholder.com/60'"
+                      class="w-20 h-20 rounded-full border-4 border-yellow-400 mb-2 shadow-lg ring-4 ring-yellow-300"
+                    />
+                    <img
+                      src="/src/assets/images/crown.png"
+                      alt="Crown"
+                      class="absolute w-10 h-10 animate-pulse-slow"
+                      style="top: -35px"
+                    />
+                    <div class="text-sm font-semibold text-gray-800">
+                      {{ leaderboardData[0].name }}
                     </div>
-                    <div class="w-full text-center text-sm font-medium text-white pb-2">
-                      {{ leaderboardData[0].points }} pts
+                    <div class="w-28">
+                      <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
+                        <div
+                          class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
+                          :style="{ width: leaderboardData[0].progress + '%' }"
+                        ></div>
+                      </div>
+                    </div>
+                    <div
+                      class="bg-white rounded-t-xl w-28 h-44 shadow-[inset_0_-4px_0_#FDE68A,0_10px_30px_rgba(0,0,0,0.1)] flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-br from-yellow-300 to-yellow-500 transform hover:scale-105 transition-transform duration-300"
+                    >
+                      <div class="flex-1 flex items-center justify-center text-6xl font-bold">
+                        1
+                      </div>
+                      <div class="w-full text-center text-sm font-medium text-white pb-2">
+                        {{ leaderboardData[0].points }} pts
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div
-                  v-if="leaderboardData[2]"
-                  class="flex flex-col items-center z-10 transition-transform duration-300 hover:scale-105"
-                >
-                  <img
-                    :src="leaderboardData[2].avatarUrl || 'https://via.placeholder.com/60'"
-                    class="w-16 h-16 rounded-full border-2 border-white mb-2"
-                  />
-                  <div class="text-sm font-semibold text-gray-800">
-                    {{ leaderboardData[2].name }}
-                  </div>
-                  <div class="w-24">
-                    <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
-                      <div
-                        class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
-                        :style="{ width: leaderboardData[2].progress + '%' }"
-                      ></div>
-                    </div>
-                  </div>
+                <div class="w-24">
                   <div
-                    class="bg-white rounded-t-xl w-24 h-28 shadow-[inset_0_-4px_0_#C4B5FD] shadow-md flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-300 to-purple-600"
+                    v-if="leaderboardData[2]"
+                    class="flex flex-col items-center z-10 transition-all duration-300 hover:scale-105 hover:-translate-y-2 relative"
                   >
-                    <div class="flex-1 flex items-center justify-center text-3xl font-extrabold">
-                      3
+                    <img
+                      :src="leaderboardData[2].avatarUrl || 'https://via.placeholder.com/60'"
+                      class="w-16 h-16 rounded-full border-2 border-white mb-2 shadow-lg"
+                    />
+                    <div class="text-sm font-semibold text-gray-800">
+                      {{ leaderboardData[2].name }}
                     </div>
-                    <div class="w-full text-center text-sm font-medium text-white pb-2">
-                      {{ leaderboardData[2].points }} pts
+                    <div class="w-24">
+                      <div class="w-full bg-[#cbf3f0] rounded-full h-3 mt-1 mb-3 shadow-inner">
+                        <div
+                          class="h-3 rounded-full bg-[#2ec4b6] shadow-md transition-all duration-300 ease-in-out"
+                          :style="{ width: leaderboardData[2].progress + '%' }"
+                        ></div>
+                      </div>
+                    </div>
+                    <div
+                      class="bg-white rounded-t-xl w-24 h-28 shadow-[inset_0_-4px_0_#C4B5FD,0_10px_20px_rgba(0,0,0,0.1)] flex flex-col justify-between items-center text-white font-bold text-xl bg-gradient-to-b from-purple-300 to-purple-600"
+                    >
+                      <div class="flex-1 flex items-center justify-center text-4xl font-extrabold">
+                        3
+                      </div>
+                      <div class="w-full text-center text-sm font-medium text-white pb-2">
+                        {{ leaderboardData[2].points }} pts
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -362,3 +368,4 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
     @submit="handleGroupSubmit"
   />
 </template>
+
