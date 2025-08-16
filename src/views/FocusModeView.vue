@@ -326,7 +326,8 @@ async function endSessionConfirmed() {
               <div>
                 <h2 class="text-2xl font-bold text-slate-800">Are you sure?</h2>
                 <p class="text-md text-slate-500 mt-2">
-                  Ending the session will stop the timer and your progress won't be saved.
+                  Ending the session will save your progress, but your focus time will be shorter
+                  than scheduled.
                 </p>
               </div>
             </div>
