@@ -1,3 +1,4 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import studentImage from '@/assets/images/students.png'
 import { useRouter } from 'vue-router'
@@ -7,7 +8,7 @@ import {
   XMarkIcon,
   PauseIcon,
   PlayIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/vue/24/solid'
 import { useFocusSessionStore } from '@/stores/focusSession'
 import type { SessionType } from '@/types'
@@ -20,15 +21,13 @@ import defaultImage from '@/assets/images/default_image.webp'
 const router = useRouter()
 
 const timeLeft = ref(0)
-const isPaused = ref(false)
 
 const focusStore = useFocusSessionStore()
+const firebaseFocusSession = ref<any | null>(null)
 
 // Computed values from store
 const focusSession = computed(() => focusStore.activeSession)
 const enrichedFocusSession = computed(() => focusStore.enrichedFocusSession)
-
-// Task name from enriched session (already resolved in store)
 const taskName = computed(() => enrichedFocusSession.value?.displayName ?? 'Unnamed Task')
 const taskType = computed(() => enrichedFocusSession.value?.sessionType ?? 'Unknown Type')
 let timer: number | null = null
@@ -41,50 +40,77 @@ const formattedTime = computed(() => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 })
 
+// Computed property to determine if the local timer should be paused
+const isMySessionPaused = computed(() => {
+  return firebaseFocusSession.value?.status === 'PAUSED'
+})
+
 onMounted(async () => {
   try {
-    await focusStore.fetchActiveFocusSession()
-    if (focusSession.value) {
-      const now = dayjs()
-      const start = dayjs(focusSession.value.focusStart)
-      const elapsed = now.diff(start, 'second')
-      const remaining = focusSession.value.plannedDuration * 60 - elapsed
-      timeLeft.value = Math.max(remaining, 0)
-      startTimer()
-      startFriendsTimer()
-      
-      // Get the current user directly from the auth state.
-      const currentUser = await getCurrentUser()
-      if (currentUser) {
-        const currentUserId = currentUser.uid
-        const userRef = dbRef(db, `activeUsers/${currentUserId}`)
-        const userSnap = await get(userRef)
-
-        if (userSnap.exists()) {
-          const userData = userSnap.val()
-          const groupsData = userData.groups
-          let groupIds: string[] = []
-          if (Array.isArray(groupsData)) {
-            groupIds = groupsData.reduce((acc, val, index) => {
-              if (val === true) acc.push(index.toString())
-              return acc
-            }, [] as string[])
-          } else if (typeof groupsData === 'object' && groupsData !== null) {
-            groupIds = Object.keys(groupsData)
-          }
-          if (groupIds.length > 0) {
-            subscribeToFriends(groupIds, currentUserId)
-          }
-        }
-      }
-    } else {
-      router.push({ name: 'todo' })
+    await focusStore.fetchActiveFocusSession();
+    if (!focusSession.value) {
+      router.push({ name: 'todo' });
+      return;
     }
+
+    const currentUserId = (await getCurrentUser())?.uid;
+    if (!currentUserId) {
+      router.push({ name: 'todo' });
+      return;
+    }
+
+    // Subscribe to session data for real-time updates
+    const mySessionRef = dbRef(db, `focusSessions/${focusSession.value.id}`);
+    onValue(mySessionRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        firebaseFocusSession.value = data;
+        const status = data.status;
+        const elapsedSeconds = data.elapsedSeconds ?? 0;
+        const plannedDuration = data.duration * 60;
+
+        if (status === 'FOCUSING') {
+          stopTimer();
+          const now = dayjs();
+          const startedAt = dayjs(data.startedAt);
+          const timeSinceResume = now.diff(startedAt, 'second');
+          timeLeft.value = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume));
+          startTimer();
+        } else if (status === 'PAUSED') {
+          timeLeft.value = Math.max(0, plannedDuration - elapsedSeconds);
+          stopTimer();
+        }
+      } else {
+        handleTimerEnd();
+      }
+    });
+
+    // Fetch and subscribe to friends' data
+    const userRef = dbRef(db, `activeUsers/${currentUserId}`);
+    const userSnap = await get(userRef);
+
+    if (userSnap.exists()) {
+      const userData = userSnap.val();
+      const groupsData = userData.groups;
+      let groupIds: string[] = [];
+      if (Array.isArray(groupsData)) {
+        groupIds = groupsData.reduce((acc, val, index) => {
+          if (val === true) acc.push(index.toString());
+          return acc;
+        }, [] as string[]);
+      } else if (typeof groupsData === 'object' && groupsData !== null) {
+        groupIds = Object.keys(groupsData);
+      }
+      if (groupIds.length > 0) {
+        subscribeToFriends(groupIds, currentUserId);
+      }
+    }
+
   } catch (e) {
-    console.error('Failed to fetch focus session or user data', e)
-    router.push({ name: 'todo' })
+    console.error('Failed to fetch focus session or user data', e);
+    router.push({ name: 'todo' });
   }
-})
+});
 
 function handleTimerEnd() {
   if (focusSession.value?.id) {
@@ -105,15 +131,20 @@ function handleTimerEnd() {
 function startTimer() {
   if (timer) return
   timer = setInterval(() => {
-    if (isPaused.value) return
     if (timeLeft.value > 0) {
       timeLeft.value--
     } else {
-      clearInterval(timer!)
-      timer = null
+      stopTimer()
       handleTimerEnd()
     }
   }, 1000)
+}
+
+function stopTimer() {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
 }
 
 function startFriendsTimer() {
@@ -127,8 +158,15 @@ function startFriendsTimer() {
   }, 1000)
 }
 
-function togglePause() {
-  isPaused.value = !isPaused.value
+async function togglePause() {
+  const sessionId = focusSession.value?.id
+  if (!sessionId) return
+
+  if (isMySessionPaused.value) {
+    await focusStore.resumeFocusSession(sessionId)
+  } else {
+    await focusStore.pauseFocusSession(sessionId)
+  }
 }
 
 async function closeFocus() {
@@ -139,7 +177,6 @@ async function closeFocus() {
       alert('Failed to end session properly.')
     }
   }
-  isPaused.value = false
   if (timer) {
     clearInterval(timer)
     timer = null
@@ -168,7 +205,7 @@ watch(
       }
     })
   },
-  { deep: true }
+  { deep: true },
 )
 
 function subscribeToFriends(groupIds: string[], currentUserId: string) {
@@ -183,7 +220,7 @@ function subscribeToFriends(groupIds: string[], currentUserId: string) {
         name: 'Loading...',
         image: '',
         timeLeft: 0,
-        status: 'UNKNOWN'
+        status: 'UNKNOWN',
       }))
 
       memberIds.forEach((uid) => {
@@ -203,10 +240,26 @@ function subscribeToFriends(groupIds: string[], currentUserId: string) {
               const idx = onlineFriends.value.findIndex((f) => f.id === uid)
               if (!session || idx === -1) return
 
-              const remaining = dayjs(session.endsAt).diff(dayjs(), 'second')
+              // Calculation for friends' remaining time
+              const plannedDuration = session.duration * 60
+              const elapsedSeconds = session.elapsedSeconds ?? 0
+              let remainingTime = 0
 
-              onlineFriends.value[idx].timeLeft = Math.max(0, remaining)
+              if (session.status === 'FOCUSING') {
+                const now = dayjs()
+                const startedAt = dayjs(session.startedAt)
+                const timeSinceResume = now.diff(startedAt, 'second')
+                remainingTime = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume))
+              } else if (session.status === 'PAUSED') {
+                remainingTime = Math.max(0, plannedDuration - elapsedSeconds)
+              } else {
+                remainingTime = 0
+              }
+
+              onlineFriends.value[idx].timeLeft = remainingTime
               onlineFriends.value[idx].status = session.status
+
+              startFriendsTimer()
             })
           } else {
             onlineFriends.value[friendIndex].status = 'ONLINE'
@@ -375,7 +428,7 @@ async function endSessionConfirmed() {
             class="sprite"
             :style="{
               backgroundImage: `url(${studentImage})`,
-              animationPlayState: isPaused ? 'paused' : 'running'
+              animationPlayState: isMySessionPaused ? 'paused' : 'running',
             }"
           ></div>
           <p class="mt-2 text-md font-semibold text-slate-700">You</p>
@@ -385,7 +438,13 @@ async function endSessionConfirmed() {
         </div>
 
         <div v-for="friend in selectedFriends" :key="friend.id" class="flex flex-col items-center">
-          <div class="sprite" :style="{ backgroundImage: `url(${studentImage})` }"></div>
+          <div
+            class="sprite"
+            :style="{
+              backgroundImage: `url(${studentImage})`,
+              animationPlayState: friend.status === 'FOCUSING' ? 'running' : 'paused',
+            }"
+          ></div>
           <p class="mt-2 text-md font-semibold text-slate-600">{{ friend.name }}</p>
           <p class="text-sm font-mono text-slate-500 bg-slate-200/70 rounded px-2 py-0.5">
             <span v-if="friend.status === 'PAUSED'">⏸ Paused</span>
@@ -401,7 +460,7 @@ async function endSessionConfirmed() {
         @click="togglePause"
         class="flex items-center justify-center gap-2 px-8 py-3 rounded-full bg-white shadow-lg hover:shadow-xl hover:bg-slate-50 transition-all duration-300 transform hover:-translate-y-1"
       >
-        <template v-if="isPaused">
+        <template v-if="isMySessionPaused">
           <PlayIcon class="h-6 w-6 text-green-500" />
           <span class="text-lg font-semibold text-slate-700">Resume</span>
         </template>
@@ -424,8 +483,8 @@ async function endSessionConfirmed() {
             <div>
               <h2 class="text-2xl font-bold text-slate-800">Are you sure?</h2>
               <p class="text-md text-slate-500 mt-2">
-                Ending the session will save your progress, but your focus time will be shorter
-                than scheduled.
+                Ending the session will save your progress, but your focus time will be shorter than
+                scheduled.
               </p>
             </div>
           </div>

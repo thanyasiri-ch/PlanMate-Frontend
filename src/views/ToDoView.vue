@@ -148,7 +148,7 @@ const startFocus = async () => {
 
   isFocusing.value = true
   try {
-    await focusStore.startFocusSession({ sessionId: selectedTaskId.value })
+    await focusStore.startFocusSession(selectedTaskId.value)
 
     todoStore.setEnrichedSession(task)
     router.push({

@@ -170,10 +170,6 @@ export interface FocusSessionDTO {
   sessionType: SessionType
 }
 
-export interface StartFocusSessionDTO {
-  sessionId: string
-}
-
 export interface ToDoListResponseDTO {
   today: SessionDTO[]
   tomorrow: SessionDTO[]

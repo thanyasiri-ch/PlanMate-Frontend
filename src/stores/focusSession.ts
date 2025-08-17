@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineStore } from 'pinia'
-import { FocusStatus, type FocusSessionDTO, type StartFocusSessionDTO } from '@/types'
+import { FocusStatus, type FocusSessionDTO } from '@/types'
 import FocusSessionService from '@/services/FocusSessionService'
 import { useStudySetupStore } from '@/stores/studySetup'
 
@@ -28,9 +28,9 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
   actions: {
     enrichFocusSession(focus: FocusSessionDTO) {
       const setupStore = useStudySetupStore()
-      const course = setupStore.term?.courses?.find(c => c.courseId === focus.courseId)
-      const topic = course?.topics?.find(t => t.id === focus.topicId)
-      const assignment = course?.assignments?.find(a => a.id === focus.session.assignmentId)
+      const course = setupStore.term?.courses?.find((c) => c.courseId === focus.courseId)
+      const topic = course?.topics?.find((t) => t.id === focus.topicId)
+      const assignment = course?.assignments?.find((a) => a.id === focus.session.assignmentId)
 
       return {
         ...focus,
@@ -61,15 +61,41 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
       }
     },
 
-    async startFocusSession(payload: StartFocusSessionDTO) {
+    async startFocusSession(sessionId: string) {
       this.isLoading = true
       this.error = null
       try {
-        const res = await FocusSessionService.startSession(payload)
+        const res = await FocusSessionService.startSession(sessionId)
         this.activeSession = res.data
         this.enrichedFocusSession = this.enrichFocusSession(res.data)
       } catch (err: any) {
         this.error = err.message || 'Failed to start focus session.'
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async pauseFocusSession(sessionId: string) {
+      this.isLoading = true
+      this.error = null
+      try {
+        const res = await FocusSessionService.pauseSession(sessionId)
+        this.activeSession = res.data
+      } catch (err: any) {
+        this.error = err.message || 'Failed to pause session.'
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async resumeFocusSession(sessionId: string) {
+      this.isLoading = true
+      this.error = null
+      try {
+        const res = await FocusSessionService.resumeSession(sessionId)
+        this.activeSession = res.data
+      } catch (err: any) {
+        this.error = err.message || 'Failed to resume session.'
       } finally {
         this.isLoading = false
       }
