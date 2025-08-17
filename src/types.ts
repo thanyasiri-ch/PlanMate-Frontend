@@ -158,10 +158,12 @@ export enum FocusStatus {
 
 export interface FocusSessionDTO {
   id: string
+  displayName: string
   session: SessionDTO
   courseId?: number
   topicId?: string | null
   assignmentId?: string | null
+  courseName: string
   focusStart: string
   focusEnd?: string | null
   elapsedSeconds?: number

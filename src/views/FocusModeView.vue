@@ -27,9 +27,8 @@ const firebaseFocusSession = ref<any | null>(null)
 
 // Computed values from store
 const focusSession = computed(() => focusStore.activeSession)
-const enrichedFocusSession = computed(() => focusStore.enrichedFocusSession)
-const taskName = computed(() => enrichedFocusSession.value?.displayName ?? 'Unnamed Task')
-const taskType = computed(() => enrichedFocusSession.value?.sessionType ?? 'Unknown Type')
+const taskName = computed(() => focusSession.value?.displayName ?? 'Unnamed Task')
+const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type')
 let timer: number | null = null
 let friendsTimer: number | null = null
 
@@ -313,7 +312,7 @@ const formatFriendTime = (time: number) => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
 
-function formatSessionType(type: SessionType): string {
+function formatSessionType(type: SessionType | string): string {
   if (!type) return ''
   const words = type.split('_').map((word) => word.charAt(0) + word.slice(1).toLowerCase())
   return words.join(' ')

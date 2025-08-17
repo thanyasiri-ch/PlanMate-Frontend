@@ -2,7 +2,6 @@
 import { defineStore } from 'pinia'
 import { FocusStatus, type FocusSessionDTO } from '@/types'
 import FocusSessionService from '@/services/FocusSessionService'
-import { useStudySetupStore } from '@/stores/studySetup'
 
 interface FocusSessionState {
   activeSession: FocusSessionDTO | null
@@ -26,22 +25,6 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
   },
 
   actions: {
-    enrichFocusSession(focus: FocusSessionDTO) {
-      const setupStore = useStudySetupStore()
-      const course = setupStore.term?.courses?.find((c) => c.courseId === focus.courseId)
-      const topic = course?.topics?.find((t) => t.id === focus.topicId)
-      const assignment = course?.assignments?.find((a) => a.id === focus.session.assignmentId)
-
-      return {
-        ...focus,
-        courseCode: course?.courseCode ?? 'N/A',
-        courseName: course?.name ?? 'N/A',
-        topicName: topic?.name ?? null,
-        assignmentName: assignment?.name ?? null,
-        displayName: topic?.name || assignment?.name || 'Untitled',
-      }
-    },
-
     async fetchActiveFocusSession() {
       this.isLoading = true
       this.error = null
@@ -52,7 +35,6 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
           this.enrichedFocusSession = null
         } else {
           this.activeSession = res.data
-          this.enrichedFocusSession = this.enrichFocusSession(res.data)
         }
       } catch (err: any) {
         this.error = err.message || 'Failed to fetch active focus session.'
@@ -67,7 +49,6 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
       try {
         const res = await FocusSessionService.startSession(sessionId)
         this.activeSession = res.data
-        this.enrichedFocusSession = this.enrichFocusSession(res.data)
       } catch (err: any) {
         this.error = err.message || 'Failed to start focus session.'
       } finally {
@@ -112,7 +93,6 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
       try {
         const res = await FocusSessionService.endSession(this.activeSession.id)
         this.activeSession = res.data
-        this.enrichedFocusSession = this.enrichFocusSession(res.data)
       } catch (err: any) {
         this.error = err.message || 'Failed to stop focus session.'
       } finally {
