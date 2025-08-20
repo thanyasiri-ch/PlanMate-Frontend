@@ -36,6 +36,7 @@ const router = useRouter()
 
 const timeLeft = ref(0)
 
+const isInitialLoad = ref(true);
 const focusStore = useFocusSessionStore()
 const firebaseFocusSession = ref<any | null>(null)
 
@@ -151,10 +152,13 @@ onMounted(async () => {
     onValue(mySessionRef, (snapshot) => {
       const data = snapshot.val()
       if (data) {
-        firebaseFocusSession.value = data
-        const status = data.status
-        const elapsedSeconds = data.elapsedSeconds ?? 0
-        const plannedDuration = data.duration * 60
+        isInitialLoad.value = false;
+
+
+        firebaseFocusSession.value = data;
+        const status = data.status;
+        const elapsedSeconds = data.elapsedSeconds ?? 0;
+        const plannedDuration = data.duration * 60;
 
         if (status === 'FOCUSING') {
           stopTimer()
@@ -168,7 +172,9 @@ onMounted(async () => {
           stopTimer()
         }
       } else {
-        handleTimerEnd()
+        if (!isInitialLoad.value) {
+            handleTimerEnd();
+        }
       }
     })
 
@@ -523,7 +529,7 @@ function getEggImageForUser() {
       </p>
     </main>
 
-    <footer class="flex flex-col items-center justify-end gap-20 pt-10">
+    <footer class="flex flex-col items-center justify-end gap-20">
       <div class="flex flex-row justify-center items-end gap-6 flex-wrap">
         <div class="flex flex-col items-center text-center">
           <div

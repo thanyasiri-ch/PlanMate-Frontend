@@ -269,6 +269,14 @@ function formatSessionType(type: SessionType): string {
           </div>
 
           <div class="mt-6 flex flex-col gap-4 text-[15px] text-gray-700 overflow-auto">
+            <!-- Show no session message -->
+            <div
+              v-if="groupedTasks.pending.length === 0"
+              class="flex items-center justify-center h-40 text-gray-400 text-sm"
+            >
+              No sessions for {{ selectedDateGroup }}
+            </div>
+
             <!-- Pending tasks by date -->
             <div v-for="{ date, tasks } in groupedTasks.pending" :key="date">
               <div
@@ -330,7 +338,11 @@ function formatSessionType(type: SessionType): string {
 
             <!-- Completed task by course -->
             <div id="completed-section" class="mt-6">
-              <h3 class="text-gray-700 font-semibold text-base mb-2 pb-1 border-b-2 border-gray-200">Completed Sessions</h3>
+              <h3
+                class="text-gray-700 font-semibold text-base mb-2 pb-1 border-b-2 border-gray-200"
+              >
+                Completed Sessions
+              </h3>
 
               <div v-for="{ courseName, tasks } in completedTasks" :key="courseName" class="mb-4">
                 <div class="text-gray-500 font-medium mb-2">{{ courseName }}</div>
