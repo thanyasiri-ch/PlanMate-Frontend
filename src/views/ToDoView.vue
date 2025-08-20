@@ -330,7 +330,7 @@ function formatSessionType(type: SessionType): string {
 
             <!-- Completed task by course -->
             <div id="completed-section" class="mt-6">
-              <h3 class="text-gray-600 font-semibold text-sm mb-2">Completed Sessions</h3>
+              <h3 class="text-gray-700 font-semibold text-base mb-2 pb-1 border-b-2 border-gray-200">Completed Sessions</h3>
 
               <div v-for="{ courseName, tasks } in completedTasks" :key="courseName" class="mb-4">
                 <div class="text-gray-500 font-medium mb-2">{{ courseName }}</div>

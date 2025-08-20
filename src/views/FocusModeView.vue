@@ -8,6 +8,7 @@ import {
   PauseIcon,
   PlayIcon,
   ExclamationTriangleIcon,
+  TrophyIcon,
 } from '@heroicons/vue/24/solid'
 import { useFocusSessionStore } from '@/stores/focusSession'
 import type { SessionType } from '@/types'
@@ -202,11 +203,11 @@ function handleTimerEnd() {
     focusStore
       .endFocusSession()
       .then(() => {
-        alert('Session complete! Well done 🎉')
-        router.push({ name: 'todo' })
+        showCompletionModal.value = true
       })
       .catch(() => {
         alert('Failed to end session properly.')
+        router.push({ name: 'todo' })
       })
   } else {
     router.push({ name: 'todo' })
@@ -403,6 +404,7 @@ function formatSessionType(type: SessionType | string): string {
 }
 
 const showEndSessionModal = ref(false)
+const showCompletionModal = ref(false)
 
 function confirmEndSession() {
   showEndSessionModal.value = true
@@ -415,6 +417,11 @@ function cancelEndSession() {
 async function endSessionConfirmed() {
   showEndSessionModal.value = false
   await closeFocus()
+}
+
+function closeCompletionModal() {
+  showCompletionModal.value = false
+  router.push({ name: 'todo' })
 }
 
 function getEggImageForFriend(friend: FriendItem) {
@@ -516,7 +523,7 @@ function getEggImageForUser() {
       </p>
     </main>
 
-    <footer class="flex flex-col items-center justify-end gap-25 pt-15">
+    <footer class="flex flex-col items-center justify-end gap-20 pt-10">
       <div class="flex flex-row justify-center items-end gap-6 flex-wrap">
         <div class="flex flex-col items-center text-center">
           <div
@@ -565,10 +572,11 @@ function getEggImageForUser() {
         </template>
       </button>
     </footer>
+
     <transition name="fade-in">
       <div
         v-if="showEndSessionModal"
-        class="fixed inset-0 bg-sky-50 bg-opacity-20 backdrop-blur-md flex items-center justify-center z-50 p-4"
+        class="fixed inset-0 backdrop-blur flex items-center justify-center z-50 p-4"
       >
         <div
           class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-left border border-slate-200 animate-fade-in"
@@ -596,6 +604,37 @@ function getEggImageForUser() {
               class="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-md"
             >
               End Session
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <transition name="fade-in">
+      <div
+        v-if="showCompletionModal"
+        class="fixed inset-0 backdrop-blur flex items-center justify-center z-50 p-4"
+      >
+        <div
+          class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center border border-slate-200 animate-fade-in"
+        >
+          <div class="flex flex-col items-center gap-4">
+            <TrophyIcon class="h-16 w-16 text-yellow-500" />
+            <div>
+              <h2 class="text-2xl font-bold text-slate-800">Session Complete!</h2>
+              <p class="text-md text-slate-500 mt-2">
+                Great work focusing on <strong class="text-slate-700">{{ taskName }}</strong
+                >. Time for a well-deserved break!
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <button
+              @click="closeCompletionModal"
+              class="w-full px-4 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 transition-colors shadow-md"
+            >
+              Awesome!
             </button>
           </div>
         </div>
