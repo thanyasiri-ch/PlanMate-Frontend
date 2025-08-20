@@ -1,6 +1,5 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import studentImage from '@/assets/images/students.png'
 import { useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import {
@@ -17,6 +16,20 @@ import { db } from '@/firebase/firebase.ts'
 import { ref as dbRef, onValue, get } from 'firebase/database'
 import { getCurrentUser } from '@/services/auth'
 import defaultImage from '@/assets/images/default_image.webp'
+import egg1 from '@/assets/images/egg1.png'
+import egg2 from '@/assets/images/egg2.png'
+import egg3 from '@/assets/images/egg3.png'
+import egg4 from '@/assets/images/egg4.png'
+import egg5 from '@/assets/images/egg5.png'
+import egg6 from '@/assets/images/egg6.png'
+import egg7 from '@/assets/images/egg7.png'
+import egg8 from '@/assets/images/egg8.png'
+import egg9 from '@/assets/images/egg9.png'
+import egg10 from '@/assets/images/egg10.png'
+import egg11 from '@/assets/images/egg11.png'
+import egg12 from '@/assets/images/egg12.png'
+
+const eggs = [egg1, egg2, egg3, egg4, egg5, egg6, egg7, egg8, egg9, egg10, egg11, egg12]
 
 const router = useRouter()
 
@@ -25,8 +38,82 @@ const timeLeft = ref(0)
 const focusStore = useFocusSessionStore()
 const firebaseFocusSession = ref<any | null>(null)
 
-// Computed values from store
+const currentFrame = ref(0)
+let frameInterval: number | null = null
+
 const focusSession = computed(() => focusStore.activeSession)
+
+const remainingSeconds = computed(() => {
+  if (typeof timeLeft.value === 'number') return Math.max(0, Math.floor(timeLeft.value))
+  if (!focusSession.value) return 0
+  return Math.max(0, (focusSession.value.duration ?? 0) * 60)
+})
+
+const totalSeconds = computed(() => {
+  if (focusSession.value && typeof focusSession.value.duration === 'number') {
+    return Math.max(0, focusSession.value.duration * 60)
+  }
+  if (firebaseFocusSession.value && typeof firebaseFocusSession.value.duration === 'number') {
+    return Math.max(0, firebaseFocusSession.value.duration * 60)
+  }
+  return 0
+})
+
+function getFrameIndexFor(remainingSec: number, totalSec: number): number {
+  if (totalSec <= 0) {
+    return 11
+  }
+
+  const elapsed = Math.max(0, totalSec - remainingSec)
+  const phaseDuration = totalSec / 4
+  const phase = Math.min(3, Math.floor(elapsed / (phaseDuration || 1)))
+
+  const nowMs = Date.now()
+
+  if (phase === 0) {
+    const frameIdx = Math.floor(nowMs / 400) % 3
+    return frameIdx
+  }
+
+  if (phase === 1) {
+    const frameIdx = 3 + (Math.floor(nowMs / 400) % 3)
+    return frameIdx
+  }
+
+  if (phase === 2) {
+    const progress = Math.min(1, Math.max(0, (elapsed - phaseDuration * 2) / (phaseDuration || 1))) // 0..1
+    const sub = Math.floor(progress * 3) // 0,1,2
+    return 6 + Math.min(2, sub)
+  }
+
+  if (remainingSec <= 0) return 11
+  const progress4 = Math.min(1, Math.max(0, (elapsed - phaseDuration * 3) / (phaseDuration || 1)))
+  const sub4 = Math.floor(progress4 * 3) // 0..2
+  return 9 + Math.min(2, sub4)
+}
+
+const currentFrameIndex = computed(() => {
+  return getFrameIndexFor(timeLeft.value, totalSeconds.value)
+})
+
+watch(currentFrameIndex, (v) => {
+  currentFrame.value = v
+})
+
+onMounted(() => {
+  frameInterval = window.setInterval(() => {
+    currentFrame.value = currentFrameIndex.value
+  }, 200)
+})
+
+onUnmounted(() => {
+  if (frameInterval) {
+    clearInterval(frameInterval)
+    frameInterval = null
+  }
+})
+
+// Computed values from store
 const taskName = computed(() => focusSession.value?.displayName ?? 'Unnamed Task')
 const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type')
 let timer: number | null = null
@@ -46,70 +133,69 @@ const isMySessionPaused = computed(() => {
 
 onMounted(async () => {
   try {
-    await focusStore.fetchActiveFocusSession();
+    await focusStore.fetchActiveFocusSession()
     if (!focusSession.value) {
-      router.push({ name: 'todo' });
-      return;
+      router.push({ name: 'todo' })
+      return
     }
 
-    const currentUserId = (await getCurrentUser())?.uid;
+    const currentUserId = (await getCurrentUser())?.uid
     if (!currentUserId) {
-      router.push({ name: 'todo' });
-      return;
+      router.push({ name: 'todo' })
+      return
     }
 
     // Subscribe to session data for real-time updates
-    const mySessionRef = dbRef(db, `focusSessions/${focusSession.value.id}`);
+    const mySessionRef = dbRef(db, `focusSessions/${focusSession.value.id}`)
     onValue(mySessionRef, (snapshot) => {
-      const data = snapshot.val();
+      const data = snapshot.val()
       if (data) {
-        firebaseFocusSession.value = data;
-        const status = data.status;
-        const elapsedSeconds = data.elapsedSeconds ?? 0;
-        const plannedDuration = data.duration * 60;
+        firebaseFocusSession.value = data
+        const status = data.status
+        const elapsedSeconds = data.elapsedSeconds ?? 0
+        const plannedDuration = data.duration * 60
 
         if (status === 'FOCUSING') {
-          stopTimer();
-          const now = dayjs();
-          const startedAt = dayjs(data.startedAt);
-          const timeSinceResume = now.diff(startedAt, 'second');
-          timeLeft.value = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume));
-          startTimer();
+          stopTimer()
+          const now = dayjs()
+          const startedAt = dayjs(data.startedAt)
+          const timeSinceResume = now.diff(startedAt, 'second')
+          timeLeft.value = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume))
+          startTimer()
         } else if (status === 'PAUSED') {
-          timeLeft.value = Math.max(0, plannedDuration - elapsedSeconds);
-          stopTimer();
+          timeLeft.value = Math.max(0, plannedDuration - elapsedSeconds)
+          stopTimer()
         }
       } else {
-        handleTimerEnd();
+        handleTimerEnd()
       }
-    });
+    })
 
     // Fetch and subscribe to friends' data
-    const userRef = dbRef(db, `activeUsers/${currentUserId}`);
-    const userSnap = await get(userRef);
+    const userRef = dbRef(db, `activeUsers/${currentUserId}`)
+    const userSnap = await get(userRef)
 
     if (userSnap.exists()) {
-      const userData = userSnap.val();
-      const groupsData = userData.groups;
-      let groupIds: string[] = [];
+      const userData = userSnap.val()
+      const groupsData = userData.groups
+      let groupIds: string[] = []
       if (Array.isArray(groupsData)) {
         groupIds = groupsData.reduce((acc, val, index) => {
-          if (val === true) acc.push(index.toString());
-          return acc;
-        }, [] as string[]);
+          if (val === true) acc.push(index.toString())
+          return acc
+        }, [] as string[])
       } else if (typeof groupsData === 'object' && groupsData !== null) {
-        groupIds = Object.keys(groupsData);
+        groupIds = Object.keys(groupsData)
       }
       if (groupIds.length > 0) {
-        subscribeToFriends(groupIds, currentUserId);
+        subscribeToFriends(groupIds, currentUserId)
       }
     }
-
   } catch (e) {
-    console.error('Failed to fetch focus session or user data', e);
-    router.push({ name: 'todo' });
+    console.error('Failed to fetch focus session or user data', e)
+    router.push({ name: 'todo' })
   }
-});
+})
 
 function handleTimerEnd() {
   if (focusSession.value?.id) {
@@ -186,13 +272,23 @@ async function closeFocus() {
 onUnmounted(() => {
   if (timer) clearInterval(timer)
   if (friendsTimer) clearInterval(friendsTimer)
+  if (frameInterval) {
+    clearInterval(frameInterval)
+    frameInterval = null
+  }
 })
 
 // --- Friends Panel ---
 const showFriendPanel = ref(false)
-const onlineFriends = ref<
-  { id: string; name: string; image: string; timeLeft: number; status?: string }[]
->([])
+type FriendItem = {
+  id: string
+  name: string
+  image: string
+  timeLeft: number
+  status?: string
+  sessionDuration?: number
+}
+const onlineFriends = ref<FriendItem[]>([])
 
 watch(
   onlineFriends,
@@ -220,6 +316,7 @@ function subscribeToFriends(groupIds: string[], currentUserId: string) {
         image: '',
         timeLeft: 0,
         status: 'UNKNOWN',
+        sessionDuration: 0,
       }))
 
       memberIds.forEach((uid) => {
@@ -239,7 +336,6 @@ function subscribeToFriends(groupIds: string[], currentUserId: string) {
               const idx = onlineFriends.value.findIndex((f) => f.id === uid)
               if (!session || idx === -1) return
 
-              // Calculation for friends' remaining time
               const plannedDuration = session.duration * 60
               const elapsedSeconds = session.elapsedSeconds ?? 0
               let remainingTime = 0
@@ -257,12 +353,14 @@ function subscribeToFriends(groupIds: string[], currentUserId: string) {
 
               onlineFriends.value[idx].timeLeft = remainingTime
               onlineFriends.value[idx].status = session.status
+              onlineFriends.value[idx].sessionDuration = plannedDuration
 
               startFriendsTimer()
             })
           } else {
             onlineFriends.value[friendIndex].status = 'ONLINE'
             onlineFriends.value[friendIndex].timeLeft = 0
+            onlineFriends.value[friendIndex].sessionDuration = 0
           }
         })
       })
@@ -278,23 +376,9 @@ function closeFriendPanel() {
   showFriendPanel.value = false
 }
 
-const selectedFriends = ref<
-  {
-    id: string
-    name: string
-    image: string
-    timeLeft: number
-    status?: string
-  }[]
->([])
+const selectedFriends = ref<FriendItem[]>([])
 
-function addFriendToScreen(friend: {
-  id: string
-  name: string
-  image: string
-  timeLeft: number
-  status?: string
-}) {
+function addFriendToScreen(friend: FriendItem) {
   if (selectedFriends.value.some((f) => f.id === friend.id)) return
   selectedFriends.value.push({ ...friend })
 }
@@ -331,6 +415,18 @@ function cancelEndSession() {
 async function endSessionConfirmed() {
   showEndSessionModal.value = false
   await closeFocus()
+}
+
+function getEggImageForFriend(friend: FriendItem) {
+  const total = friend.sessionDuration ?? 0
+  const rem = friend.timeLeft ?? 0
+  const idx = getFrameIndexFor(rem, total)
+  return eggs[idx] ?? eggs[0]
+}
+
+function getEggImageForUser() {
+  const idx = currentFrameIndex.value
+  return eggs[idx] ?? eggs[0]
 }
 </script>
 
@@ -410,7 +506,7 @@ async function endSessionConfirmed() {
       </div>
     </transition>
 
-    <main class="flex-grow flex flex-col items-center justify-center text-center -mt-16">
+    <main class="flex flex-col items-center text-center mt-22">
       <h1 class="text-7xl md:text-8xl font-bold text-slate-700 tabular-nums">
         {{ formattedTime }}
       </h1>
@@ -420,17 +516,17 @@ async function endSessionConfirmed() {
       </p>
     </main>
 
-    <footer class="flex flex-col items-center justify-end gap-8 pb-10">
+    <footer class="flex flex-col items-center justify-end gap-25 pt-15">
       <div class="flex flex-row justify-center items-end gap-6 flex-wrap">
         <div class="flex flex-col items-center text-center">
           <div
             class="sprite"
             :style="{
-              backgroundImage: `url(${studentImage})`,
+              backgroundImage: `url(${getEggImageForUser()})`,
               animationPlayState: isMySessionPaused ? 'paused' : 'running',
             }"
           ></div>
-          <p class="mt-2 text-md font-semibold text-slate-700">You</p>
+          <p class="text-md font-semibold text-slate-700 -mt-10">You</p>
           <p class="text-sm font-mono text-slate-500 bg-slate-200/70 rounded px-2 py-0.5 invisible">
             &nbsp;
           </p>
@@ -440,7 +536,7 @@ async function endSessionConfirmed() {
           <div
             class="sprite"
             :style="{
-              backgroundImage: `url(${studentImage})`,
+              backgroundImage: `url(${getEggImageForFriend(friend)})`,
               animationPlayState: friend.status === 'FOCUSING' ? 'running' : 'paused',
             }"
           ></div>
@@ -510,21 +606,27 @@ async function endSessionConfirmed() {
 
 <style scoped>
 .sprite {
-  width: 170.67px;
-  height: 272px;
-  /* The image path is relative to the component file */
-  background-image: url('../assets/images/students.png');
+  width: 204px;
+  height: 326px;
   background-repeat: no-repeat;
-  background-position: 0 0;
-  animation: walk 1s steps(3, start) infinite;
+  background-position: center;
+  background-size: contain;
+  animation: shake 0.5s ease-in-out infinite; /* สำหรับสั่น */
 }
 
-@keyframes walk {
-  from {
-    background-position: -512px 0;
+@keyframes shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
   }
-  to {
-    background-position: 0 0;
+  25% {
+    transform: translate(-2px, 1px);
+  }
+  50% {
+    transform: translate(2px, -1px);
+  }
+  75% {
+    transform: translate(-1px, 2px);
   }
 }
 
