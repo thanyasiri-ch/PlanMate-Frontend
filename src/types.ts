@@ -192,3 +192,12 @@ export interface StudyAnalyticsDTO {
   subjectBreakdown: Record<string, number>
   focusSessions: FocusSessionDetailDTO[]
 }
+
+export interface FriendItem {
+  id: string
+  name: string
+  image: string
+  timeLeft: number
+  status?: string
+  sessionDuration?: number
+}
