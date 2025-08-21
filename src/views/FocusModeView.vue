@@ -45,15 +45,9 @@ let frameInterval: number | null = null
 
 const focusSession = computed(() => focusStore.activeSession)
 
-const remainingSeconds = computed(() => {
-  if (typeof timeLeft.value === 'number') return Math.max(0, Math.floor(timeLeft.value))
-  if (!focusSession.value) return 0
-  return Math.max(0, (focusSession.value.duration ?? 0) * 60)
-})
-
 const totalSeconds = computed(() => {
-  if (focusSession.value && typeof focusSession.value.duration === 'number') {
-    return Math.max(0, focusSession.value.duration * 60)
+  if (focusSession.value && typeof focusSession.value.session?.duration === 'number') {
+    return Math.max(0, focusSession.value.session.duration * 60)
   }
   if (firebaseFocusSession.value && typeof firebaseFocusSession.value.duration === 'number') {
     return Math.max(0, firebaseFocusSession.value.duration * 60)
