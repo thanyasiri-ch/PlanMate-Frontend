@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "close"): void
-  (e: "add-friend", friend: FriendItem): void
+  (e: "request-focus", friend: FriendItem): void
   (e: "remove-friend", id: string): void
 }>()
 </script>
@@ -57,9 +57,9 @@ const emit = defineEmits<{
           <!-- Add / Remove Button -->
           <button
             v-if="!selectedFriends.some((f) => f.id === friend.id)"
-            @click.stop="emit('add-friend', friend)"
+            @click.stop="emit('request-focus', friend)"
             class="text-sky-500 hover:text-sky-700 p-1 rounded-full hover:bg-sky-100"
-            aria-label="Add Friend"
+            aria-label="Request Focus"
           >
             <UserPlusIcon class="h-5 w-5" />
           </button>

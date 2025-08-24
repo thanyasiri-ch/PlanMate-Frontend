@@ -31,9 +31,12 @@ const {
   subscribeToFriends,
   toggleFriendPanel,
   closeFriendPanel,
-  addFriendToScreen,
   removeFriendFromScreen,
   formatFriendTime,
+  requestFriendToJoin,
+  subscribeToFocusRequests,
+  acceptRequest,
+  declineRequest,
 } = useFriends()
 
 // --- Session State ---
@@ -243,6 +246,40 @@ function closeCompletionModal() {
   router.push({ name: 'todo' })
 }
 
+// --- Focus Request Modal ---
+const requestingFriend = ref<any | null>(null)
+
+async function handleRequestFocus(friend: any) {
+  const currentUser = await getCurrentUser()
+  if (!currentUser) return
+  const currentUserName = focusStore.activeSession?.displayName || 'Me'
+  requestFriendToJoin(friend, currentUser.uid, currentUserName)
+  requestingFriend.value = friend
+}
+
+async function acceptRequestHandler() {
+  const currentUser = await getCurrentUser()
+  if (!currentUser || !requestingFriend.value) return
+  acceptRequest(currentUser.uid, requestingFriend.value.id)
+  requestingFriend.value = null
+}
+
+async function declineRequestHandler() {
+  const currentUser = await getCurrentUser()
+  if (!currentUser || !requestingFriend.value) return
+  declineRequest(currentUser.uid, requestingFriend.value.id)
+  requestingFriend.value = null
+}
+
+onMounted(async () => {
+  const currentUser = await getCurrentUser()
+  if (!currentUser) return
+
+  subscribeToFocusRequests(currentUser.uid, (req) => {
+    requestingFriend.value = { id: req.fromId, name: req.fromName }
+  })
+})
+
 // --- Task Info ---
 const taskName = computed(() => focusSession.value?.displayName ?? 'Unnamed Task')
 const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type')
@@ -273,7 +310,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
       :online-friends="onlineFriends"
       :selected-friends="selectedFriends"
       @close="closeFriendPanel"
-      @add-friend="addFriendToScreen"
+      @request-focus="handleRequestFocus"
       @remove-friend="removeFriendFromScreen"
     />
 
@@ -286,6 +323,50 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
         <span class="font-semibold">{{ taskName }} ({{ formatSessionType(taskType) }})</span>
       </p>
     </main>
+
+    <!-- Focus Request Modal -->
+    <div v-if="requestingFriend" class="fixed top-8 left-1/2 -translate-x-1/2 z-50">
+      <div
+        class="inline-block bg-black/30 backdrop-blur-lg rounded-4xl px-3 py-2 shadow-lg ring-1 ring-white/20 max-w-full"
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 flex items-center justify-center bg-sky-500 rounded-full">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 text-white"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <p class="text-base font-medium text-white">
+              {{ requestingFriend.name }} is asking to study together.
+            </p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              @click="declineRequestHandler"
+              class="px-4 py-1.5 text-sm rounded-2xl bg-gray-200/80 text-gray-900 hover:bg-gray-300/90"
+            >
+              Decline
+            </button>
+            <button
+              @click="acceptRequestHandler"
+              class="px-4 py-1.5 text-sm rounded-2xl bg-sky-500 text-white hover:bg-sky-600"
+            >
+              Accept
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <footer class="flex flex-col items-center justify-end gap-10">
       <div class="flex flex-row justify-center items-end gap-6 flex-wrap">

@@ -201,3 +201,10 @@ export interface FriendItem {
   status?: string
   sessionDuration?: number
 }
+
+export type FocusRequest = {
+  from: string
+  fromName: string
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  createdAt: number
+}
