@@ -1,20 +1,25 @@
 <!-- eslint-disable @typescript-eslint/no-unused-vars -->
 <script setup lang="ts">
-import { XMarkIcon, UserPlusIcon } from "@heroicons/vue/24/solid"
-import defaultImage from "@/assets/images/default_image.webp"
-import type { FriendItem } from "@/types";
+import { XMarkIcon, UserPlusIcon } from '@heroicons/vue/24/solid'
+import defaultImage from '@/assets/images/default_image.webp'
+import type { FriendItem } from '@/types'
 
 const props = defineProps<{
   show: boolean
   onlineFriends: FriendItem[]
   selectedFriends: FriendItem[]
+  invitedFriends?: string[]
 }>()
 
 const emit = defineEmits<{
-  (e: "close"): void
-  (e: "request-focus", friend: FriendItem): void
-  (e: "remove-friend", id: string): void
+  (e: 'close'): void
+  (e: 'request-focus', friend: FriendItem): void
+  (e: 'remove-friend', id: string): void
 }>()
+
+function isSelected(friend: FriendItem) {
+  return props.selectedFriends.some((f) => f.id === friend.id)
+}
 </script>
 
 <template>
@@ -34,10 +39,11 @@ const emit = defineEmits<{
         </button>
       </div>
 
-      <ul class="space-y-2 overflow-y-auto">
+      <ul class="space-y-2 overflow-y-auto" role="list">
         <li
           v-for="friend in onlineFriends"
           :key="friend.id"
+          role="listitem"
           class="flex items-center justify-between space-x-3 hover:bg-sky-100 p-2 rounded-lg"
         >
           <div class="flex items-center space-x-3 flex-grow">
@@ -54,15 +60,26 @@ const emit = defineEmits<{
             <span class="text-slate-800 font-medium">{{ friend.name }}</span>
           </div>
 
-          <!-- Add / Remove Button -->
-          <button
-            v-if="!selectedFriends.some((f) => f.id === friend.id)"
-            @click.stop="emit('request-focus', friend)"
-            class="text-sky-500 hover:text-sky-700 p-1 rounded-full hover:bg-sky-100"
-            aria-label="Request Focus"
-          >
-            <UserPlusIcon class="h-5 w-5" />
-          </button>
+          <!-- Action Buttons -->
+          <template v-if="!isSelected(friend)">
+            <button
+              v-if="!(friend as any)._invitePending"
+              @click.stop="emit('request-focus', friend)"
+              class="text-sky-500 hover:text-sky-700 p-1 rounded-full hover:bg-sky-100"
+              aria-label="Request Focus"
+            >
+              <UserPlusIcon class="h-5 w-5" />
+            </button>
+
+            <!-- Already invited (disabled state) -->
+            <span
+              v-else
+              class="px-2 py-1 rounded-full bg-slate-200 text-slate-600 text-sm font-medium"
+            >
+              Invited
+            </span>
+          </template>
+
           <button
             v-else
             @click.stop="emit('remove-friend', friend.id)"

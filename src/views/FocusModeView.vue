@@ -12,7 +12,7 @@ import {
 } from '@heroicons/vue/24/solid'
 import { useFocusSessionStore } from '@/stores/focusSession'
 import { useFriends } from '@/stores/useFriends'
-import type { SessionType } from '@/types'
+import type { Invitation, SessionType } from '@/types'
 import dayjs from 'dayjs'
 import { db } from '@/firebase/firebase.ts'
 import { ref as dbRef, onValue, get } from 'firebase/database'
@@ -22,22 +22,7 @@ import EggSprite from '@/components/EggSprite.vue'
 
 const router = useRouter()
 const focusStore = useFocusSessionStore()
-
-// --- Friends Panel ---
-const {
-  showFriendPanel,
-  onlineFriends,
-  selectedFriends,
-  subscribeToFriends,
-  toggleFriendPanel,
-  closeFriendPanel,
-  removeFriendFromScreen,
-  formatFriendTime,
-  requestFriendToJoin,
-  subscribeToFocusRequests,
-  acceptRequest,
-  declineRequest,
-} = useFriends()
+const friendsStore = useFriends()
 
 // --- Session State ---
 const firebaseFocusSession = ref<any | null>(null)
@@ -155,7 +140,7 @@ onMounted(async () => {
       } else if (typeof groupsData === 'object') {
         groupIds = Object.keys(groupsData)
       }
-      if (groupIds.length > 0) subscribeToFriends(groupIds, currentUserId)
+      if (groupIds.length > 0) friendsStore.subscribeToFriends(groupIds, currentUserId)
     }
   } catch (e) {
     console.error('Failed to fetch focus session or user data', e)
@@ -247,27 +232,34 @@ function closeCompletionModal() {
 }
 
 // --- Focus Request Modal ---
-const requestingFriend = ref<any | null>(null)
+const requestingFriend = ref<Invitation | null>(null) // invitation sent TO me
+const pendingInvite = ref<{ id: string; name: string } | null>(null) // invitation I sent
 
 async function handleRequestFocus(friend: any) {
   const currentUser = await getCurrentUser()
   if (!currentUser) return
-  const currentUserName = focusStore.activeSession?.displayName || 'Me'
-  requestFriendToJoin(friend, currentUser.uid, currentUserName)
-  requestingFriend.value = friend
+
+  try {
+    await friendsStore.inviteFriend(friend.id)
+    // Optimistic UI for inviter → show "invite sent"
+    pendingInvite.value = { id: friend.id, name: friend.name }
+    // auto-hide after 5s
+    setTimeout(() => (pendingInvite.value = null), 5000)
+  } catch {
+    alert('Failed to send invite.')
+  }
 }
 
 async function acceptRequestHandler() {
-  const currentUser = await getCurrentUser()
-  if (!currentUser || !requestingFriend.value) return
-  acceptRequest(currentUser.uid, requestingFriend.value.id)
+  if (!requestingFriend.value) return
+  await friendsStore.joinRoom(requestingFriend.value.roomId)
+  await friendsStore.declineInvitation(requestingFriend.value.id) // clean up
   requestingFriend.value = null
 }
 
 async function declineRequestHandler() {
-  const currentUser = await getCurrentUser()
-  if (!currentUser || !requestingFriend.value) return
-  declineRequest(currentUser.uid, requestingFriend.value.id)
+  if (!requestingFriend.value) return
+  await friendsStore.declineInvitation(requestingFriend.value.id)
   requestingFriend.value = null
 }
 
@@ -275,9 +267,21 @@ onMounted(async () => {
   const currentUser = await getCurrentUser()
   if (!currentUser) return
 
-  subscribeToFocusRequests(currentUser.uid, (req) => {
-    requestingFriend.value = { id: req.fromId, name: req.fromName }
-  })
+  friendsStore.subscribeToInvitations()
+
+  watch(
+    () => friendsStore.invitations,
+    (invitations) => {
+      if (invitations.length > 0) {
+        // Always pick the latest incoming invite
+        const latest = invitations[invitations.length - 1]
+        requestingFriend.value = latest
+      } else {
+        requestingFriend.value = null
+      }
+    },
+    { immediate: true, deep: true },
+  )
 })
 
 // --- Task Info ---
@@ -289,7 +293,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
   <div class="flex flex-col h-screen bg-sky-50 text-slate-800 p-6 md:p-8 relative overflow-hidden">
     <div class="absolute top-6 left-6 right-6 flex justify-between items-center">
       <button
-        @click="toggleFriendPanel"
+        @click="friendsStore.toggleFriendPanel"
         class="p-2 rounded-full hover:bg-slate-200 transition-colors"
         aria-label="Add Friend"
       >
@@ -306,12 +310,12 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
 
     <!-- Friends Panel -->
     <FriendsPanel
-      :show="showFriendPanel"
-      :online-friends="onlineFriends"
-      :selected-friends="selectedFriends"
-      @close="closeFriendPanel"
+      :show="friendsStore.showFriendPanel"
+      :online-friends="friendsStore.onlineFriends"
+      :selected-friends="friendsStore.selectedFriends"
+      @close="friendsStore.closeFriendPanel"
       @request-focus="handleRequestFocus"
-      @remove-friend="removeFriendFromScreen"
+      @remove-friend="friendsStore.removeFriendFromScreen"
     />
 
     <main class="flex flex-col items-center text-center mt-22">
@@ -326,9 +330,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
 
     <!-- Focus Request Modal -->
     <div v-if="requestingFriend" class="fixed top-8 left-1/2 -translate-x-1/2 z-50">
-      <div
-        class="inline-block bg-black/30 backdrop-blur-lg rounded-4xl px-3 py-2 shadow-lg ring-1 ring-white/20 max-w-full"
-      >
+      <div class="inline-block bg-black/30 backdrop-blur-lg rounded-4xl px-3 py-2 shadow-lg">
         <div class="flex items-center justify-between gap-4">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 flex items-center justify-center bg-sky-500 rounded-full">
@@ -346,7 +348,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
               </svg>
             </div>
             <p class="text-base font-medium text-white">
-              {{ requestingFriend.name }} is asking to study together.
+              {{ requestingFriend.fromName }} is asking to study together.
             </p>
           </div>
 
@@ -368,6 +370,13 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
       </div>
     </div>
 
+    <!-- Pending Invite Toast (only for inviter) -->
+    <div v-if="pendingInvite" class="fixed top-8 right-8 z-50">
+      <div class="bg-sky-500 text-white px-4 py-2 rounded-2xl shadow-lg">
+        Invite sent to <strong>{{ pendingInvite.name }}</strong> 🎉
+      </div>
+    </div>
+
     <footer class="flex flex-col items-center justify-end gap-10">
       <div class="flex flex-row justify-center items-end gap-6 flex-wrap">
         <!-- User Egg -->
@@ -380,7 +389,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
 
         <!-- Friends’ Eggs -->
         <EggSprite
-          v-for="friend in selectedFriends"
+          v-for="friend in friendsStore.selectedFriends"
           :key="friend.id"
           :friend="friend"
           :status="friend.status"
@@ -390,7 +399,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
             friend.status === 'PAUSED'
               ? '⏸ Paused'
               : friend.status === 'FOCUSING'
-                ? formatFriendTime(friend.timeLeft)
+                ? friendsStore.formatFriendTime(friend.timeLeft)
                 : friend.name
           "
         />

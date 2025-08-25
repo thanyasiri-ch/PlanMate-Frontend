@@ -208,3 +208,11 @@ export type FocusRequest = {
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
   createdAt: number
 }
+
+export interface Invitation {
+  id: string
+  from: string
+  fromName: string
+  roomId: string
+  timestamp: number
+}

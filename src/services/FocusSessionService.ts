@@ -14,6 +14,15 @@ export default {
     return apiClient.post(`/focus/${focusSessionId}/resume`);
   },
   endSession(focusSessionId: string) {
-    return apiClient.post(`/focus/${focusSessionId}/end`); 
-  }
+    return apiClient.post(`/focus/${focusSessionId}/end`);
+  },
+  inviteFriend(targetUserId: string) {
+    return apiClient.post(`/focus/invite/${targetUserId}`);
+  },
+  joinSharedRoom(roomId: string) {
+    return apiClient.post(`/focus/join-room/${roomId}`);
+  },
+  declineInvitation(invitationId: string) {
+    return apiClient.post(`/focus/invite/${invitationId}/decline`);
+  },
 }
