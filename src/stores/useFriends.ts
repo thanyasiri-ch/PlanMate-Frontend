@@ -19,27 +19,49 @@ export const useFriends = defineStore('focus', () => {
   const outgoingInvites = ref<{ to: string; from: string }[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const groupMembers = ref<Record<string, string[]>>({})
 
   let friendsTimer: number | null = null
 
   // ---------- FRIEND PRESENCE ----------
-  function subscribeToFriends(groupIds: string[], currentUserId: string) {
+  function subscribeToFriends(rawGroupIds: any, currentUserId: string) {
+    const groupIds = normalizeGroups(rawGroupIds)
+    console.log('Normalized group IDs:', groupIds)
+
     groupIds.forEach((groupId) => {
+      console.log(`Subscribing to group: ${groupId}`)
       const groupRef = dbRef(db, `activeGroups/${groupId}`)
+
       onValue(groupRef, (snapshot) => {
         const members = snapshot.val() || {}
+        console.log(`Group ${groupId} members snapshot:`, members)
+
         const memberIds = Object.keys(members).filter((uid) => uid !== currentUserId)
+        console.log(`Filtered members (excluding current user ${currentUserId}):`, memberIds)
 
-        onlineFriends.value = memberIds.map((uid) => ({
-          id: uid,
-          name: "Loading...",
-          image: "",
-          timeLeft: 0,
-          status: "UNKNOWN",
-          sessionDuration: 0,
-        }))
+        // store group-specific members
+        groupMembers.value[groupId] = memberIds
 
-        memberIds.forEach((uid) => {
+        // build union of all members across groups
+        const allMembers = [...new Set(Object.values(groupMembers.value).flat())]
+
+        // sync onlineFriends with allMembers
+        onlineFriends.value = allMembers.map((uid) => {
+          const existing = onlineFriends.value.find((f) => f.id === uid)
+          return (
+            existing || {
+              id: uid,
+              name: 'Loading...',
+              image: '',
+              timeLeft: 0,
+              status: 'UNKNOWN',
+              sessionDuration: 0,
+            }
+          )
+        })
+
+        // for each member, subscribe to user updates
+        allMembers.forEach((uid) => {
           const userRef = dbRef(db, `activeUsers/${uid}`)
           onValue(userRef, (snap) => {
             const userData = snap.val()
@@ -60,12 +82,12 @@ export const useFriends = defineStore('focus', () => {
                 const elapsedSeconds = session.elapsedSeconds ?? 0
                 let remainingTime = 0
 
-                if (session.status === "FOCUSING") {
+                if (session.status === 'FOCUSING') {
                   const now = dayjs()
                   const startedAt = dayjs(session.startedAt)
-                  const timeSinceResume = now.diff(startedAt, "second")
+                  const timeSinceResume = now.diff(startedAt, 'second')
                   remainingTime = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume))
-                } else if (session.status === "PAUSED") {
+                } else if (session.status === 'PAUSED') {
                   remainingTime = Math.max(0, plannedDuration - elapsedSeconds)
                 }
 
@@ -76,7 +98,7 @@ export const useFriends = defineStore('focus', () => {
                 startFriendsTimer()
               })
             } else {
-              onlineFriends.value[friendIndex].status = "ONLINE"
+              onlineFriends.value[friendIndex].status = 'ONLINE'
               onlineFriends.value[friendIndex].timeLeft = 0
               onlineFriends.value[friendIndex].sessionDuration = 0
             }
@@ -86,11 +108,17 @@ export const useFriends = defineStore('focus', () => {
     })
   }
 
+  function normalizeGroups(groups: any): string[] {
+    if (!groups) return []
+
+    return groups.map((g: string) => (g.startsWith('group_') ? g.replace('group_', '') : g))
+  }
+
   function startFriendsTimer() {
     if (friendsTimer) return
     friendsTimer = setInterval(() => {
       selectedFriends.value.forEach((friend) => {
-        if (friend.status === "FOCUSING" && friend.timeLeft > 0) {
+        if (friend.status === 'FOCUSING' && friend.timeLeft > 0) {
           friend.timeLeft--
         }
       })
@@ -112,14 +140,17 @@ export const useFriends = defineStore('focus', () => {
   }
 
   function removeFriendFromScreen(friendId: string) {
-    selectedFriends.value = selectedFriends.value.filter((f) => f.id !== friendId)
+    const index = selectedFriends.value.findIndex((f) => f.id === friendId)
+    if (index !== -1) {
+      selectedFriends.value.splice(index, 1)
+    }
   }
 
   // ---------- TIME ----------
   function formatFriendTime(time: number) {
     const minutes = Math.floor(time / 60)
     const seconds = time % 60
-    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
   // ---------- INVITATIONS (API) ----------

@@ -39,9 +39,6 @@ let frameInterval: number | null = null
 
 // --- Computed Session Helpers ---
 const totalSeconds = computed(() => {
-  if (focusSession.value?.session?.duration) {
-    return focusSession.value.session.duration * 60
-  }
   if (firebaseFocusSession.value?.duration) {
     return firebaseFocusSession.value.duration * 60
   }
