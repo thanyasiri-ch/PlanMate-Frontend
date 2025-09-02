@@ -266,6 +266,8 @@ onMounted(async () => {
 
   friendsStore.subscribeToInvitations()
 
+  friendsStore.autoDetectSharedRoom()
+
   watch(
     () => friendsStore.invitations,
     (invitations) => {
