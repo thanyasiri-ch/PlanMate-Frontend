@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineStore } from 'pinia'
+import { db } from '@/firebase/firebase'
+import { ref as dbRef, get } from 'firebase/database'
 import { FocusStatus, type FocusSessionDTO } from '@/types'
 import FocusSessionService from '@/services/FocusSessionService'
+import { getCurrentUser } from '@/services/auth'
 
 interface FocusSessionState {
   activeSession: FocusSessionDTO | null
@@ -91,8 +94,24 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
       this.isLoading = true
       this.error = null
       try {
+        // End the session
         const res = await FocusSessionService.endSession(this.activeSession.id)
         this.activeSession = res.data
+
+        // Detect shared room from Firebase for current user
+        const currentUserId = (await getCurrentUser())?.uid
+        const userRef = dbRef(db, `activeUsers/${currentUserId}`)
+        const snapshot = await get(userRef)
+        const userData = snapshot.val()
+
+        if (userData?.inSharedRoom && userData?.sharedRoomId) {
+          const roomId = userData.sharedRoomId
+          try {
+            await FocusSessionService.leaveSharedRoom(roomId)
+          } catch (leaveErr: any) {
+            console.warn('Failed to leave shared room:', leaveErr.message)
+          }
+        }
       } catch (err: any) {
         this.error = err.message || 'Failed to stop focus session.'
       } finally {

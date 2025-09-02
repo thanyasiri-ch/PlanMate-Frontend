@@ -13,7 +13,6 @@ const props = defineProps<{
 }>()
 
 const {
-  currentFrame,
   currentEggImage,
   startFrameUpdater,
   stopFrameUpdater,

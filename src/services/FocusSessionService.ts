@@ -25,4 +25,7 @@ export default {
   declineInvitation(invitationId: string) {
     return apiClient.post(`/focus/invite/${invitationId}/decline`);
   },
+  leaveSharedRoom(roomId: string) {
+    return apiClient.post(`/focus/leave-room/${roomId}`);
+  }
 }
