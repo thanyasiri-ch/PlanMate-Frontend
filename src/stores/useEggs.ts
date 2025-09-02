@@ -1,42 +1,36 @@
-import { ref, computed, onUnmounted } from "vue"
-import egg1 from "@/assets/images/egg1.png"
-import egg2 from "@/assets/images/egg2.png"
-import egg3 from "@/assets/images/egg3.png"
-import egg4 from "@/assets/images/egg4.png"
-import egg5 from "@/assets/images/egg5.png"
-import egg6 from "@/assets/images/egg6.png"
-import egg7 from "@/assets/images/egg7.png"
-import egg8 from "@/assets/images/egg8.png"
-import egg9 from "@/assets/images/egg9.png"
-import egg10 from "@/assets/images/egg10.png"
-import egg11 from "@/assets/images/egg11.png"
-import egg12 from "@/assets/images/egg12.png"
-import type { FriendItem } from "@/types"
+import { ref, computed, onUnmounted } from 'vue'
+import type { FriendItem } from '@/types'
 
-const eggs = [
-  egg1, egg2, egg3, egg4, egg5, egg6,
-  egg7, egg8, egg9, egg10, egg11, egg12,
-]
+import eggIntact2 from '@/assets/images/eggs/eggIntact2.png'
+
+import eggCrack2 from '@/assets/images/eggs/eggCrack2.png'
+
+import eggHatch1 from '@/assets/images/eggs/eggHatch1.png'
+import eggHatch3 from '@/assets/images/eggs/eggHatch3.png'
+import eggHatch4 from '@/assets/images/eggs/eggHatch4.png'
+import eggHatch5 from '@/assets/images/eggs/eggHatch5.png'
+
+import duck from '@/assets/images/eggs/duck.png'
+
+const eggs = [eggIntact2, eggCrack2, eggHatch1, eggHatch3, eggHatch4, eggHatch5, duck]
 
 // Calculate the egg frame index depending on elapsed time and session duration
 function getFrameIndexFor(remainingSec: number, totalSec: number): number {
-  if (totalSec <= 0) return 11
+  if (totalSec <= 0) return eggs.length - 1 // final duck frame
 
   const elapsed = Math.max(0, totalSec - remainingSec)
-  const phaseDuration = totalSec / 4
-  const phase = Math.min(3, Math.floor(elapsed / (phaseDuration || 1)))
-  const nowMs = Date.now()
+  const progress = Math.min(1, elapsed / totalSec)
 
-  if (phase === 0) return Math.floor(nowMs / 400) % 3
-  if (phase === 1) return 3 + (Math.floor(nowMs / 400) % 3)
-  if (phase === 2) {
-    const progress = (elapsed - phaseDuration * 2) / (phaseDuration || 1)
-    return 6 + Math.min(2, Math.floor(Math.max(0, Math.min(1, progress)) * 3))
+  // Show duck from 90% onward
+  if (progress >= 0.9) {
+    return eggs.length - 1
   }
-  if (remainingSec <= 0) return 11
 
-  const progress4 = (elapsed - phaseDuration * 3) / (phaseDuration || 1)
-  return 9 + Math.min(2, Math.floor(Math.max(0, Math.min(1, progress4)) * 3))
+  // Map 0–0.9 progress to egg frames (excluding the duck)
+  const effectiveFrames = eggs.length - 1
+  const frameIndex = Math.floor((progress / 0.9) * (effectiveFrames - 1))
+
+  return frameIndex
 }
 
 export function useEggs() {

@@ -394,7 +394,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
           :status="friend.status"
           :time-left="friend.timeLeft"
           :total-seconds="friend.sessionDuration ? friend.sessionDuration * 60 : 0"
-          :label="
+          :timer="
             friend.status === 'PAUSED'
               ? '⏸ Paused'
               : friend.status === 'FOCUSING'
