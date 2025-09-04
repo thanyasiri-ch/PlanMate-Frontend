@@ -46,7 +46,7 @@ export const useGroupStore = defineStore('group', () => {
     success.value = ''
 
     try {
-      const res = await groupService.joinGroup({ joinCode })
+      const res = await groupService.joinGroup(joinCode)
       success.value = res.data
       await fetchGroup()
     } catch (err: any) {
