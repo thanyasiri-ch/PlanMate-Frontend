@@ -53,12 +53,22 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
         const res = await FocusSessionService.startSession(sessionId)
         this.activeSession = res.data
       } catch (err: any) {
-        this.error = err.message || 'Failed to start focus session.'
+        // 1. Handle the error by setting the state in the store
+        if (err.response && err.response.data) {
+          this.error =
+            typeof err.response.data === 'string'
+              ? err.response.data
+              : err.response.data.message || 'Failed to start focus session.'
+        } else {
+          this.error = err.message || 'Failed to start focus session.'
+        }
+
+        // 2. Re-throw the error so the calling function can catch it
+        throw err
       } finally {
         this.isLoading = false
       }
     },
-
     async pauseFocusSession(sessionId: string) {
       this.isLoading = true
       this.error = null

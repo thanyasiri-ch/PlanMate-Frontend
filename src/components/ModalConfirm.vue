@@ -1,19 +1,41 @@
+<script setup lang="ts">
+defineProps({
+  title: {
+    type: String,
+    default: 'Are you sure you want to leave this page?',
+  },
+  message: {
+    type: String,
+    default: 'You have unsaved changes. If you leave now, your information will not be saved.',
+  },
+  confirmText: {
+    type: String,
+    default: 'Leave',
+  },
+  cancelText: {
+    type: String,
+    default: 'Stay',
+  },
+});
+
+defineEmits(['confirm', 'cancel']);
+</script>
+
 <template>
-  <div class="modal-overlay">
+  <div class="modal-overlay" @click.self="$emit('cancel')">
     <div class="modal-box">
-      <h2 class="modal-title">Are you sure you want to leave this page?</h2>
-      <p class="modal-message">
-        You have unsaved changes. If you leave now, your information will not be saved.
-      </p>
+      <h2 class="modal-title">{{ title }}</h2>
+      <p class="modal-message">{{ message }}</p>
       <div class="modal-buttons">
-        <button @click="$emit('cancel')" class="btn cancel">Stay</button>
-        <button @click="$emit('confirm')" class="btn confirm">Leave</button>
+        <button @click="$emit('cancel')" class="btn cancel">{{ cancelText }}</button>
+        <button @click="$emit('confirm')" class="btn confirm">{{ confirmText }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Your existing styles remain unchanged */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -22,6 +44,8 @@
   width: 100vw;
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
   display: flex;
   align-items: center;
   justify-content: center;

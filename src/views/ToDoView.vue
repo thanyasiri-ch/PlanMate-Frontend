@@ -10,6 +10,7 @@ import book2 from '../assets/images/book2.png'
 import book3 from '../assets/images/book3.png'
 import { SessionType, type SessionDTO } from '@/types'
 import { useStudySetupStore } from '@/stores/studySetup'
+import ModalConfirm from '@/components/ModalConfirm.vue'
 
 const setupStore = useStudySetupStore()
 const todoStore = useSessionStore()
@@ -36,6 +37,18 @@ const sessionMap = ref<Record<'today' | 'tomorrow' | 'upcoming', EnrichedSession
   tomorrow: [],
   upcoming: [],
 })
+
+// Modal alert state
+const showModal = ref(false)
+const modalTitle = ref('')
+const modalMessage = ref('')
+
+const handleModalClose = () => {
+  showModal.value = false
+  if (modalTitle.value === 'You already have an active focus session.') {
+    router.push('/focus-mode')
+  }
+}
 
 const motivationMessages = [
   "Time to grow. Let's focus on",
@@ -151,11 +164,20 @@ const startFocus = async () => {
     await focusStore.startFocusSession(selectedTaskId.value)
 
     todoStore.setEnrichedSession(task)
-    router.push({
-      path: '/focus-mode',
-    })
-  } catch {
-    alert('Error starting focus session')
+    router.push({ path: '/focus-mode' })
+  } catch (err: any) {
+    // extract backend error message
+    const errorMsg = err.response?.data || err.message || 'Error starting focus session'
+
+    if (errorMsg === 'You already have an active focus session.') {
+      modalTitle.value = errorMsg
+      modalMessage.value = 'Do you want to switch to it now?'
+      showModal.value = true
+    } else {
+      modalTitle.value = 'Error'
+      modalMessage.value = errorMsg
+      showModal.value = true
+    }
   } finally {
     isFocusing.value = false
   }
@@ -441,6 +463,16 @@ function formatSessionType(type: SessionType): string {
       </div>
     </div>
   </DefaultLayout>
+
+  <ModalConfirm
+    v-if="showModal"
+    :title="modalTitle"
+    :message="modalMessage"
+    confirm-text="Yes"
+    cancel-text="No"
+    @confirm="handleModalClose"
+    @cancel="showModal = false"
+  />
 </template>
 
 <style scoped>
