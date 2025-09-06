@@ -171,11 +171,11 @@ const startFocus = async () => {
 
     if (errorMsg === 'You already have an active focus session.') {
       modalTitle.value = errorMsg
-      modalMessage.value = 'Do you want to switch to it now?'
+      modalMessage.value = 'Go to the focus page to continue?'
       showModal.value = true
     } else {
       modalTitle.value = 'Error'
-      modalMessage.value = errorMsg
+      modalMessage.value = 'Unable to start session. Please try again.'
       showModal.value = true
     }
   } finally {
@@ -467,14 +467,27 @@ function formatSessionType(type: SessionType): string {
     </div>
   </DefaultLayout>
 
+  <!-- Active session modal -->
   <ModalConfirm
-    v-if="showModal"
+    v-if="showModal && modalTitle === 'You already have an active focus session.'"
     :title="modalTitle"
     :message="modalMessage"
-    confirm-text="Yes"
-    cancel-text="No"
+    confirm-text="Continue Focusing"
+    cancel-text="Stay Here"
     @confirm="handleModalClose"
     @cancel="showModal = false"
+  />
+
+  <!-- Error modal (red buttons) -->
+  <ModalConfirm
+    v-else-if="showModal && modalTitle === 'Error'"
+    :title="modalTitle"
+    :message="modalMessage"
+    confirm-text="OK"
+    :confirm-color="'#FF4433'"
+    :confirm-hover-color="'#E03B2A'"
+    :cancel-text="''"
+    @confirm="showModal = false"
   />
 </template>
 

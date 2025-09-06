@@ -1,9 +1,10 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useStudyPreferencesStore } from '@/stores/studyPref'
-import { useStudyAnalyticsStore } from '@/stores/studyAnalytics'
+import { useStudyAnalyticsStore, getColorFromClass } from '@/stores/studyAnalytics'
 import type { PreferredStudyTime, RevisionFrequency, BreakDuration, StudyPreference } from '@/types'
 import Slider from '@vueform/slider'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
@@ -20,6 +21,9 @@ const pieChartData = computed(() => analyticsStore.pieChartData)
 const isEditing = ref(false)
 const selectedTimeRange = ref<'Day' | 'Week' | 'Month' | 'Year'>('Month')
 const analyticsStore = useStudyAnalyticsStore()
+const ranges = ['Day', 'Week', 'Month', 'Year'] as const
+const transitionDirection = ref<'left' | 'right'>('right')
+const transitionName = computed(() => `slide-${transitionDirection.value}`)
 
 const currentDate = ref(new Date())
 const timeRangeOptions: Array<'Day' | 'Week' | 'Month' | 'Year'> = ['Day', 'Week', 'Month', 'Year']
@@ -85,7 +89,7 @@ const pieGradientStyle = computed(() => {
 
   analyticsStore.pieChartData.forEach((item) => {
     const start = currentPercent
-    const end = currentPercent + item.value // item.value is already percentage
+    const end = currentPercent + item.value
     gradientParts.push(`${getColorFromClass(item.colorClass)} ${start}% ${end}%`)
     currentPercent = end
   })
@@ -93,15 +97,59 @@ const pieGradientStyle = computed(() => {
   return `conic-gradient(${gradientParts.join(', ')})`
 })
 
-// Map Tailwind bg classes to actual colors
-function getColorFromClass(colorClass: string) {
-  const colorMap: Record<string, string> = {
-    'bg-orange-400': '#ff9f40',
-    'bg-yellow-400': '#ffee58',
-    'bg-emerald-400': '#66bb6a',
-    'bg-blue-400': '#42a5f5',
+function computeDirection(prevIndex: number, newIndex: number) {
+  const n = ranges.length
+  const rawDiff = newIndex - prevIndex
+  const diff = (rawDiff + n) % n
+
+  console.log('[computeDirection]', {
+    prevIndex,
+    newIndex,
+    rawDiff,
+    diff,
+    chosen: diff === n / 2 ? (rawDiff > 0 ? 'right' : 'left') : diff < n / 2 ? 'right' : 'left',
+  })
+
+  if (prevIndex === newIndex) return transitionDirection.value
+  if (diff === n / 2) return rawDiff > 0 ? 'right' : 'left'
+  return diff < n / 2 ? 'right' : 'left'
+}
+
+function setSelectedRange(newRange: (typeof ranges)[number]) {
+  const prevIndex = ranges.indexOf(selectedTimeRange.value)
+  const newIndex = ranges.indexOf(newRange)
+  const dir = computeDirection(prevIndex, newIndex)
+  console.log('[range] setSelectedRange', {
+    prevIndex,
+    newIndex,
+    dir,
+    prevRange: selectedTimeRange.value,
+    newRange,
+  })
+  transitionDirection.value = dir
+  selectedTimeRange.value = newRange
+}
+
+function handleBarClick(item: any) {
+  const current = selectedTimeRange.value
+  let newRange = current
+
+  if (current === 'Month' || current === 'Week') {
+    newRange = 'Day'
+    currentDate.value = new Date(item.date)
+  } else if (current === 'Year') {
+    newRange = 'Month'
+    currentDate.value = new Date(item.date + '-01')
+  } else {
+    // no-op for Day by default
+    newRange = current
   }
-  return colorMap[colorClass] || '#ccc'
+
+  setSelectedRange(newRange)
+
+  requestAnimationFrame(() => {
+    document.querySelector('#bar-chart-section')?.scrollIntoView({ behavior: 'smooth' })
+  })
 }
 
 // == profile ==
@@ -373,7 +421,7 @@ const timeRangeLabel = computed(() => {
               <button
                 v-for="range in timeRangeOptions"
                 :key="range"
-                @click="selectedTimeRange = range"
+                @click="setSelectedRange(range)"
                 :class="[
                   'px-5 py-1 font-extrabold rounded-4xl transition-colors',
                   selectedTimeRange === range
@@ -405,22 +453,38 @@ const timeRangeLabel = computed(() => {
               <div class="bg-[#E2EAFC] rounded-xl p-4 flex flex-col">
                 <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
 
-                <div
-                  class="flex justify-center h-40 w-full px-2"
-                  :style="{ gap: barGap + 'px', paddingLeft: '8px', paddingRight: '8px' }"
-                >
+                <transition :name="transitionName" mode="out-in">
                   <div
-                    v-for="item in barChartData"
-                    :key="item.date"
-                    class="flex flex-col items-center justify-end flex-1"
+                    :key="selectedTimeRange + '-' + currentDate.getTime()"
+                    class="flex justify-center h-40 w-full px-2"
+                    :style="{ gap: barGap + 'px', paddingLeft: '8px', paddingRight: '8px' }"
                   >
                     <div
-                      class="bg-[#4454C0] rounded-t transition-all duration-300 w-full"
-                      :style="{ height: item.heightPercent + '%' }"
-                      :title="item.minutes > 0 ? `${item.minutes} min` : 'No activity'"
-                    ></div>
+                      v-for="item in barChartData"
+                      :key="item.date"
+                      class="flex flex-col items-center justify-end flex-1 relative group"
+                    >
+                      <!-- Tooltip -->
+                      <div
+                        v-if="item.minutes > 0"
+                        class="absolute bottom-full mb-2 px-2 py-1 rounded bg-gray-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap"
+                      >
+                        <template v-if="item.minutes < 60"> {{ item.minutes }}m </template>
+                        <template v-else>
+                          {{ Math.floor(item.minutes / 60) }}h
+                          <span v-if="item.minutes % 60 > 0"> {{ item.minutes % 60 }}m </span>
+                        </template>
+                      </div>
+
+                      <!-- Bar -->
+                      <div
+                        class="bg-[#4454C0] rounded-t transition-all duration-300 w-full group-hover:scale-105 cursor-pointer"
+                        :style="{ height: item.heightPercent + '%' }"
+                        @click="handleBarClick(item)"
+                      ></div>
+                    </div>
                   </div>
-                </div>
+                </transition>
 
                 <div class="border-t-2 border-gray-300 w-full my-1"></div>
 
@@ -445,31 +509,36 @@ const timeRangeLabel = computed(() => {
 
             <div class="bg-[#E2EAFC] p-12 rounded-xl">
               <h3 class="text-lg font-bold text-gray-700 mb-4 text-center">Pie chart</h3>
-              <div class="flex flex-col md:flex-row items-center gap-6">
-                <div class="w-36 h-36 relative">
-                  <div
-                    class="absolute inset-0 rounded-full"
-                    :style="{ background: pieGradientStyle }"
-                  ></div>
-                  <div class="absolute inset-3 bg-[#E2EAFC] rounded-full"></div>
+              <transition :name="transitionName" mode="out-in">
+                <div
+                  :key="selectedTimeRange + '-' + currentDate.getTime()"
+                  class="flex flex-col md:flex-row items-center gap-6"
+                >
+                  <div class="w-36 h-36 relative">
+                    <div
+                      class="absolute inset-0 rounded-full"
+                      :style="{ background: pieGradientStyle }"
+                    ></div>
+                    <div class="absolute inset-3 bg-[#E2EAFC] rounded-full"></div>
+                  </div>
+                  <ul class="flex-1 space-y-2">
+                    <li
+                      v-for="item in pieChartData"
+                      :key="item.label"
+                      class="flex justify-between items-center text-sm"
+                    >
+                      <div class="flex items-center">
+                        <span :class="['w-3 h-3 rounded-full mr-2', item.colorClass]"></span>
+                        <span class="text-gray-600">{{ item.label }}</span>
+                        <span class="ml-2 text-gray-500 text-xs">({{ item.value }}%)</span>
+                      </div>
+                      <span class="font-medium text-gray-700 text-xs md:text-sm">{{
+                        item.time
+                      }}</span>
+                    </li>
+                  </ul>
                 </div>
-                <ul class="flex-1 space-y-2">
-                  <li
-                    v-for="item in pieChartData"
-                    :key="item.label"
-                    class="flex justify-between items-center text-sm"
-                  >
-                    <div class="flex items-center">
-                      <span :class="['w-3 h-3 rounded-full mr-2', item.colorClass]"></span>
-                      <span class="text-gray-600">{{ item.label }}</span>
-                      <span class="ml-2 text-gray-500 text-xs">({{ item.value }}%)</span>
-                    </div>
-                    <span class="font-medium text-gray-700 text-xs md:text-sm">{{
-                      item.time
-                    }}</span>
-                  </li>
-                </ul>
-              </div>
+              </transition>
             </div>
           </div>
         </section>
@@ -732,3 +801,49 @@ const timeRangeLabel = computed(() => {
     </div>
   </DefaultLayout>
 </template>
+
+<style scoped>
+/* slide-right: entering element comes from left -> appears moving right */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.28s ease;
+}
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+.slide-right-enter-to {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-right-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+/* slide-left: entering element comes from right -> appears moving left */
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: all 0.28s ease;
+}
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(40px);
+}
+.slide-left-enter-to {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-left-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+</style>
