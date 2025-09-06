@@ -8,12 +8,15 @@ import { groupService } from '@/services/GroupService'
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<StudyGroupResponseDTO[]>([])
   const groupProgress = ref<GroupMemberProgressDTO[]>([])
-  const isLoading = ref(false)
   const error = ref('')
   const success = ref('')
 
+  const isFetchingGroups = ref(false)
+  const isJoiningGroup = ref(false)
+  const isFetchingProgress = ref(false)
+
   const fetchGroup = async () => {
-    isLoading.value = true
+    isFetchingGroups.value = true
     error.value = ''
     try {
       const res = await groupService.getGroup()
@@ -22,12 +25,12 @@ export const useGroupStore = defineStore('group', () => {
       error.value = 'Failed to fetch groups.'
       groups.value = []
     } finally {
-      isLoading.value = false
+      isFetchingGroups.value = false
     }
   }
 
   const fetchGroupProgress = async (groupId: number) => {
-    isLoading.value = true
+    isFetchingProgress.value = true
     error.value = ''
     try {
       const res = await groupService.getGroupProgress(groupId)
@@ -36,12 +39,12 @@ export const useGroupStore = defineStore('group', () => {
       error.value = 'Failed to fetch group progress.'
       groupProgress.value = []
     } finally {
-      isLoading.value = false
+      isFetchingProgress.value = false
     }
   }
 
   const joinGroup = async (joinCode: string) => {
-    isLoading.value = true
+    isJoiningGroup.value = true
     error.value = ''
     success.value = ''
 
@@ -56,12 +59,12 @@ export const useGroupStore = defineStore('group', () => {
         error.value = 'Failed to join group. Try again later.'
       }
     } finally {
-      isLoading.value = false
+      isJoiningGroup.value = false
     }
   }
 
   const createGroup = async (data: { groupName: string; imageUrl: string }) => {
-    isLoading.value = true
+    isFetchingGroups.value = true
     error.value = ''
     success.value = ''
 
@@ -73,16 +76,18 @@ export const useGroupStore = defineStore('group', () => {
     } catch (err: any) {
       error.value = 'Failed to create group.'
     } finally {
-      isLoading.value = false
+      isFetchingGroups.value = false
     }
   }
 
   return {
     groups,
     groupProgress,
-    isLoading,
     error,
     success,
+    isFetchingGroups,
+    isJoiningGroup,
+    isFetchingProgress,
     fetchGroup,
     fetchGroupProgress,
     joinGroup,

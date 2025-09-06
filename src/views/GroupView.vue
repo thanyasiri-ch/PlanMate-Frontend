@@ -104,10 +104,10 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
 
               <button
                 @click="handleJoinGroup"
-                :disabled="groupStore.isLoading"
+                :disabled="groupStore.isJoiningGroup"
                 class="ml-4 bg-[#4F46E5] hover:bg-[#4338CA] text-white text-sm font-semibold px-4 py-2 rounded-full transition duration-200"
               >
-                {{ groupStore.isLoading ? 'Joining...' : 'Join' }}
+                {{ groupStore.isJoiningGroup ? 'Joining...' : 'Join' }}
               </button>
             </div>
             <p v-if="groupStore.error" class="text-red-500 mt-2">{{ groupStore.error }}</p>
@@ -128,7 +128,10 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
             </div>
 
             <div class="flex-1 overflow-y-auto pr-1">
-              <div v-if="groupStore.isLoading" class="text-center text-gray-500 text-sm py-4">
+              <div
+                v-if="groupStore.isFetchingGroups"
+                class="text-center text-gray-500 text-sm py-4"
+              >
                 Loading groups...
               </div>
 
@@ -213,8 +216,46 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 {{ groups.find((g) => g.id === selectedGroupId)?.name }}
               </span>
             </div>
-            <div v-if="groupStore.isLoading" class="text-center text-gray-500 py-4">
-              Loading leaderboard...
+            <div
+              v-if="selectedGroupId && groupStore.isFetchingProgress"
+              class="flex items-center justify-center gap-2 text-gray-600 py-6 text-base font-medium"
+            >
+              <!-- Spinner -->
+              <svg
+                class="w-5 h-5 animate-spin text-indigo-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                ></path>
+              </svg>
+
+              <!-- Animated text -->
+              <span class="animate-pulse">Loading leaderboard...</span>
+            </div>
+
+            <!-- If finished loading but no data -->
+            <div
+              v-else-if="
+                selectedGroupId &&
+                !groupStore.isFetchingProgress &&
+                groupStore.groupProgress.length === 0
+              "
+              class="text-center text-gray-500 py-4"
+            >
+              No leaderboard data yet.
             </div>
             <div v-else-if="leaderboardData.length > 0" class="w-full flex-1 flex flex-col">
               <div class="flex items-end justify-center w-full gap-16 mb-8 relative">
@@ -368,4 +409,3 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
     @submit="handleGroupSubmit"
   />
 </template>
-
