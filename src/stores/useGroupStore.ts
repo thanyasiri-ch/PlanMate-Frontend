@@ -4,12 +4,19 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { GroupMemberProgressDTO, StudyGroupResponseDTO } from '@/types'
 import { groupService } from '@/services/GroupService'
+import defaultGroupImage from '@/assets/images/group.png'
 
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<StudyGroupResponseDTO[]>([])
   const groupProgress = ref<GroupMemberProgressDTO[]>([])
-  const error = ref('')
-  const success = ref('')
+  const joinError = ref('')
+  const joinSuccess = ref('')
+
+  const createError = ref('')
+  const createSuccess = ref('')
+
+  const fetchGroupsError = ref('')
+  const fetchProgressError = ref('')
 
   const isFetchingGroups = ref(false)
   const isJoiningGroup = ref(false)
@@ -17,12 +24,12 @@ export const useGroupStore = defineStore('group', () => {
 
   const fetchGroup = async () => {
     isFetchingGroups.value = true
-    error.value = ''
+    fetchGroupsError.value = ''
     try {
       const res = await groupService.getGroup()
       groups.value = res.data
     } catch (err) {
-      error.value = 'Failed to fetch groups.'
+      fetchGroupsError.value = 'Failed to fetch groups.'
       groups.value = []
     } finally {
       isFetchingGroups.value = false
@@ -31,12 +38,12 @@ export const useGroupStore = defineStore('group', () => {
 
   const fetchGroupProgress = async (groupId: number) => {
     isFetchingProgress.value = true
-    error.value = ''
+    fetchProgressError.value = ''
     try {
       const res = await groupService.getGroupProgress(groupId)
       groupProgress.value = Array.isArray(res.data) ? res.data : []
     } catch (err) {
-      error.value = 'Failed to fetch group progress.'
+      fetchProgressError.value = 'Failed to fetch group progress.'
       groupProgress.value = []
     } finally {
       isFetchingProgress.value = false
@@ -45,18 +52,18 @@ export const useGroupStore = defineStore('group', () => {
 
   const joinGroup = async (joinCode: string) => {
     isJoiningGroup.value = true
-    error.value = ''
-    success.value = ''
+    joinError.value = ''
+    joinSuccess.value = ''
 
     try {
       const res = await groupService.joinGroup(joinCode)
-      success.value = res.data
+      joinSuccess.value = res.data
       await fetchGroup()
     } catch (err: any) {
       if (err.response?.status === 400) {
-        error.value = err.response.data || 'Invalid join code.'
+        joinError.value = err.response.data || 'Invalid join code.'
       } else {
-        error.value = 'Failed to join group. Try again later.'
+        joinError.value = 'Failed to join group. Try again later.'
       }
     } finally {
       isJoiningGroup.value = false
@@ -65,16 +72,31 @@ export const useGroupStore = defineStore('group', () => {
 
   const createGroup = async (data: { groupName: string; imageUrl: string }) => {
     isFetchingGroups.value = true
-    error.value = ''
-    success.value = ''
+    createError.value = ''
+    createSuccess.value = ''
 
     try {
-      const res = await groupService.createGroup(data)
-      success.value =
+      const payload = {
+        groupName: data.groupName,
+        imageUrl: data.imageUrl || defaultGroupImage,
+      }
+
+      const res = await groupService.createGroup(payload)
+      createSuccess.value =
         typeof res.data === 'string' ? `Group created: ${res.data}` : 'Group created successfully.'
       await fetchGroup()
+
+      // Auto-clear success after 2s
+      setTimeout(() => {
+        createSuccess.value = ''
+      }, 2000)
     } catch (err: any) {
-      error.value = 'Failed to create group.'
+      createError.value = 'Failed to create group.'
+
+      // Auto-clear error after 2s
+      setTimeout(() => {
+        createError.value = ''
+      }, 2000)
     } finally {
       isFetchingGroups.value = false
     }
@@ -83,8 +105,12 @@ export const useGroupStore = defineStore('group', () => {
   return {
     groups,
     groupProgress,
-    error,
-    success,
+    createError,
+    createSuccess,
+    joinError,
+    joinSuccess,
+    fetchGroupsError,
+    fetchProgressError,
     isFetchingGroups,
     isJoiningGroup,
     isFetchingProgress,

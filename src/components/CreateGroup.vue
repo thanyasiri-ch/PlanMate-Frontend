@@ -14,6 +14,7 @@ const groupName = ref('')
 const groupImage = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
 const error = ref('')
+const success = ref(false)
 const loading = ref(false)
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -35,16 +36,30 @@ function createGroup() {
     return
   }
 
+  if (groupName.value.length > 50) {
+    error.value = 'Group name must be less than 50 characters.'
+    return
+  }
+
   error.value = ''
   loading.value = true
 
+  // Simulate async operation
+  emit('submit', {
+    name: groupName.value.trim(),
+    image: groupImage.value,
+  })
+
+  // After submission, show success
   setTimeout(() => {
-    emit('submit', {
-      name: groupName.value.trim(),
-      image: groupImage.value,
-    })
-    resetForm()
-    emit('close')
+    loading.value = false
+    success.value = true
+
+    // Auto close after 1.5s
+    setTimeout(() => {
+      resetForm()
+      emit('close')
+    }, 1500)
   }, 1000)
 }
 
@@ -59,6 +74,7 @@ function resetForm() {
   previewUrl.value = null
   error.value = ''
   loading.value = false
+  success.value = false
 }
 </script>
 
@@ -135,9 +151,10 @@ function resetForm() {
           <button
             @click="createGroup"
             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full text-sm font-semibold transition disabled:opacity-50"
-            :disabled="loading"
+            :disabled="loading || success"
           >
             <span v-if="loading">Creating...</span>
+            <span v-else-if="success">Created successfully!</span>
             <span v-else>Create</span>
           </button>
         </div>

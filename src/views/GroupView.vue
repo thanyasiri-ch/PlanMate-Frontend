@@ -4,6 +4,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useGroupStore } from '@/stores/useGroupStore'
 import CreateGroup from '@/components/CreateGroup.vue'
 import { uploadImageToFirebase } from '@/firebase/uploadImageToFirebase'
+import DefaultGroupImage from '@/assets/images/group.png'
 
 const joinCode = ref('')
 const isCreateModalOpen = ref(false)
@@ -59,7 +60,7 @@ const handleJoinGroup = async () => {
   // Validate join code format (e.g., 6-character alphanumeric)
   const codePattern = /^[A-Za-z0-9]{6}$/
   if (!codePattern.test(joinCode.value)) {
-    groupStore.error = 'Invalid join code. Please enter a 6-character code.'
+    groupStore.joinError = 'Invalid join code. Please enter a 6-character code.'
     return
   }
 
@@ -70,15 +71,16 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
   try {
     let imageUrl = ''
     if (payload.image) {
-      console.log('Uploading file:', payload.image)
       imageUrl = await uploadImageToFirebase(payload.image)
-      console.log('Image uploaded successfully:', imageUrl)
+    } else {
+      imageUrl = DefaultGroupImage
     }
-
     await groupStore.createGroup({
       groupName: payload.name,
       imageUrl,
     })
+
+    isCreateModalOpen.value = false
   } catch (e) {
     console.error('Group creation failed:', e)
   }
@@ -110,8 +112,10 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 {{ groupStore.isJoiningGroup ? 'Joining...' : 'Join' }}
               </button>
             </div>
-            <p v-if="groupStore.error" class="text-red-500 mt-2">{{ groupStore.error }}</p>
-            <p v-if="groupStore.success" class="text-green-600 mt-2">{{ groupStore.success }}</p>
+            <p v-if="groupStore.joinError" class="text-red-500 mt-2">{{ groupStore.joinError }}</p>
+            <p v-if="groupStore.joinSuccess" class="text-green-600 mt-2">
+              {{ groupStore.joinSuccess }}
+            </p>
           </div>
 
           <div
