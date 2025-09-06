@@ -258,7 +258,10 @@ function formatSessionType(type: SessionType): string {
 
             <div class="flex gap-3 items-center">
               <!-- Completed navigation -->
-              <button @click="scrollToCompleted" class="text-sm text-blue-600 hover:underline">
+              <button
+                @click="scrollToCompleted"
+                class="text-sm font-medium text-blue-600 hover:font-semibold transform transition duration-200 ease-in-out hover:scale-105 active:scale-95"
+              >
                 Completed
               </button>
 

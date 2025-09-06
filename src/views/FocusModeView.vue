@@ -377,7 +377,10 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
     </div>
 
     <footer class="flex flex-col items-center justify-end gap-10">
-      <div class="flex flex-row justify-center items-end gap-6 flex-wrap">
+      <div
+        v-if="firebaseFocusSession"
+        class="flex flex-row justify-center items-end gap-6 flex-wrap"
+      >
         <!-- User Egg -->
         <EggSprite
           is-user
@@ -402,6 +405,11 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
                 : friend.name
           "
         />
+      </div>
+
+      <!-- Loading Sprite -->
+      <div v-else class="flex flex-row justify-center items-end gap-6 flex-wrap">
+        <div class="sprite bg-slate-100 rounded-lg animate-pulse"></div>
       </div>
 
       <button
