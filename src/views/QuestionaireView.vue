@@ -1,7 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script lang="ts">
 import StudyPreferenceForm from '@/components/StudyPreferenceForm.vue'
-import StudyPrefServices from '@/services/StudyPrefServices'
+import StudyPrefServices from '@/services/StudyPrefService'
 import ModalConfirm from '@/components/ModalConfirm.vue'
 import ModalAlert from '@/components/ModalAlert.vue'
 import type { StudyPreference } from '@/types'

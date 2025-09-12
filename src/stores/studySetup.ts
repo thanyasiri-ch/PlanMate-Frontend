@@ -9,7 +9,7 @@ import type {
   CourseDTO,
   AvailabilityRequestDTO,
 } from '@/types'
-import { studySetupService } from '@/services/StudySetupServices' // Import your API service
+import { studySetupService } from '@/services/StudySetupService' // Import your API service
 import { cloneDeep } from 'lodash'
 
 export const useStudySetupStore = defineStore('studySetup', {

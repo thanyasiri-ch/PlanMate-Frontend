@@ -146,3 +146,39 @@ export interface ScheduleDTO {
   study_plan: SessionDTO[]
   unscheduled_plan: SessionDTO[]
 }
+
+export interface GroupRequestDTO {
+  groupName: string
+  imageUrl: string
+}
+
+export interface JoinGroupRequestDTO {
+  joinCode: string
+}
+
+export interface StudyGroupResponseDTO {
+  id: number
+  name: string
+  imageUrl: string
+  joinCode: string
+  members: GroupMemberDTO[]
+}
+
+export interface MemberProfileDTO {
+  memberId: string
+  displayName: string
+  photoUrl: string
+}
+
+export interface GroupMemberProgressDTO {
+  member: MemberProfileDTO
+  completedSessions: number
+  totalFocusSeconds: number
+  percentageCompleted: number
+  points: number
+}
+
+export interface GroupMemberDTO {
+  id: number
+  user: User
+}

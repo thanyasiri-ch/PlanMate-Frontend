@@ -202,7 +202,7 @@ const timeDisplayMap: Record<PreferredStudyTime, string> = {
 
 const revisionDisplayMap: Record<RevisionFrequency, string> = {
   'single deep review before exam': 'Single Deep Review Before Exam',
-  '2-3 reviews per topic': '2-3 Reviews Per Topic',
+  '2-3 reviews sessions per topic': '2-3 Reviews Per Topic',
   'daily review sessions': 'Daily Review Sessions',
 }
 
@@ -383,10 +383,10 @@ onMounted(() => {
             <div class="relative w-24 h-24 mx-auto mb-3">
               <!-- Profile image -->
               <img
-                :src="authStore.image"
-                class="w-24 h-24 rounded-full object-cover border-3 border-white shadow-sm"
-                alt="Profile"
-              />
+                  :src="previewUrl || authStore.image"
+                  class="w-24 h-24 rounded-full object-cover border-3 border-white shadow-sm"
+                  alt="Profile"
+                />
 
               <!-- Camera icon appears only in edit mode -->
               <button

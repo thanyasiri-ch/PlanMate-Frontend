@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineStore } from 'pinia'
 import type { StudyPreference } from '@/types' // Assuming your types are in @/types
-import StudyPrefService from '@/services/StudyPrefServices' // Your existing service
+import StudyPrefService from '@/services/StudyPrefService' // Your existing service
 
 interface StudyPreferencesState {
   preferences: StudyPreference | null
