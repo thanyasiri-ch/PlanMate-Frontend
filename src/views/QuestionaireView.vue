@@ -18,6 +18,7 @@ export default {
       showConfirm: false,
       showAlert: false,
       alertMessage: '',
+      alertTitle: '',
     }
   },
   methods: {
@@ -102,7 +103,15 @@ export default {
           </div>
         </div>
       </div>
-      <ModalConfirm v-if="showConfirm" @confirm="leavePage" @cancel="showConfirm = false" />
+      <ModalConfirm
+        v-if="showConfirm"
+        title="Are you sure you want to leave this page?"
+        message="You have unsaved changes that will be lost."
+        confirm-text="Leave"
+        cancel-text="Stay"
+        @confirm="leavePage"
+        @cancel="showConfirm = false"
+      />
       <ModalAlert
         v-if="showAlert"
         :title="alertTitle"

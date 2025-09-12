@@ -1,8 +1,10 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useStudyPreferencesStore } from '@/stores/studyPref'
+import { useStudyAnalyticsStore, getColorFromClass } from '@/stores/studyAnalytics'
 import type { PreferredStudyTime, RevisionFrequency, BreakDuration, StudyPreference } from '@/types'
 import Slider from '@vueform/slider'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
@@ -10,41 +12,151 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue'
 const router = useRouter()
 const authStore = useAuthStore()
 
-/* ref */
 // == study analytics ==
-const barChartData = ref([
-  { month: 'Jan', value: 30 },
-  { month: 'Feb', value: 50 },
-  { month: 'Mar', value: 75 },
-  { month: 'Apr', value: 65 },
-  { month: 'May', value: 85 },
-  { month: 'Jun', value: 50 },
-  { month: 'Jul', value: 35 },
-  { month: 'Aug', value: 0 },
-  { month: 'Sep', value: 0 },
-  { month: 'Oct', value: 0 },
-  { month: 'Nov', value: 0 },
-  { month: 'Dec', value: 0 },
-])
-
-const pieChartData = ref([
-  { label: 'Eng 2', value: 40, time: '10 hrs 37 mins', colorClass: 'bg-orange-400' },
-  { label: 'UI', value: 35, time: '8 hrs 45 mins', colorClass: 'bg-yellow-400' },
-  { label: 'AI', value: 25, time: '5 hrs 24 mins', colorClass: 'bg-emerald-400' },
-])
+const totalFocusDuration = computed(() => analyticsStore.totalFocusDuration)
+const totalFocusCompletion = computed(() => analyticsStore.totalCompletedFocusSessions)
+const barChartData = computed(() => analyticsStore.barChartData)
+const pieChartData = computed(() => analyticsStore.pieChartData)
 
 const isEditing = ref(false)
+const selectedTimeRange = ref<'Day' | 'Week' | 'Month' | 'Year'>('Month')
+const analyticsStore = useStudyAnalyticsStore()
+const ranges = ['Day', 'Week', 'Month', 'Year'] as const
+const transitionDirection = ref<'left' | 'right'>('right')
+const transitionName = computed(() => `slide-${transitionDirection.value}`)
+
+const currentDate = ref(new Date())
+const timeRangeOptions: Array<'Day' | 'Week' | 'Month' | 'Year'> = ['Day', 'Week', 'Month', 'Year']
+
+const displayDateLabel = computed(() => {
+  const options: Intl.DateTimeFormatOptions =
+    selectedTimeRange.value === 'Day'
+      ? { year: 'numeric', month: 'short', day: 'numeric' }
+      : selectedTimeRange.value === 'Week'
+        ? {} // We'll manually format week range below
+        : selectedTimeRange.value === 'Month'
+          ? { year: 'numeric', month: 'short' }
+          : { year: 'numeric' }
+
+  if (selectedTimeRange.value === 'Week') {
+    const start = new Date(currentDate.value)
+    const day = start.getDay()
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1) // Start on Monday
+    const weekStart = new Date(start.setDate(diff))
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+
+    const fmt = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' })
+    return `${fmt.format(weekStart)} – ${fmt.format(weekEnd)}, ${weekEnd.getFullYear()}`
+  }
+
+  return new Intl.DateTimeFormat('en', options).format(currentDate.value)
+})
+
+const incrementDate = () => {
+  const d = new Date(currentDate.value)
+  if (selectedTimeRange.value === 'Day') {
+    d.setDate(d.getDate() + 1)
+  } else if (selectedTimeRange.value === 'Week') {
+    d.setDate(d.getDate() + 7)
+  } else if (selectedTimeRange.value === 'Month') {
+    d.setMonth(d.getMonth() + 1)
+  } else if (selectedTimeRange.value === 'Year') {
+    d.setFullYear(d.getFullYear() + 1)
+  }
+  currentDate.value = d
+}
+
+const decrementDate = () => {
+  const d = new Date(currentDate.value)
+  if (selectedTimeRange.value === 'Day') {
+    d.setDate(d.getDate() - 1)
+  } else if (selectedTimeRange.value === 'Week') {
+    d.setDate(d.getDate() - 7)
+  } else if (selectedTimeRange.value === 'Month') {
+    d.setMonth(d.getMonth() - 1)
+  } else if (selectedTimeRange.value === 'Year') {
+    d.setFullYear(d.getFullYear() - 1)
+  }
+  currentDate.value = d
+}
+
+const pieGradientStyle = computed(() => {
+  if (!analyticsStore.pieChartData.length) return ''
+
+  const gradientParts: string[] = []
+  let currentPercent = 0
+
+  analyticsStore.pieChartData.forEach((item) => {
+    const start = currentPercent
+    const end = currentPercent + item.value
+    gradientParts.push(`${getColorFromClass(item.colorClass)} ${start}% ${end}%`)
+    currentPercent = end
+  })
+
+  return `conic-gradient(${gradientParts.join(', ')})`
+})
+
+function computeDirection(prevIndex: number, newIndex: number) {
+  const n = ranges.length
+  const rawDiff = newIndex - prevIndex
+  const diff = (rawDiff + n) % n
+
+  console.log('[computeDirection]', {
+    prevIndex,
+    newIndex,
+    rawDiff,
+    diff,
+    chosen: diff === n / 2 ? (rawDiff > 0 ? 'right' : 'left') : diff < n / 2 ? 'right' : 'left',
+  })
+
+  if (prevIndex === newIndex) return transitionDirection.value
+  if (diff === n / 2) return rawDiff > 0 ? 'right' : 'left'
+  return diff < n / 2 ? 'right' : 'left'
+}
+
+function setSelectedRange(newRange: (typeof ranges)[number]) {
+  const prevIndex = ranges.indexOf(selectedTimeRange.value)
+  const newIndex = ranges.indexOf(newRange)
+  const dir = computeDirection(prevIndex, newIndex)
+  console.log('[range] setSelectedRange', {
+    prevIndex,
+    newIndex,
+    dir,
+    prevRange: selectedTimeRange.value,
+    newRange,
+  })
+  transitionDirection.value = dir
+  selectedTimeRange.value = newRange
+}
+
+function handleBarClick(item: any) {
+  const current = selectedTimeRange.value
+  let newRange = current
+
+  if (current === 'Month' || current === 'Week') {
+    newRange = 'Day'
+    currentDate.value = new Date(item.date)
+  } else if (current === 'Year') {
+    newRange = 'Month'
+    currentDate.value = new Date(item.date + '-01')
+  } else {
+    // no-op for Day by default
+    newRange = current
+  }
+
+  setSelectedRange(newRange)
+
+  requestAnimationFrame(() => {
+    document.querySelector('#bar-chart-section')?.scrollIntoView({ behavior: 'smooth' })
+  })
+}
+
+// == profile ==
 const editDisplayName = ref(authStore.displayName)
 const editImageFile = ref<File | null>(null)
 const previewUrl = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
-
-const currentYear = ref(2025)
-const selectedTimeRange = ref('Year')
-const timeRangeOptions = ['Day', 'Week', 'Month', 'Year']
-
-const incrementYear = () => currentYear.value++
-const decrementYear = () => currentYear.value--
 
 const startEditing = () => {
   isEditing.value = true
@@ -70,15 +182,13 @@ const cancelEdit = () => {
   previewUrl.value = null // Reset preview
 }
 
-onMounted(() => {
-  if (!authStore.user) {
-    authStore.checkAuthStatus()
-  }
-
-  if (!authStore.user) {
-    router.push({ name: 'login' })
-  }
-})
+watch(
+  [selectedTimeRange, currentDate],
+  ([range, date]) => {
+    analyticsStore.fetchAnalytics(range, date)
+  },
+  { immediate: true },
+)
 
 const handleLogout = async () => {
   try {
@@ -242,6 +352,36 @@ onMounted(() => {
     }
   }
 })
+
+const barGap = computed(() => {
+  switch (selectedTimeRange.value) {
+    case 'Day':
+      return 6
+    case 'Week':
+      return 20
+    case 'Month':
+      return 4
+    case 'Year':
+      return 10
+    default:
+      return 2
+  }
+})
+
+const timeRangeLabel = computed(() => {
+  switch (selectedTimeRange.value) {
+    case 'Day':
+      return 'Daily focus activity'
+    case 'Week':
+      return 'Weekly focus activity'
+    case 'Month':
+      return 'Monthly focus activity'
+    case 'Year':
+      return 'Yearly focus activity'
+    default:
+      return 'Focus activity'
+  }
+})
 </script>
 <template>
   <DefaultLayout>
@@ -253,7 +393,7 @@ onMounted(() => {
           <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
             <!-- Year controls -->
             <div class="flex items-center gap-2 text-lg font-semibold text-gray-700">
-              <button @click="decrementYear" class="p-1 text-white bg-[#2F2159] rounded-full">
+              <button @click="decrementDate" class="p-1 text-white bg-[#2F2159] rounded-full">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -263,8 +403,8 @@ onMounted(() => {
                   />
                 </svg>
               </button>
-              <span class="font-extrabold">{{ currentYear }}</span>
-              <button @click="incrementYear" class="p-1 text-white bg-[#2F2159] rounded-full">
+              <span class="font-extrabold">{{ displayDateLabel }}</span>
+              <button @click="incrementDate" class="p-1 text-white bg-[#2F2159] rounded-full">
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
@@ -281,7 +421,7 @@ onMounted(() => {
               <button
                 v-for="range in timeRangeOptions"
                 :key="range"
-                @click="selectedTimeRange = range"
+                @click="setSelectedRange(range)"
                 :class="[
                   'px-5 py-1 font-extrabold rounded-4xl transition-colors',
                   selectedTimeRange === range
@@ -294,82 +434,111 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="flex gap-4 items-stretch mb-4 min-h-[180px]">
-            <!-- Summary Box -->
-            <div class="flex-[1]">
-              <div class="flex flex-col items-center gap-4">
-                <!-- Focus Completion Box -->
-                <div class="bg-[#E2EAFC] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs">
+          <div class="flex-1 overflow-auto">
+            <div class="flex flex-col gap-4 mb-4">
+              <div class="flex justify-between gap-4">
+                <div class="bg-[#E2EAFC] rounded-xl p-4 text-center text-[#544BAA] flex-1 max-w-s">
                   <h3 class="text-sm font-medium text-black mb-1">Focus completion</h3>
-                  <p class="text-lg font-bold text-[#544BAA]">20 times</p>
+                  <p class="text-lg font-bold text-[#544BAA]">
+                    {{ totalFocusCompletion }} sessions
+                  </p>
                 </div>
 
-                <!-- Focus Duration Box -->
-                <div class="bg-[#E2EAFC] rounded-xl p-8 text-center text-[#544BAA] w-full max-w-xs">
+                <div class="bg-[#E2EAFC] rounded-xl p-4 text-center text-[#544BAA] flex-1 max-w-s">
                   <h3 class="text-sm font-medium text-black mb-1">Focus duration</h3>
-                  <p class="text-lg font-bold text-[#544BAA]">26 hrs 34 mins</p>
+                  <p class="text-lg font-bold text-[#544BAA]">{{ totalFocusDuration }}</p>
                 </div>
               </div>
-            </div>
 
-            <!-- Bar Chart Box -->
-            <div class="flex-[3]">
-              <div class="bg-[#E2EAFC] rounded-xl p-4 h-full flex flex-col justify-between">
+              <div class="bg-[#E2EAFC] rounded-xl p-4 flex flex-col">
                 <h2 class="text-lg font-bold text-gray-700 mb-2 text-center">Bar chart</h2>
 
-                <div class="flex items-end justify-between h-40 px-2 border-b-2 border-gray-300">
+                <transition :name="transitionName" mode="out-in">
                   <div
-                    v-for="item in barChartData"
-                    :key="item.month"
-                    class="flex flex-col justify-end items-center w-[calc(100%/12-0.5rem)] h-full text-center"
+                    :key="selectedTimeRange + '-' + currentDate.getTime()"
+                    class="flex justify-center h-40 w-full px-2"
+                    :style="{ gap: barGap + 'px', paddingLeft: '8px', paddingRight: '8px' }"
                   >
                     <div
-                      class="bg-[#4454C0] w-full rounded-t transition-all duration-300"
-                      :style="{ height: item.value + '%' }"
-                      :title="item.value > 0 ? `${item.value}%` : ''"
-                    ></div>
-                    <span class="text-xs text-gray-500 mt-1">{{ item.month }}</span>
+                      v-for="item in barChartData"
+                      :key="item.date"
+                      class="flex flex-col items-center justify-end flex-1 relative group"
+                    >
+                      <!-- Tooltip -->
+                      <div
+                        v-if="item.minutes > 0"
+                        class="absolute bottom-full mb-2 px-2 py-1 rounded bg-gray-700 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap"
+                      >
+                        <template v-if="item.minutes < 60"> {{ item.minutes }}m </template>
+                        <template v-else>
+                          {{ Math.floor(item.minutes / 60) }}h
+                          <span v-if="item.minutes % 60 > 0"> {{ item.minutes % 60 }}m </span>
+                        </template>
+                      </div>
+
+                      <!-- Bar -->
+                      <div
+                        class="bg-[#4454C0] rounded-t transition-all duration-300 w-full group-hover:scale-105 cursor-pointer"
+                        :style="{ height: item.heightPercent + '%' }"
+                        @click="handleBarClick(item)"
+                      ></div>
+                    </div>
+                  </div>
+                </transition>
+
+                <div class="border-t-2 border-gray-300 w-full my-1"></div>
+
+                <div
+                  class="flex justify-center w-full px-2"
+                  :style="{ gap: barGap + 'px', paddingLeft: '8px', paddingRight: '8px' }"
+                >
+                  <div
+                    v-for="item in barChartData"
+                    :key="item.date + '-label'"
+                    class="flex justify-center flex-1"
+                  >
+                    <span class="text-xs text-gray-500">{{ item.label }}</span>
                   </div>
                 </div>
+
                 <p class="text-center text-xs text-gray-400 mt-2">
-                  Monthly focus activity placeholder
+                  {{ timeRangeLabel }}
                 </p>
               </div>
             </div>
-          </div>
 
-          <!-- Chart area -->
-          <div class="flex-1 overflow-auto">
-            <div class="flex-1 bg-[#E2EAFC] p-12 rounded-xl">
+            <div class="bg-[#E2EAFC] p-12 rounded-xl">
               <h3 class="text-lg font-bold text-gray-700 mb-4 text-center">Pie chart</h3>
-              <div class="flex flex-col md:flex-row items-center gap-6">
-                <div class="w-36 h-36 relative">
-                  <div
-                    class="absolute inset-0 rounded-full"
-                    style="
-                      background: conic-gradient(#ff9f40 0% 40%, #ffee58 40% 75%, #66bb6a 75% 100%);
-                      transform: rotate(-90deg);
-                    "
-                  ></div>
-                  <div class="absolute inset-3 bg-[#E2EAFC] rounded-full"></div>
+              <transition :name="transitionName" mode="out-in">
+                <div
+                  :key="selectedTimeRange + '-' + currentDate.getTime()"
+                  class="flex flex-col md:flex-row items-center gap-6"
+                >
+                  <div class="w-36 h-36 relative">
+                    <div
+                      class="absolute inset-0 rounded-full"
+                      :style="{ background: pieGradientStyle }"
+                    ></div>
+                    <div class="absolute inset-3 bg-[#E2EAFC] rounded-full"></div>
+                  </div>
+                  <ul class="flex-1 space-y-2">
+                    <li
+                      v-for="item in pieChartData"
+                      :key="item.label"
+                      class="flex justify-between items-center text-sm"
+                    >
+                      <div class="flex items-center">
+                        <span :class="['w-3 h-3 rounded-full mr-2', item.colorClass]"></span>
+                        <span class="text-gray-600">{{ item.label }}</span>
+                        <span class="ml-2 text-gray-500 text-xs">({{ item.value }}%)</span>
+                      </div>
+                      <span class="font-medium text-gray-700 text-xs md:text-sm">{{
+                        item.time
+                      }}</span>
+                    </li>
+                  </ul>
                 </div>
-                <ul class="flex-1 space-y-2">
-                  <li
-                    v-for="item in pieChartData"
-                    :key="item.label"
-                    class="flex justify-between items-center text-sm"
-                  >
-                    <div class="flex items-center">
-                      <span :class="['w-3 h-3 rounded-full mr-2', item.colorClass]"></span>
-                      <span class="text-gray-600">{{ item.label }}</span>
-                      <span class="ml-2 text-gray-500 text-xs">({{ item.value }}%)</span>
-                    </div>
-                    <span class="font-medium text-gray-700 text-xs md:text-sm">{{
-                      item.time
-                    }}</span>
-                  </li>
-                </ul>
-              </div>
+              </transition>
             </div>
           </div>
         </section>
@@ -632,3 +801,49 @@ onMounted(() => {
     </div>
   </DefaultLayout>
 </template>
+
+<style scoped>
+/* slide-right: entering element comes from left -> appears moving right */
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: all 0.28s ease;
+}
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+.slide-right-enter-to {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-right-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+/* slide-left: entering element comes from right -> appears moving left */
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: all 0.28s ease;
+}
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(40px);
+}
+.slide-left-enter-to {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-left-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+</style>

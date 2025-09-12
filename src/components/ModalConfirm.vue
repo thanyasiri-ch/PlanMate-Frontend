@@ -1,13 +1,83 @@
+<script setup lang="ts">
+import { reactive } from 'vue'
+
+const props = defineProps({
+  title: { type: String, default: 'Are you sure you want to leave this page?' },
+  message: {
+    type: String,
+    default: 'You have unsaved changes. If you leave now, your information will not be saved.',
+  },
+  confirmText: { type: String, default: 'Leave' },
+  cancelText: { type: String, default: 'Stay' },
+  confirmColor: { type: String, default: '#57c490' },
+  confirmHoverColor: { type: String, default: '#49b07f' },
+  cancelColor: { type: String, default: '#ffffff' },
+  cancelTextColor: { type: String, default: '#57c490' },
+  cancelHoverColor: { type: String, default: '#f0fef8' },
+})
+
+defineEmits(['confirm', 'cancel'])
+
+// Reactive style objects
+const confirmStyle = reactive({
+  backgroundColor: props.confirmColor,
+  borderColor: props.confirmColor,
+  color: 'white',
+})
+
+const cancelStyle = reactive({
+  backgroundColor: props.cancelColor,
+  borderColor: props.cancelColor,
+  color: props.cancelTextColor,
+})
+
+// Hover methods
+function onConfirmHover() {
+  confirmStyle.backgroundColor = props.confirmHoverColor
+  confirmStyle.borderColor = props.confirmHoverColor
+}
+
+function onConfirmLeave() {
+  confirmStyle.backgroundColor = props.confirmColor
+  confirmStyle.borderColor = props.confirmColor
+}
+
+function onCancelHover() {
+  cancelStyle.backgroundColor = props.cancelHoverColor
+  cancelStyle.borderColor = props.cancelHoverColor
+}
+
+function onCancelLeave() {
+  cancelStyle.backgroundColor = props.cancelColor
+  cancelStyle.borderColor = props.cancelColor
+}
+</script>
+
 <template>
-  <div class="modal-overlay">
+  <div class="modal-overlay" @click.self="$emit('cancel')">
     <div class="modal-box">
-      <h2 class="modal-title">Are you sure you want to leave this page?</h2>
-      <p class="modal-message">
-        You have unsaved changes. If you leave now, your information will not be saved.
-      </p>
+      <h2 class="modal-title">{{ title }}</h2>
+      <p class="modal-message">{{ message }}</p>
       <div class="modal-buttons">
-        <button @click="$emit('cancel')" class="btn cancel">Stay</button>
-        <button @click="$emit('confirm')" class="btn confirm">Leave</button>
+        <button
+          @click="$emit('cancel')"
+          class="btn cancel"
+          :style="cancelStyle"
+          @mouseover="onCancelHover"
+          @mouseleave="onCancelLeave"
+        >
+          {{ cancelText }}
+        </button>
+
+        <button
+          @click="$emit('confirm')"
+          class="btn confirm"
+          :style="confirmStyle"
+          @mouseover="onConfirmHover"
+          @mouseleave="onConfirmLeave"
+        >
+          {{ confirmText }}
+        </button>
       </div>
     </div>
   </div>
@@ -22,6 +92,8 @@
   width: 100vw;
   height: 100vh;
   background-color: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -43,7 +115,6 @@
   margin-bottom: 12px;
   color: #333;
   padding-left: 8px;
-
 }
 
 .modal-message {
@@ -64,27 +135,10 @@
   font-weight: bold;
   padding: 3px 14px;
   border-radius: 9999px;
-  border: 2px solid #57c490;
+  border: 2px solid;
   font-size: 0.9rem;
   min-width: 70px;
   transition: all 0.2s ease;
-}
-
-.cancel {
-  background-color: white;
-  color: #57c490;
-}
-
-.cancel:hover {
-  background-color: #f0fef8;
-}
-
-.confirm {
-  background-color: #57c490;
-  color: white;
-}
-
-.confirm:hover {
-  background-color: #49b07f;
+  cursor: pointer;
 }
 </style>

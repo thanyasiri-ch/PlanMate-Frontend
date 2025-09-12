@@ -5,6 +5,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   type User as FirebaseUser,
+  onAuthStateChanged,
 } from 'firebase/auth';
 import { auth } from '@/firebase/firebase';
 import type { User } from '@/types';
@@ -59,4 +60,17 @@ export const login = async (email: string, password: string): Promise<User> => {
 export const googleSignIn = async (): Promise<User> => {
   const result = await signInWithPopup(auth, provider);
   return formatUser(result.user);
+};
+
+export const getCurrentUser = (): Promise<FirebaseUser | null> => {
+  return new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        unsubscribe(); // Unsubscribe to prevent memory leaks
+        resolve(user);
+      },
+      reject // Handle potential errors
+    );
+  });
 };

@@ -31,7 +31,7 @@ export default {
 
       revisionFrequencyOptions: [
         'single deep review before exam',
-        '2-3 reviews per topic',
+        '2-3 reviews sessions per topic',
         'daily review sessions',
       ] as RevisionFrequency[],
       selectedRevisionFrequency: '' as RevisionFrequency,

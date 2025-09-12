@@ -129,6 +129,7 @@ export interface SessionDTO {
   duration: number
   type: SessionType
   isScheduled: boolean
+  isCompleted: boolean
   date: string
   start: string
   end: string
@@ -181,4 +182,73 @@ export interface GroupMemberProgressDTO {
 export interface GroupMemberDTO {
   id: number
   user: User
+}
+
+export enum FocusStatus {
+  INCOMPLETE,
+  FOCUSING,
+  COMPLETED,
+  CANCELLED,
+  INTERRUPTED
+}
+
+export interface FocusSessionDTO {
+  id: string
+  displayName: string
+  session: SessionDTO
+  courseId?: number
+  topicId?: string | null
+  assignmentId?: string | null
+  courseName: string
+  focusStart: string
+  focusEnd?: string | null
+  elapsedSeconds?: number
+  plannedDuration: number
+  status: FocusStatus
+  sessionType: SessionType
+}
+
+export interface ToDoListResponseDTO {
+  today: SessionDTO[]
+  tomorrow: SessionDTO[]
+  upcoming: SessionDTO[]
+}
+
+export interface FocusSessionDetailDTO {
+  id: string
+  courseName: string
+  focusStart: string
+  focusEnd: string
+  elapsed: number
+}
+
+export interface StudyAnalyticsDTO {
+  totalCompletedFocusSessions: number
+  totalFocusDuration: number
+  subjectBreakdown: Record<string, number>
+  focusSessions: FocusSessionDetailDTO[]
+}
+
+export interface FriendItem {
+  id: string
+  name: string
+  image: string
+  timeLeft: number
+  status?: string
+  sessionDuration?: number
+}
+
+export type FocusRequest = {
+  from: string
+  fromName: string
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED'
+  createdAt: number
+}
+
+export interface Invitation {
+  id: string
+  from: string
+  fromName: string
+  roomId: string
+  timestamp: number
 }
