@@ -1,7 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ref, onMounted, onUnmounted, computed, watch, } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import {
   UserPlusIcon,
   XMarkIcon,
@@ -54,6 +54,19 @@ const formattedTime = computed(() => {
 })
 
 const isMySessionPaused = computed(() => firebaseFocusSession.value?.status === 'PAUSED')
+
+const elapsedSeconds = computed(() => {
+  if (!firebaseFocusSession.value) return 0
+  const planned = (firebaseFocusSession.value.duration || 0) * 60
+  return Math.max(0, planned - timeLeft.value)
+})
+
+const isShortSession = computed(() => elapsedSeconds.value < 300) // less than 5 min
+
+function formatMinutes(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  return mins > 0 ? `${mins} min${mins > 1 ? 's' : ''}` : 'less than a minute'
+}
 
 // --- Egg Frame Logic ---
 function getFrameIndexFor(remainingSec: number, totalSec: number): number {
@@ -458,12 +471,28 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
           class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-left border border-slate-200 animate-fade-in"
         >
           <div class="flex items-start gap-4">
-            <ExclamationTriangleIcon class="h-8 w-8 text-red-500 flex-shrink-0 mt-1" />
+            <!-- Switch icon based on isShortSession -->
+            <component
+              :is="isShortSession ? ExclamationTriangleIcon : TrophyIcon"
+              :class="
+                isShortSession
+                  ? 'h-8 w-8 text-red-500 flex-shrink-0 mt-1'
+                  : 'h-8 w-8 text-yellow-500 flex-shrink-0 mt-1'
+              "
+            />
             <div>
               <h2 class="text-2xl font-bold text-slate-800">Are you sure?</h2>
               <p class="text-md text-slate-500 mt-2">
-                Ending the session will save your progress, but your focus time will be shorter than
-                scheduled.
+                <template v-if="isShortSession">
+                  Your focus time is
+                  <span class="text-red-600 font-semibold">too short to be saved</span>. Ending now
+                  will discard your progress.
+                </template>
+                <template v-else>
+                  Ending now will save your progress, and you’ll earn
+                  <strong class="text-slate-700">{{ formatMinutes(elapsedSeconds) }}</strong> focus
+                  duration.
+                </template>
               </p>
             </div>
           </div>
@@ -477,9 +506,13 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
             </button>
             <button
               @click="endSessionConfirmed"
-              class="flex-1 px-4 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-md"
+              :class="
+                isShortSession
+                  ? 'flex-1 px-4 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors shadow-md'
+                  : 'flex-1 px-4 py-3 rounded-lg bg-sky-600 text-white font-semibold hover:bg-sky-700 transition-colors shadow-md'
+              "
             >
-              End Session
+              {{ isShortSession ? 'End Session' : 'Finish' }}
             </button>
           </div>
         </div>
@@ -519,6 +552,7 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
     </transition>
   </div>
 
+  <!-- Error Alert -->
   <ModalAlert
     v-if="friendsStore.error"
     title="Error"
