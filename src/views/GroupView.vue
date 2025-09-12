@@ -58,13 +58,33 @@ const copyToClipboard = async (group: { id: number; joinCode: string }) => {
 
 const handleJoinGroup = async () => {
   // Validate join code format (e.g., 6-character alphanumeric)
-  const codePattern = /^[A-Za-z0-9]{6}$/
+  const codePattern = /^[A-Za-z0-9]{6}$/;
   if (!codePattern.test(joinCode.value)) {
-    groupStore.joinError = 'Invalid join code. Please enter a 6-character code.'
-    return
+    groupStore.joinError = 'Invalid join code. Please enter a 6-character code.';
+
+    // Clear error after 3 seconds
+    setTimeout(() => {
+      groupStore.joinError = '';
+    }, 3000);
+
+    return;
   }
 
-  await groupStore.joinGroup(joinCode.value)
+  await groupStore.joinGroup(joinCode.value);
+
+  if (groupStore.joinError) {
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      groupStore.joinError = '';
+    }, 5000);
+  }
+
+  if (groupStore.joinSuccess) {
+    // Clear success message after 3 seconds
+    setTimeout(() => {
+      groupStore.joinSuccess = '';
+    }, 5000);
+  }
 }
 
 const handleGroupSubmit = async (payload: { name: string; image: File | null }) => {
