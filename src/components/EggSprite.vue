@@ -10,6 +10,7 @@ const props = defineProps<{
   friend?: FriendItem
   status?: "FOCUSING" | "PAUSED" | string
   timer?: string
+  inSharedRoom?: boolean
 }>()
 
 const {
@@ -18,6 +19,8 @@ const {
   stopFrameUpdater,
   getEggImageForFriend,
 } = useEggs()
+
+defineEmits(['leave'])
 
 // Pick the right egg image
 const eggImage = computed(() => {
@@ -83,6 +86,15 @@ onUnmounted(() => {
       >
         {{ timer }}
       </p>
+
+      <!-- Leave button if no timer -->
+      <button
+        v-else-if="isUser && inSharedRoom"
+        @click="$emit('leave')"
+        class="text-sm font-semibold text-white bg-gray-600 hover:bg-gray-700 rounded px-3 py-1 transition"
+      >
+        Leave
+      </button>
     </div>
   </div>
 </template>

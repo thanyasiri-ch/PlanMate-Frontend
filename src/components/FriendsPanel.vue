@@ -80,14 +80,12 @@ function isSelected(friend: FriendItem) {
             </span>
           </template>
 
-          <button
+          <span
             v-else
-            @click.stop="emit('remove-friend', friend.id)"
-            class="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100"
-            aria-label="Remove Friend"
+            class="px-2 py-1 rounded-full bg-slate-200 text-slate-600 text-sm font-medium"
           >
-            <XMarkIcon class="h-5 w-5" />
-          </button>
+            Joined
+          </span>
         </li>
       </ul>
     </div>

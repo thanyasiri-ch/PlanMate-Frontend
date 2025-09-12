@@ -1,7 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, } from 'vue'
 import {
   UserPlusIcon,
   XMarkIcon,
@@ -19,6 +19,8 @@ import { ref as dbRef, onValue, get } from 'firebase/database'
 import { getCurrentUser } from '@/services/auth'
 import FriendsPanel from '@/components/FriendsPanel.vue'
 import EggSprite from '@/components/EggSprite.vue'
+import ModalAlert from '@/components/ModalAlert.vue'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const focusStore = useFocusSessionStore()
@@ -231,6 +233,8 @@ function closeCompletionModal() {
 // --- Focus Request Modal ---
 const requestingFriend = ref<Invitation | null>(null) // invitation sent TO me
 const pendingInvite = ref<{ id: string; name: string } | null>(null) // invitation I sent
+const { activeSession, selectedFriends } = storeToRefs(friendsStore)
+const inSharedRoom = computed(() => selectedFriends.value.length > 0 || !!activeSession.value)
 
 async function handleRequestFocus(friend: any) {
   const currentUser = await getCurrentUser()
@@ -258,6 +262,21 @@ async function declineRequestHandler() {
   if (!requestingFriend.value) return
   await friendsStore.declineInvitation(requestingFriend.value.id)
   requestingFriend.value = null
+}
+
+async function handleLeaveRoom() {
+  const user = await getCurrentUser()
+  if (!user) return
+
+  const userRef = dbRef(db, `activeUsers/${user.uid}`)
+  const snapshot = await get(userRef)
+
+  if (!snapshot.exists()) return
+
+  const { sharedRoomId } = snapshot.val()
+  if (sharedRoomId) {
+    await friendsStore.leaveRoom(sharedRoomId)
+  }
 }
 
 onMounted(async () => {
@@ -387,6 +406,8 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
           :time-left="timeLeft"
           :total-seconds="totalSeconds"
           :status="isMySessionPaused ? 'PAUSED' : 'FOCUSING'"
+          :in-shared-room="inSharedRoom"
+          @leave="handleLeaveRoom"
         />
 
         <!-- Friends’ Eggs -->
@@ -497,6 +518,14 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
       </div>
     </transition>
   </div>
+
+  <ModalAlert
+    v-if="friendsStore.error"
+    title="Error"
+    :message="friendsStore.error"
+    type="error"
+    @close="friendsStore.error = ''"
+  />
 </template>
 
 <style scoped>

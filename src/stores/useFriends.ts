@@ -129,75 +129,74 @@ export const useFriends = defineStore('focus', () => {
 
   // ---------- FRIEND SESSION TRACKING ----------
   function subscribeToFriendSession(uid: string) {
-  // cleanup old listener if exists
-  if (friendSessionListeners.value[uid]) {
-    friendSessionListeners.value[uid]()
-    delete friendSessionListeners.value[uid]
+    // cleanup old listener if exists
+    if (friendSessionListeners.value[uid]) {
+      friendSessionListeners.value[uid]()
+      delete friendSessionListeners.value[uid]
+    }
+
+    const userRef = dbRef(db, `activeUsers/${uid}`)
+    const unsubscribeUser = onValue(userRef, (snap) => {
+      const userData = snap.val()
+      if (!userData) return
+
+      const idx = onlineFriends.value.findIndex((f) => f.id === uid)
+      if (idx !== -1) {
+        onlineFriends.value[idx].name = userData.name
+        onlineFriends.value[idx].image = userData.image || defaultImage
+      }
+
+      // cleanup old session listener
+      if (friendSessionListeners.value[`${uid}-session`]) {
+        friendSessionListeners.value[`${uid}-session`]()
+        delete friendSessionListeners.value[`${uid}-session`]
+      }
+
+      if (userData.focusSessionId) {
+        const sessionRef = dbRef(db, `focusSessions/${userData.focusSessionId}`)
+        const unsubscribeSession = onValue(sessionRef, (sessionSnap) => {
+          const session = sessionSnap.val()
+          if (!session) return
+
+          const plannedDuration = session.duration * 60
+          const elapsedSeconds = session.elapsedSeconds ?? 0
+          let remainingTime = 0
+
+          if (session.status === 'FOCUSING') {
+            const now = dayjs()
+            const startedAt = dayjs(session.startedAt)
+            const timeSinceResume = now.diff(startedAt, 'second')
+            remainingTime = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume))
+          } else if (session.status === 'PAUSED') {
+            remainingTime = Math.max(0, plannedDuration - elapsedSeconds)
+          }
+
+          const friendObj: FriendItem = {
+            id: uid,
+            name: userData.name,
+            image: userData.image || defaultImage,
+            timeLeft: remainingTime,
+            status: session.status,
+            sessionDuration: plannedDuration,
+          }
+
+          // update onlineFriends
+          const onlineIdx = onlineFriends.value.findIndex((f) => f.id === uid)
+          if (onlineIdx !== -1) onlineFriends.value[onlineIdx] = friendObj
+
+          // update selectedFriends if this friend is in shared room
+          const selectedIdx = selectedFriends.value.findIndex((f) => f.id === uid)
+          if (selectedIdx !== -1) selectedFriends.value[selectedIdx] = friendObj
+
+          startFriendsTimer()
+        })
+        friendSessionListeners.value[`${uid}-session`] = () =>
+          off(sessionRef, 'value', unsubscribeSession)
+      }
+    })
+
+    friendSessionListeners.value[uid] = () => off(userRef, 'value', unsubscribeUser)
   }
-
-  const userRef = dbRef(db, `activeUsers/${uid}`)
-  const unsubscribeUser = onValue(userRef, (snap) => {
-    const userData = snap.val()
-    if (!userData) return
-
-    const idx = onlineFriends.value.findIndex((f) => f.id === uid)
-    if (idx !== -1) {
-      onlineFriends.value[idx].name = userData.name
-      onlineFriends.value[idx].image = userData.image || defaultImage
-    }
-
-    // cleanup old session listener
-    if (friendSessionListeners.value[`${uid}-session`]) {
-      friendSessionListeners.value[`${uid}-session`]()
-      delete friendSessionListeners.value[`${uid}-session`]
-    }
-
-    if (userData.focusSessionId) {
-      const sessionRef = dbRef(db, `focusSessions/${userData.focusSessionId}`)
-      const unsubscribeSession = onValue(sessionRef, (sessionSnap) => {
-        const session = sessionSnap.val()
-        if (!session) return
-
-        const plannedDuration = session.duration * 60
-        const elapsedSeconds = session.elapsedSeconds ?? 0
-        let remainingTime = 0
-
-        if (session.status === "FOCUSING") {
-          const now = dayjs()
-          const startedAt = dayjs(session.startedAt)
-          const timeSinceResume = now.diff(startedAt, "second")
-          remainingTime = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume))
-        } else if (session.status === "PAUSED") {
-          remainingTime = Math.max(0, plannedDuration - elapsedSeconds)
-        }
-
-        const friendObj: FriendItem = {
-          id: uid,
-          name: userData.name,
-          image: userData.image || defaultImage,
-          timeLeft: remainingTime,
-          status: session.status,
-          sessionDuration: plannedDuration,
-        }
-
-        // update onlineFriends
-        const onlineIdx = onlineFriends.value.findIndex((f) => f.id === uid)
-        if (onlineIdx !== -1) onlineFriends.value[onlineIdx] = friendObj
-
-        // update selectedFriends if this friend is in shared room
-        const selectedIdx = selectedFriends.value.findIndex((f) => f.id === uid)
-        if (selectedIdx !== -1) selectedFriends.value[selectedIdx] = friendObj
-
-        startFriendsTimer()
-      })
-      friendSessionListeners.value[`${uid}-session`] = () =>
-        off(sessionRef, "value", unsubscribeSession)
-    }
-  })
-
-  friendSessionListeners.value[uid] = () => off(userRef, "value", unsubscribeUser)
-}
-
 
   // ---------- FRIEND PANEL ----------
   function toggleFriendPanel() {
@@ -374,6 +373,25 @@ export const useFriends = defineStore('focus', () => {
     })
   }
 
+  async function leaveRoom(roomId: string) {
+    try {
+      await focusService.leaveSharedRoom(roomId)
+
+      // cleanup state
+      selectedFriends.value = []
+      activeSession.value = null
+
+      if (roomUnsubscribe) {
+        roomUnsubscribe()
+        roomUnsubscribe = null
+      }
+
+      console.log(`Left shared room: ${roomId}`)
+    } catch (err: any) {
+      error.value = err.response?.data || 'Failed to leave room'
+    }
+  }
+
   // ---------- CLEANUP ----------
   onUnmounted(() => {
     if (friendsTimer) clearInterval(friendsTimer)
@@ -405,5 +423,6 @@ export const useFriends = defineStore('focus', () => {
     setInvitations,
     subscribeToInvitations,
     autoDetectSharedRoom,
+    leaveRoom,
   }
 })
