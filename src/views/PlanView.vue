@@ -203,9 +203,7 @@ const groupedStudyPlan = computed(() => {
 <template>
   <DefaultLayout>
     <div class="h-full overflow-hidden">
-      <div
-        class="h-full w-5/6 mx-auto flex flex-col bg-gray-50 p-4 sm:p-6 lg:p-8 rounded-2xl"
-      >
+      <div class="h-auto w-5/6 mx-auto flex flex-col bg-gray-50 p-4 sm:p-6 lg:p-8 rounded-2xl mt-5">
         <div v-if="planStore.isLoading" class="flex-1 flex items-center justify-center">
           <p class="text-xl font-semibold text-gray-500 animate-pulse">Loading...</p>
         </div>
@@ -236,7 +234,7 @@ const groupedStudyPlan = computed(() => {
             </div>
           </div>
           <div class="flex-1 flex gap-x-8 overflow-hidden">
-            <div class="w-full lg:w-2/3 flex-1 bg-white rounded-2xl p-6 overflow-y-auto h-full">
+            <div class="w-full lg:w-2/3 bg-white rounded-2xl p-6 overflow-y-auto max-h-[70vh]">
               <h2 class="text-lg font-semibold text-gray-700 mb-4">Scheduled Sessions</h2>
               <div class="space-y-6">
                 <div v-for="(sessions, date) in groupedStudyPlan" :key="date">
@@ -356,7 +354,9 @@ const groupedStudyPlan = computed(() => {
                 </div>
               </div>
             </div>
-            <div class="hidden lg:block lg:w-1/3 bg-white rounded-2xl p-6 overflow-y-auto h-full">
+            <div
+              class="hidden lg:block lg:w-1/3 bg-white rounded-2xl p-6 overflow-y-auto max-h-[70vh]"
+            >
               <h2 class="text-lg font-semibold text-gray-700 mb-4">Unscheduled Items</h2>
               <p class="text-sm text-gray-500 mb-4">
                 These items couldn't be scheduled automatically. Add them to your plan manually.
