@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{ activeStepIndex: number }>()
 
-const steps = ['term', 'course', 'course-details', 'availability', 'generate-plan'] as const
+const steps = ['term', 'course', 'course-details', 'availability'] as const
 type Step = (typeof steps)[number]
 
 const currentStepIndex = computed(() => props.activeStepIndex)
@@ -11,9 +11,8 @@ const currentStepIndex = computed(() => props.activeStepIndex)
 const stepDisplayNames: Record<Step, string> = {
   term: 'Term',
   course: 'Course',
-  'course-details': 'Course Details', // <-- Customized name
+  'course-details': 'Course Details',
   availability: 'Availability',
-  'generate-plan': 'Generate Plan', // <-- Customized name
 }
 </script>
 

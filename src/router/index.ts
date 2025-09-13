@@ -8,7 +8,6 @@ import StudySetupView from '@/views/StudySetupView.vue'
 import TermCourseSetup from '@/components/study-setup/TermCourseSetup.vue'
 import CourseDetailsSetup from '@/components/study-setup/CoursDetails.vue'
 import AvailabilitySetup from '@/components/study-setup/AvailabilitySetup.vue'
-import GeneratePlan from '@/components/study-setup/GeneratePlan.vue'
 import PlanView from '@/views/PlanView.vue'
 import GroupView from '@/views/GroupView.vue'
 import TodoView from '@/views/ToDoView.vue'
@@ -56,7 +55,6 @@ const router = createRouter({
         { path: 'course', name: 'course', component: TermCourseSetup },
         { path: 'course-details', name: 'course-details', component: CourseDetailsSetup },
         { path: 'availability', name: 'availability', component: AvailabilitySetup },
-        { path: 'generate-plan', name: 'generate-plan', component: GeneratePlan },
         { path: '', redirect: { name: 'term' } },
       ],
     },
