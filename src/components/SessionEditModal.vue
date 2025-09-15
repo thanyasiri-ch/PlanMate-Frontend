@@ -14,6 +14,10 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
+  existingSessions: {
+    type: Array as PropType<SessionDTO[]>,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -21,28 +25,26 @@ const emit = defineEmits(['close', 'save'])
 // Local state for the form inputs.
 const editDate = ref('')
 const editStart = ref('')
+const overlapError = ref<string>('')
+
+const getEndTime24h = (start: string, duration: number): string => {
+  if (!start || !duration) return ''
+  const [hours, minutes] = start.split(':').map(Number)
+  const date = new Date()
+  date.setHours(hours, minutes, 0, 0)
+  date.setMinutes(date.getMinutes() + duration)
+  return date.toTimeString().slice(0, 5) // คืนค่าเป็น "HH:mm"
+}
 
 const computedEndTime = computed(() => {
-  if (!editDate.value || !editStart.value || !props.item?.duration) {
+  if (!editStart.value || !props.item?.duration) {
     return '--:--'
   }
-
-  try {
-    const startDate = new Date(`${editDate.value}T${editStart.value}`)
-    startDate.setMinutes(startDate.getMinutes() + props.item.duration)
-
-    let hours = startDate.getHours()
-    const minutes = String(startDate.getMinutes()).padStart(2, '0')
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-
-    hours = hours % 12
-    hours = hours ? hours : 12 // the hour '0' should be '12'
-    const formattedHours = String(hours).padStart(2, '0')
-
-    return `${formattedHours}:${minutes} ${ampm}`
-  } catch (error) {
-    return '--:--'
-  }
+  const endTime24 = getEndTime24h(editStart.value, props.item.duration)
+  const [hours, minutes] = endTime24.split(':').map(Number)
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const displayHours = ((hours + 11) % 12) + 1
+  return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`
 })
 
 // This `watch` effect syncs the local form state
@@ -51,21 +53,44 @@ watch(
   () => props.item,
   (newItem) => {
     if (newItem) {
-      editDate.value = newItem.date
-      editStart.value = newItem.start
+      editDate.value = newItem.date || new Date().toISOString().split('T')[0]
+      editStart.value = newItem.start || '09:00'
+      overlapError.value = ''
     }
   },
+  { immediate: true },
 )
 
 function handleSave() {
-  if (props.item) {
-    emit('save', {
-      ...props.item,
-      date: editDate.value,
-      start: editStart.value,
-      end: computedEndTime.value,
-    })
+  overlapError.value = ''
+  if (!props.item) return
+
+  const newStart = editStart.value
+  const newEnd = getEndTime24h(newStart, props.item.duration)
+  const newDate = editDate.value
+
+  for (const existingSession of props.existingSessions) {
+    if (existingSession.sessionId === props.item.sessionId || existingSession.date !== newDate) {
+      continue
+    }
+
+    const existingStart = existingSession.start
+    const existingEnd = existingSession.end
+
+    if (newStart < existingEnd && newEnd > existingStart) {
+      overlapError.value = `Time conflicts with "${
+        existingSession.topicName || existingSession.assignmentName
+      }" (${existingStart} - ${existingEnd}).`
+      return
+    }
   }
+
+  emit('save', {
+    ...props.item,
+    date: editDate.value,
+    start: editStart.value,
+    end: getEndTime24h(editStart.value, props.item.duration),
+  })
 }
 
 function handleClose() {
@@ -120,6 +145,10 @@ function handleClose() {
         <p class="text-xs text-gray-500">
           Duration: {{ item?.duration }} minutes
         </p>
+      </div>
+
+      <div v-if="overlapError" class="mt-4 rounded-md bg-red-50 p-3">
+        <p class="text-sm font-medium text-red-700">{{ overlapError }}</p>
       </div>
 
       <div class="mt-8 flex justify-end gap-x-3">

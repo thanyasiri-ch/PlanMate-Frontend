@@ -133,8 +133,8 @@ export interface SessionDTO {
   date: string
   start: string
   end: string
-  topicId: string | null
-  assignmentId: string | null
+  topicName: string
+  assignmentName: string
   sessionNumber: number
   totalSessionsInGroup: number
 }

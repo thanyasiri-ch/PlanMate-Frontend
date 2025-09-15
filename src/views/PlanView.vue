@@ -411,6 +411,7 @@ const groupedStudyPlan = computed(() => {
         <SessionEditModal
           :is-open="isEditModalOpen"
           :item="editingSession"
+          :existing-sessions="enrichedStudyPlan"
           @close="closeEditModal"
           @save="handleSave"
         />
