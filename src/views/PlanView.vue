@@ -216,6 +216,33 @@ const groupedStudyPlan = computed(() => {
   )
 })
 
+const today = new Date()
+
+const activeGroupedStudyPlan = computed(() => {
+  const filtered: Record<string, any[]> = {}
+
+  for (const [date, sessionList] of Object.entries(groupedStudyPlan.value)) {
+    const notCompleted = (sessionList as any[]).filter(item => {
+      if (item.isCompleted) return false
+
+      const sessionDate = new Date(date + "T00:00:00")
+
+      // hide exams/assignments if past date
+      if ((item.displayType === "EXAM" || item.displayType === "ASSIGNMENT_DUE") && sessionDate < today) {
+        return false
+      }
+
+      return true
+    })
+
+    if (notCompleted.length > 0) {
+      filtered[date] = notCompleted
+    }
+  }
+
+  return filtered
+})
+
 function confirmSuggested(item: SessionDTO) {
   planStore.scheduleItemManually({
     sessionId: item.sessionId,
@@ -263,7 +290,7 @@ function confirmSuggested(item: SessionDTO) {
             <div class="w-full lg:w-2/3 bg-white rounded-2xl p-6 overflow-y-auto max-h-[70vh]">
               <h2 class="text-lg font-semibold text-gray-700 mb-4">Scheduled Sessions</h2>
               <div class="space-y-6">
-                <div v-for="(sessions, date) in groupedStudyPlan" :key="date">
+                <div v-for="(sessions, date) in activeGroupedStudyPlan" :key="date">
                   <h3
                     class="font-semibold text-yellow-700 pl-5 py-1 border-b rounded-t-lg bg-[#FBCC69]/30 border-yellow-700"
                   >

@@ -47,6 +47,22 @@ const totalSeconds = computed(() => {
   return 0
 })
 
+// --- Points Calculations ---
+const TASK_WEIGHT = 10
+const HOUR_WEIGHT = 5
+
+const earnedPoints = computed(() => {
+  if (isShortSession.value) return 0
+  const focusHours = elapsedSeconds.value / 3600
+  const rawPoints = focusHours * HOUR_WEIGHT
+  return Number(rawPoints.toFixed(2))
+})
+
+const potentialFullPoints = computed(() => {
+  const focusHours = (focusSession.value?.session?.duration || 0) / 60
+  return Number((TASK_WEIGHT + focusHours * HOUR_WEIGHT).toFixed(2))
+})
+
 const formattedTime = computed(() => {
   const minutes = Math.floor(timeLeft.value / 60)
   const seconds = timeLeft.value % 60
@@ -490,8 +506,8 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
                 </template>
                 <template v-else>
                   Ending now will save your progress, and you’ll earn
-                  <strong class="text-slate-700">{{ formatMinutes(elapsedSeconds) }}</strong> focus
-                  duration.
+                  <strong class="text-slate-700">{{ formatMinutes(elapsedSeconds) }}</strong>
+                  focus duration (+<strong class="text-green-600">{{ earnedPoints }}</strong> pts).
                 </template>
               </p>
             </div>
@@ -530,11 +546,16 @@ const taskType = computed(() => focusSession.value?.sessionType ?? 'Unknown Type
         >
           <div class="flex flex-col items-center gap-4">
             <TrophyIcon class="h-16 w-16 text-yellow-500" />
-            <div>
+            <div class="text-center">
               <h2 class="text-2xl font-bold text-slate-800">Session Complete!</h2>
               <p class="text-md text-slate-500 mt-2">
-                Great work focusing on <strong class="text-slate-700">{{ taskName }}</strong
+                Great work focusing on
+                <strong class="text-slate-700">{{ taskName }}</strong
                 >. Time for a well-deserved break!
+              </p>
+
+              <p class="text-lg font-semibold text-green-600 mt-4">
+                +{{ potentialFullPoints }} pts earned!
               </p>
             </div>
           </div>

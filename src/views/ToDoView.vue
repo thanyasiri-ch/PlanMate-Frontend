@@ -19,6 +19,8 @@ const router = useRouter()
 
 const selectedTaskId = ref<string | null>(null)
 const isFocusing = ref(false)
+const TASK_WEIGHT = 10
+const HOUR_WEIGHT = 5
 
 type EnrichedSession = SessionDTO & {
   courseCode: string
@@ -243,6 +245,13 @@ function formatSessionType(type: SessionType): string {
   })
   return words.join(' ')
 }
+
+function calculatePotentialPoints(session: EnrichedSession) {
+  if (!session?.duration) return 0
+  const focusHours = session.duration / 60
+  const rawPoints = TASK_WEIGHT + focusHours * HOUR_WEIGHT
+  return Number(rawPoints.toFixed(2))
+}
 </script>
 
 <template>
@@ -442,6 +451,9 @@ function formatSessionType(type: SessionType): string {
                   :class="{ 'bg-[#4455c0d7]': isCompleted, 'bg-gray-100': !isCompleted }"
                 ></div>
               </div>
+              <p class="text-lg text-green-600 font-semibold">
+                Complete this session to earn +{{ calculatePotentialPoints(currentTask!) }} points!
+              </p>
             </div>
 
             <div class="book-frame-container">
