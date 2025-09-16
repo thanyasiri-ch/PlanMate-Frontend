@@ -40,16 +40,20 @@ export function getColorFromClass(colorClass: string): string {
 }
 
 // helper
+// helper
 function getSubjectColor(subject: string, map: Record<string, string>): string {
   if (!map[subject]) {
     // Try to find an unused color first
-    const usedColors = new Set(Object.values(map))
-    const unusedColors = availableColors.filter((c) => !usedColors.has(c))
+    const usedColors = Object.values(map)
+    const unusedColors = availableColors.filter((c) => !usedColors.includes(c))
 
+    // Use sequential color assignment
     const colorPool = unusedColors.length > 0 ? unusedColors : availableColors
-    const randomIndex = Math.floor(Math.random() * colorPool.length)
 
-    map[subject] = colorPool[randomIndex]
+    // Pick the first available color in sequence
+    const nextColor = colorPool[0]
+
+    map[subject] = nextColor
     localStorage.setItem('subjectColorMap', JSON.stringify(map))
   }
   return map[subject]

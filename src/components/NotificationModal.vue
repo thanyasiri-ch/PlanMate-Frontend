@@ -55,11 +55,14 @@ function handleClose() {
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/25"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-lg"
     @click.self="handleClose"
   >
     <div class="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
-      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full" :class="statusStyles.iconContainer">
+      <div
+        class="mx-auto flex h-12 w-12 items-center justify-center rounded-full"
+        :class="statusStyles.iconContainer"
+      >
         <svg
           v-if="status === 'success'"
           class="h-8 w-8"

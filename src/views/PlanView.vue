@@ -127,15 +127,31 @@ function enrichSession(session: any) {
 
 // --- Computed properties ---
 const enrichedStudyPlan = computed(() => {
-  if (!planStore.schedule?.study_plan) return []
-  return planStore.schedule.study_plan
-    .map(enrichSession)
-    .slice()
-    .sort((a, b) => {
-      const dateComparison = a.date.localeCompare(b.date)
-      if (dateComparison !== 0) return dateComparison
-      return a.start.localeCompare(b.start)
-    })
+  if (!planStore.schedule) return []
+
+  // Regular scheduled sessions
+  const scheduled = (planStore.schedule.study_plan || []).map((s) => ({
+    ...enrichSession(s),
+    isSuggested: false,
+  }))
+
+  // Suggested but not confirmed yet
+  const suggested = (planStore.schedule.unscheduled_plan || [])
+    .filter((u) => u.date)
+    .map((s) => ({
+      ...enrichSession(s),
+      date: s.date,
+      start: s.start,
+      end: s.end,
+      isSuggested: true,
+    }))
+
+  // Merge & sort
+  return [...scheduled, ...suggested].sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date)
+    if (dateComparison !== 0) return dateComparison
+    return a.start.localeCompare(b.start)
+  })
 })
 
 const enrichedUnscheduledPlan = computed(() => {
@@ -199,15 +215,25 @@ const groupedStudyPlan = computed(() => {
     {} as Record<string, any[]>,
   )
 })
+
+function confirmSuggested(item: SessionDTO) {
+  planStore.scheduleItemManually({
+    sessionId: item.sessionId,
+    date: item.date,
+    start: item.start,
+  })
+}
 </script>
 <template>
   <DefaultLayout>
     <div class="h-full overflow-hidden">
-      <div class="h-auto w-5/6 mx-auto flex flex-col bg-gray-50 p-4 sm:p-6 lg:p-8 rounded-2xl mt-5">
+      <div
+        class="min-h-[80vh] w-5/6 mx-auto flex flex-col bg-gray-50 p-4 sm:p-6 lg:p-8 rounded-2xl mt-5"
+      >
         <div v-if="planStore.isLoading" class="flex-1 flex items-center justify-center">
           <p class="text-xl font-semibold text-gray-500 animate-pulse">Loading...</p>
         </div>
-        <div v-else-if="planStore.schedule" class="flex-1 flex flex-col min-h-0">
+        <div v-else-if="planStore.schedule" class="flex-1 flex flex-col">
           <div class="flex-shrink-0 mb-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-gray-800">Your Generated Study Plan</h1>
             <div v-if="planStore.isPlanDirty" class="flex gap-x-3">
@@ -278,72 +304,103 @@ const groupedStudyPlan = computed(() => {
                       </div>
                       <div
                         v-else
-                        class="flex items-center justify-between gap-4 p-4 rounded-xl bg-gray-50 border border-gray-200 shadow-sm"
+                        class="flex items-center justify-between gap-4 p-4 rounded-xl border shadow-sm"
+                        :class="
+                          item.isSuggested
+                            ? 'bg-indigo-50 border-indigo-300'
+                            : 'bg-gray-50 border-gray-200'
+                        "
                       >
+                        <!-- Time -->
                         <div class="text-center w-24">
-                          <div class="text-sm text-[#7486FB] font-medium">
+                          <div
+                            class="text-sm font-medium"
+                            :class="item.isSuggested ? 'text-indigo-700' : 'text-[#7486FB]'"
+                          >
                             {{ item.start }} - {{ item.end }}
                           </div>
                           <div class="text-xs text-gray-400 mt-1">{{ item.duration }} mins</div>
                         </div>
+
+                        <!-- Details -->
                         <div class="flex-1 min-w-0">
                           <p class="text-base font-semibold text-gray-800 truncate">
                             {{ item.topicName || item.assignmentName }}
                             <span
                               v-if="item.totalSessionsInGroup > 1"
                               class="text-gray-400 font-normal"
-                              >({{ item.sessionNumber }}/{{ item.totalSessionsInGroup }})</span
                             >
+                              ({{ item.sessionNumber }}/{{ item.totalSessionsInGroup }})
+                            </span>
                           </p>
                           <p class="text-sm text-gray-500 mt-0.5">
                             {{ item.courseCode }} {{ item.courseName }}
                           </p>
                         </div>
+
+                        <!-- Type badge -->
                         <div
+                          v-if="!item.isSuggested"
                           class="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap"
                           :class="getSessionTypeStyles(item.type)"
                         >
                           {{ item.type.replace('_', ' ') }}
                         </div>
+
+                        <!-- Action buttons -->
                         <div class="flex gap-2">
+                          <!-- For suggested items: confirm button -->
                           <button
-                            @click="openEditModal(item)"
-                            class="text-[#4454C0]/70 hover:text-[#4454C0]/80 transition-colors"
-                            title="Edit Session"
+                            v-if="item.isSuggested"
+                            @click="confirmSuggested(item)"
+                            class="px-3 py-1.5 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600"
                           >
-                            <svg
-                              class="w-5 h-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              stroke-width="2"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
-                              />
-                            </svg>
+                            Confirm
                           </button>
-                          <button
-                            @click="planStore.unscheduleSession({ sessionId: item.sessionId })"
-                            class="text-red-500 hover:text-red-600 transition-colors"
-                            title="Delete Session"
-                          >
-                            <svg
-                              class="w-6 h-6"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                              stroke-width="2"
+
+                          <!-- For normal sessions: edit + delete -->
+                          <template v-else>
+                            <button
+                              @click="openEditModal(item)"
+                              class="text-[#4454C0]/70 hover:text-[#4454C0]/80 transition-colors"
+                              title="Edit Session"
                             >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
+                              <!-- edit icon -->
+                              <svg
+                                class="w-5 h-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              @click="planStore.unscheduleSession({ sessionId: item.sessionId })"
+                              class="text-red-500 hover:text-red-600 transition-colors"
+                              title="Delete Session"
+                            >
+                              <!-- delete icon -->
+                              <svg
+                                class="w-6 h-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                stroke-width="2"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </template>
                         </div>
                       </div>
                     </template>
@@ -355,39 +412,58 @@ const groupedStudyPlan = computed(() => {
               </div>
             </div>
             <div
-              class="hidden lg:block lg:w-1/3 bg-white rounded-2xl p-6 overflow-y-auto max-h-[70vh]"
+              class="hidden lg:block lg:w-1/3 bg-white rounded-2xl p-6 overflow-y-auto max-h-[70vh] shadow-sm"
             >
-              <h2 class="text-lg font-semibold text-gray-700 mb-4">Unscheduled Items</h2>
-              <p class="text-sm text-gray-500 mb-4">
-                These items couldn't be scheduled automatically. Add them to your plan manually.
+              <h2 class="text-lg font-semibold text-gray-800 mb-2">Unscheduled Items</h2>
+              <p v-if="enrichedUnscheduledPlan.length > 0" class="text-sm text-gray-500 mb-6">
+                Review the suggested time or schedule them manually.
               </p>
-              <div class="space-y-3">
+
+              <div class="space-y-4">
                 <div
                   v-for="item in enrichedUnscheduledPlan"
                   :key="item.sessionId"
-                  class="p-3 rounded-lg border bg-[#FBCC69]/50 border-[#FBCC69]"
+                  class="p-4 rounded-xl border border-yellow-300 bg-yellow-50/70 shadow-sm"
                 >
-                  <p class="font-semibold text-gray-800">
-                    {{ item.topicName || item.assignmentName }}
-                  </p>
-                  <p class="text-sm text-gray-500">
-                    {{ item.courseCode }} •
-                    <span v-if="item.totalSessionsInGroup > 1"
-                      >Session {{ item.sessionNumber }} of {{ item.totalSessionsInGroup }} •</span
+                  <!-- Title -->
+                  <div class="flex justify-between items-start">
+                    <p class="font-semibold text-gray-800">
+                      {{ item.topicName || item.assignmentName }}
+                    </p>
+                    <!-- Suggested time badge -->
+                    <span
+                      v-if="item.suggestedTime"
+                      class="ml-2 px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 font-medium"
                     >
+                      {{ item.suggestedTime }}
+                    </span>
+                  </div>
+
+                  <!-- Details -->
+                  <p class="mt-1 text-sm text-gray-600">
+                    {{ item.courseCode }} •
+                    <span v-if="item.totalSessionsInGroup > 1">
+                      Session {{ item.sessionNumber }} of {{ item.totalSessionsInGroup }} •
+                    </span>
                     Est. {{ item.duration }} mins
                   </p>
-                  <div class="mt-2">
+
+                  <!-- Action -->
+                  <div class="mt-3 flex justify-end">
                     <button
                       @click="openEditModal(item)"
-                      class="w-full text-center px-3 py-1.5 bg-white border rounded-md text-xs font-semibold hover:bg-gray-100"
+                      class="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition"
                     >
                       Schedule Manually
                     </button>
                   </div>
                 </div>
-                <div v-if="enrichedUnscheduledPlan.length === 0" class="text-center py-10">
-                  <p class="text-gray-500">No unscheduled items. Good job!</p>
+
+                <div
+                  v-if="enrichedUnscheduledPlan.length === 0"
+                  class="text-center py-12 text-gray-500"
+                >
+                  No unscheduled items. Good job!
                 </div>
               </div>
             </div>
