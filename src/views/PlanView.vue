@@ -305,11 +305,13 @@ function confirmSuggested(item: SessionDTO) {
                       <div
                         v-else
                         class="flex items-center justify-between gap-4 p-4 rounded-xl border shadow-sm"
-                        :class="
-                          item.isSuggested
-                            ? 'bg-indigo-50 border-indigo-300'
-                            : 'bg-gray-50 border-gray-200'
-                        "
+                        :class="[
+                          item.isCompleted
+                            ? 'bg-gray-100 border-gray-200 opacity-60 cursor-not-allowed'
+                            : item.isSuggested
+                              ? 'bg-indigo-50 border-indigo-300'
+                              : 'bg-gray-50 border-gray-200',
+                        ]"
                       >
                         <!-- Time -->
                         <div class="text-center w-24">
@@ -338,9 +340,15 @@ function confirmSuggested(item: SessionDTO) {
                           </p>
                         </div>
 
-                        <!-- Type badge -->
+                        <!-- Type badge or Completed -->
                         <div
-                          v-if="!item.isSuggested"
+                          v-if="item.isCompleted"
+                          class="text-xs font-medium px-2 py-1 rounded-full bg-green-500 text-white"
+                        >
+                          COMPLETED
+                        </div>
+                        <div
+                          v-else-if="!item.isSuggested"
                           class="text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap"
                           :class="getSessionTypeStyles(item.type)"
                         >
@@ -349,17 +357,17 @@ function confirmSuggested(item: SessionDTO) {
 
                         <!-- Action buttons -->
                         <div class="flex gap-2">
-                          <!-- For suggested items: confirm button -->
+                          <!-- Suggested confirm -->
                           <button
-                            v-if="item.isSuggested"
+                            v-if="item.isSuggested && !item.isCompleted"
                             @click="confirmSuggested(item)"
                             class="px-3 py-1.5 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600"
                           >
                             Confirm
                           </button>
 
-                          <!-- For normal sessions: edit + delete -->
-                          <template v-else>
+                          <!-- Normal sessions: edit + delete -->
+                          <template v-else-if="!item.isCompleted && !item.isSuggested">
                             <button
                               @click="openEditModal(item)"
                               class="text-[#4454C0]/70 hover:text-[#4454C0]/80 transition-colors"
