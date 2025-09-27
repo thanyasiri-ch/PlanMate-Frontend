@@ -436,8 +436,27 @@ const timeRangeLabel = computed(() => {
 
           <div class="flex-1 overflow-auto">
             <div class="flex flex-col gap-4 mb-4">
+              <div
+                class="bg-gradient-to-r from-[#544BAA] to-[#8089CE] text-[#ffffff] font-bold text-center p-4 rounded-2xl shadow-lg flex items-center justify-center space-x-2 relative overflow-hidden animate-pop-in shine-infinite"
+              >
+                <svg
+                  class="w-7 h-7"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+                <span class="text-lg">Awesome! You've smashed today's goal!</span>
+              </div>
               <div class="flex justify-between gap-4">
-                <div class="bg-[#E2EAFC] rounded-xl p-4 text-center text-[#544BAA] flex-1 max-w-s">
+                <div class="bg-[#E2EAFC] rounded-xl p-4 text-center text-[#3e3683] flex-1 max-w-s">
                   <h3 class="text-sm font-medium text-black mb-1">Focus completion</h3>
                   <p class="text-lg font-bold text-[#544BAA]">
                     {{ totalFocusCompletion }} sessions
@@ -552,10 +571,10 @@ const timeRangeLabel = computed(() => {
             <div class="relative w-24 h-24 mx-auto mb-3">
               <!-- Profile image -->
               <img
-                  :src="previewUrl || authStore.image"
-                  class="w-24 h-24 rounded-full object-cover border-3 border-white shadow-sm"
-                  alt="Profile"
-                />
+                :src="previewUrl || authStore.image"
+                class="w-24 h-24 rounded-full object-cover border-3 border-white shadow-sm"
+                alt="Profile"
+              />
 
               <!-- Camera icon appears only in edit mode -->
               <button
@@ -845,5 +864,52 @@ const timeRangeLabel = computed(() => {
 .slide-left-leave-to {
   opacity: 0;
   transform: translateX(-40px);
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* Shine Effect CSS */
+.shine-infinite {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine-infinite::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 10%;
+  height: 100%;
+  background: rgba(224, 224, 224, 0.212);
+  transform: skewX(-20deg);
+  filter: blur(10px);
+  animation: shine-loop 5s ease-in-out infinite;
+}
+
+@keyframes shine-loop {
+  0% {
+    left: -75%;
+  }
+  100% {
+    left: 125%;
+  }
 }
 </style>

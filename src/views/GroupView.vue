@@ -3,6 +3,8 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useGroupStore } from '@/stores/useGroupStore'
 import CreateGroup from '@/components/CreateGroup.vue'
+import { useAuthStore } from '@/stores/auth'
+import PopupRanking from '@/components/PopupRanking.vue'
 import { uploadImageToFirebase } from '@/firebase/uploadImageToFirebase'
 import DefaultGroupImage from '@/assets/images/group.png'
 
@@ -13,7 +15,25 @@ const selectedGroupId = ref<number | null>(null)
 
 const groupStore = useGroupStore()
 const groups = computed(() => groupStore.groups)
+const authStore = useAuthStore()
+const currentUid = computed(() => authStore.user?.uid ?? null)
 
+const currentUserData = computed(() => {
+  return leaderboardData.value.find((m) => m.uid === currentUid.value)
+})
+
+const userRank = computed(() => {
+  const index = leaderboardData.value.findIndex((m) => m.uid === currentUid.value)
+  return index !== -1 ? index + 1 : null
+})
+
+const nextRankScore = computed(() => {
+  if (userRank.value && userRank.value > 1) {
+    const ahead = leaderboardData.value[userRank.value - 2]
+    if (ahead) return ahead.points
+  }
+  return null
+})
 onMounted(async () => {
   await groupStore.fetchGroup()
   if (groupStore.groups.length > 0) {
@@ -389,11 +409,11 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
                 </div>
               </div>
 
-              <div class="flex-1 overflow-y-auto w-full space-y-2">
+              <div class="flex-1 overflow-visible w-full space-y-2">
                 <div
                   v-for="(member, index) in leaderboardData.slice(3)"
                   :key="member.uid"
-                  class="flex items-center gap-6 px-4 py-2 rounded-lg bg-gray-100 transition hover:scale-[1.01] hover:shadow"
+                  class="flex items-center gap-6 px-4 py-2 rounded-lg bg-gray-100 transition hover:scale-[1.01] hover:shadow relative hover:z-20"
                 >
                   <div class="text-gray-500 font-bold text-lg w-4 text-right">{{ index + 4 }}</div>
                   <div class="flex items-center gap-3 flex-1">
@@ -431,5 +451,11 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
     :visible="isCreateModalOpen"
     @close="isCreateModalOpen = false"
     @submit="handleGroupSubmit"
+  />
+  <PopupRanking
+    v-if="currentUserData && userRank"
+    :currentScore="currentUserData.points"
+    :nextRankScore="nextRankScore"
+    :userRank="userRank"
   />
 </template>
