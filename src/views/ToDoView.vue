@@ -32,9 +32,10 @@ type EnrichedSession = SessionDTO & {
   type: SessionDTO['type']
 }
 
-const selectedDateGroup = ref<'today' | 'tomorrow' | 'upcoming'>('today')
+const selectedDateGroup = ref<'overdue' | 'today' | 'tomorrow' | 'upcoming'>('today')
 
-const sessionMap = ref<Record<'today' | 'tomorrow' | 'upcoming', EnrichedSession[]>>({
+const sessionMap = ref<Record<'overdue' | 'today' | 'tomorrow' | 'upcoming', EnrichedSession[]>>({
+  overdue: [],
   today: [],
   tomorrow: [],
   upcoming: [],
@@ -123,6 +124,7 @@ onMounted(async () => {
   }
 
   sessionMap.value = {
+    overdue: sortSessionsByDateAndTime(todoStore.sessions.overdue),
     today: sortSessionsByDateAndTime(todoStore.sessions.today),
     tomorrow: sortSessionsByDateAndTime(todoStore.sessions.tomorrow),
     upcoming: sortSessionsByDateAndTime(todoStore.sessions.upcoming),
@@ -268,6 +270,7 @@ function calculatePotentialPoints(session: EnrichedSession) {
             <div class="flex gap-3 items-center">
               <!-- Completed navigation -->
               <button
+                v-if="completedTasks.length > 0"
                 @click="scrollToCompleted"
                 class="text-sm font-medium text-blue-600 hover:font-semibold transform transition duration-200 ease-in-out hover:scale-105 active:scale-95"
               >
@@ -280,6 +283,7 @@ function calculatePotentialPoints(session: EnrichedSession) {
                   v-model="selectedDateGroup"
                   class="appearance-none block w-full bg-white border border-gray-300 hover:border-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 px-4 py-2 pr-8 rounded-xl shadow-sm text-sm text-gray-700 cursor-pointer transition-colors"
                 >
+                  <option value="overdue">Overdue</option>
                   <option value="today">Today</option>
                   <option value="tomorrow">Tomorrow</option>
                   <option value="upcoming">Upcoming</option>
@@ -373,6 +377,7 @@ function calculatePotentialPoints(session: EnrichedSession) {
             <!-- Completed task by course -->
             <div id="completed-section" class="mt-6">
               <h3
+                v-if="completedTasks.length > 0"
                 class="text-gray-700 font-semibold text-base mb-2 pb-1 border-b-2 border-gray-200"
               >
                 Completed Sessions

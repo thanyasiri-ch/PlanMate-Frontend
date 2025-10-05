@@ -145,7 +145,6 @@ async function handleSave() {
     isEditing.value = false
     localCourseDetails.value = null
     editableExam.value = null
-    alert('Course details saved successfully!')
   } catch (err) {
     console.error('Failed to save course details:', err)
     alert('There was an error saving your course data. Please check the console.')

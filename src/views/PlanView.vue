@@ -222,13 +222,16 @@ const activeGroupedStudyPlan = computed(() => {
   const filtered: Record<string, any[]> = {}
 
   for (const [date, sessionList] of Object.entries(groupedStudyPlan.value)) {
-    const notCompleted = (sessionList as any[]).filter(item => {
+    const notCompleted = (sessionList as any[]).filter((item) => {
       if (item.isCompleted) return false
 
-      const sessionDate = new Date(date + "T00:00:00")
+      const sessionDate = new Date(date + 'T00:00:00')
 
       // hide exams/assignments if past date
-      if ((item.displayType === "EXAM" || item.displayType === "ASSIGNMENT_DUE") && sessionDate < today) {
+      if (
+        (item.displayType === 'EXAM' || item.displayType === 'ASSIGNMENT_DUE') &&
+        sessionDate < today
+      ) {
         return false
       }
 
@@ -249,6 +252,32 @@ function confirmSuggested(item: SessionDTO) {
     date: item.date,
     start: item.start,
   })
+}
+
+const scheduledSessionRefs = ref<Record<string, HTMLElement>>({})
+
+// This function will be called by the @click handler
+function scrollToSession(item: SessionDTO) {
+  const targetElement = scheduledSessionRefs.value[item.sessionId]
+
+  if (targetElement) {
+    // If the element exists, scroll to it smoothly
+    targetElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+
+    targetElement.classList.add(
+      'transition-all',
+      'duration-300',
+      'ring-2',
+      'ring-offset-2',
+      'ring-indigo-500',
+    )
+    setTimeout(() => {
+      targetElement.classList.remove('ring-2', 'ring-offset-2', 'ring-indigo-500')
+    }, 2500)
+  }
 }
 </script>
 <template>
@@ -331,6 +360,11 @@ function confirmSuggested(item: SessionDTO) {
                       </div>
                       <div
                         v-else
+                        :ref="
+                          (el) => {
+                            if (el) scheduledSessionRefs[item.sessionId] = el as HTMLElement
+                          }
+                        "
                         class="flex items-center justify-between gap-4 p-4 rounded-xl border shadow-sm"
                         :class="[
                           item.isCompleted
@@ -458,7 +492,8 @@ function confirmSuggested(item: SessionDTO) {
                 <div
                   v-for="item in enrichedUnscheduledPlan"
                   :key="item.sessionId"
-                  class="p-4 rounded-xl border border-yellow-300 bg-yellow-50/70 shadow-sm"
+                  @click="scrollToSession(item)"
+                  class="p-4 rounded-xl border border-yellow-300 bg-yellow-50/70 shadow-sm cursor-pointer hover:border-yellow-400 transition"
                 >
                   <!-- Title -->
                   <div class="flex justify-between items-start">

@@ -124,6 +124,8 @@ export enum SessionType {
 }
 
 export interface SessionDTO {
+  assignmentId: string
+  topicId: string
   sessionId: string
   courseId: number
   duration: number
@@ -209,6 +211,7 @@ export interface FocusSessionDTO {
 }
 
 export interface ToDoListResponseDTO {
+  overdue: SessionDTO[]
   today: SessionDTO[]
   tomorrow: SessionDTO[]
   upcoming: SessionDTO[]

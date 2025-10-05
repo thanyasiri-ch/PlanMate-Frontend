@@ -23,7 +23,7 @@ interface SessionState {
 
 export const useSessionStore = defineStore('sessionStore', {
   state: (): SessionState => ({
-    sessions: { today: [], tomorrow: [], upcoming: [] },
+    sessions: { overdue: [], today: [], tomorrow: [], upcoming: [] },
     completedSessions: [],
     enrichedSession: null,
     isLoading: false,
@@ -48,8 +48,8 @@ export const useSessionStore = defineStore('sessionStore', {
         ...session,
         courseCode: course?.courseCode ?? 'N/A',
         courseName: course?.name ?? 'N/A',
-        topicName: topic?.name ?? null,
-        assignmentName: assignment?.name ?? null,
+        topicName: topic?.name ?? 'N/A',
+        assignmentName: assignment?.name ?? 'N/A',
         progress: `${session.sessionNumber}/${session.totalSessionsInGroup}`,
         displayName: topic?.name || assignment?.name || 'Untitled',
       }
@@ -72,10 +72,14 @@ export const useSessionStore = defineStore('sessionStore', {
         const enrichList = (list: SessionDTO[] = []) => list.map(this.enrichSession)
 
         // Enrich to-do sessions
+        const { overdue = [], today = [], tomorrow = [], upcoming = [] } = todoRes.data
+
+        // Enrich all to-do sessions
         this.sessions = {
-          today: enrichList(todoRes.data.today),
-          tomorrow: enrichList(todoRes.data.tomorrow),
-          upcoming: enrichList(todoRes.data.upcoming),
+          overdue: enrichList(overdue),
+          today: enrichList(today),
+          tomorrow: enrichList(tomorrow),
+          upcoming: enrichList(upcoming),
         }
 
         // Enrich completed sessions
@@ -83,7 +87,7 @@ export const useSessionStore = defineStore('sessionStore', {
       } catch (err: any) {
         console.error('Failed to fetch sessions:', err)
         this.error = err.message || 'Failed to load sessions'
-        this.sessions = { today: [], tomorrow: [], upcoming: [] }
+        this.sessions = { overdue: [], today: [], tomorrow: [], upcoming: [] }
         this.completedSessions = []
       } finally {
         this.isLoading = false
