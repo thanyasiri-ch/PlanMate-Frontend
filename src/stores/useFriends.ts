@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, onUnmounted } from 'vue'
 import { db } from '@/firebase/firebase'
-import { ref as dbRef, off, onValue } from 'firebase/database'
+import { ref as dbRef, off, onValue, update, DataSnapshot } from 'firebase/database'
 import dayjs from 'dayjs'
 import defaultImage from '@/assets/images/default_image.webp'
 import type { FriendItem, FocusSessionDTO, Invitation } from '@/types'
@@ -19,101 +19,38 @@ export const useFriends = defineStore('focus', () => {
   const outgoingInvites = ref<{ to: string; from: string }[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const groupMembers = ref<Record<string, string[]>>({})
   let roomUnsubscribe: (() => void) | null = null
   let userUnsubscribe: (() => void) | null = null
   const friendSessionListeners = ref<Record<string, () => void>>({})
   let friendsTimer: number | null = null
 
   // ---------- FRIEND PRESENCE ----------
-  function subscribeToFriends(rawGroupIds: any, currentUserId: string) {
-    const groupIds = normalizeGroups(rawGroupIds)
-    console.log('Normalized group IDs:', groupIds)
+  async function subscribeToFriends(currentUserId: string) {
+    const friendsRef = dbRef(db, `friendships/${currentUserId}`)
+    onValue(friendsRef, (snapshot) => {
+      const friends = snapshot.val() || {}
 
-    groupIds.forEach((groupId) => {
-      console.log(`Subscribing to group: ${groupId}`)
-      const groupRef = dbRef(db, `activeGroups/${groupId}`)
+      const friendIds = Object.keys(friends)
 
-      onValue(groupRef, (snapshot) => {
-        const members = snapshot.val() || {}
-        console.log(`Group ${groupId} members snapshot:`, members)
+      // Sync onlineFriends list
+      onlineFriends.value = friendIds.map((uid) => {
+        const existing = onlineFriends.value.find((f) => f.id === uid)
+        const friendObj = existing || {
+          id: uid,
+          name: 'Loading...',
+          image: '',
+          timeLeft: 0,
+          status: 'UNKNOWN',
+          sessionDuration: 0,
+        }
+        return friendObj
+      })
 
-        const memberIds = Object.keys(members).filter((uid) => uid !== currentUserId)
-        console.log(`Filtered members (excluding current user ${currentUserId}):`, memberIds)
-
-        // store group-specific members
-        groupMembers.value[groupId] = memberIds
-
-        // build union of all members across groups
-        const allMembers = [...new Set(Object.values(groupMembers.value).flat())]
-
-        // sync onlineFriends with allMembers
-        onlineFriends.value = allMembers.map((uid) => {
-          const existing = onlineFriends.value.find((f) => f.id === uid)
-          return (
-            existing || {
-              id: uid,
-              name: 'Loading...',
-              image: '',
-              timeLeft: 0,
-              status: 'UNKNOWN',
-              sessionDuration: 0,
-            }
-          )
-        })
-
-        // for each member, subscribe to user updates
-        allMembers.forEach((uid) => {
-          const userRef = dbRef(db, `activeUsers/${uid}`)
-          onValue(userRef, (snap) => {
-            const userData = snap.val()
-            const friendIndex = onlineFriends.value.findIndex((f) => f.id === uid)
-            if (!userData || friendIndex === -1) return
-
-            onlineFriends.value[friendIndex].name = userData.name
-            onlineFriends.value[friendIndex].image = userData.image || defaultImage
-
-            if (userData.focusSessionId) {
-              const sessionRef = dbRef(db, `focusSessions/${userData.focusSessionId}`)
-              onValue(sessionRef, (sessionSnap) => {
-                const session = sessionSnap.val()
-                const idx = onlineFriends.value.findIndex((f) => f.id === uid)
-                if (!session || idx === -1) return
-
-                const plannedDuration = session.duration * 60
-                const elapsedSeconds = session.elapsedSeconds ?? 0
-                let remainingTime = 0
-
-                if (session.status === 'FOCUSING') {
-                  const now = dayjs()
-                  const startedAt = dayjs(session.startedAt)
-                  const timeSinceResume = now.diff(startedAt, 'second')
-                  remainingTime = Math.max(0, plannedDuration - (elapsedSeconds + timeSinceResume))
-                } else if (session.status === 'PAUSED') {
-                  remainingTime = Math.max(0, plannedDuration - elapsedSeconds)
-                }
-
-                onlineFriends.value[idx].timeLeft = remainingTime
-                onlineFriends.value[idx].status = session.status
-                onlineFriends.value[idx].sessionDuration = plannedDuration
-
-                startFriendsTimer()
-              })
-            } else {
-              onlineFriends.value[friendIndex].status = 'ONLINE'
-              onlineFriends.value[friendIndex].timeLeft = 0
-              onlineFriends.value[friendIndex].sessionDuration = 0
-            }
-          })
-        })
+      // Attach listener for each friend's activeUser
+      friendIds.forEach((uid) => {
+        subscribeToFriendSession(uid)
       })
     })
-  }
-
-  function normalizeGroups(groups: any): string[] {
-    if (!groups) return []
-
-    return groups.map((g: string) => (g.startsWith('group_') ? g.replace('group_', '') : g))
   }
 
   function startFriendsTimer() {
@@ -265,70 +202,163 @@ export const useFriends = defineStore('focus', () => {
     const user = await getCurrentUser()
     if (!user) return
 
+    // cleanup previous listener
+    if (roomUnsubscribe) {
+      roomUnsubscribe()
+      roomUnsubscribe = null
+    }
+
     const roomRef = dbRef(db, `sharedRooms/${roomId}`)
-    onValue(roomRef, (snapshot) => {
-      const members = snapshot.val() || {}
-      const memberIds = Object.keys(members).filter((uid) => uid !== user.uid)
 
-      // Reset selectedFriends (only members in this room)
-      selectedFriends.value = memberIds.map((uid) => ({
-        id: uid,
-        name: members[uid].name,
-        image: members[uid].image || defaultImage,
-        timeLeft: 0, // will be filled by session listener
-        status: 'OFFLINE',
-        sessionDuration: 0,
-      }))
+    const handleRoomSnapshot = async (snapshot: DataSnapshot) => {
+      const raw = snapshot.val()
 
-      // subscribe to each friend’s focus session
+      console.log(`[subscribeToSharedRoom] room snapshot for ${roomId}:`, raw)
+
+      if (!raw) {
+        console.log(`Room ${roomId} deleted → clearing state`)
+        selectedFriends.value = []
+        activeSession.value = null
+
+        // reset activeUsers/{uid} flags so autoDetectSharedRoom doesn't re-subscribe
+        const userActiveRef = dbRef(db, `activeUsers/${user.uid}`)
+        await update(userActiveRef, {
+          inSharedRoom: false,
+          sharedRoomId: null,
+        })
+
+        // cleanup listener
+        if (roomUnsubscribe) {
+          roomUnsubscribe()
+          roomUnsubscribe = null
+        }
+        return
+      }
+
+      let membersObj: Record<string, any> | null = null
+      if (raw.members && typeof raw.members === 'object') {
+        membersObj = raw.members
+      } else if (typeof raw === 'object') {
+        membersObj = raw
+      }
+
+      if (!membersObj) {
+        console.warn(
+          '[subscribeToSharedRoom] Unexpected room shape, could not derive members:',
+          raw,
+        )
+        selectedFriends.value = []
+        activeSession.value = null
+        return
+      }
+
+      // collect only keys that look like user UIDs (basic heuristic: strings, non-empty)
+      const allKeys = Object.keys(membersObj)
+      const memberIds = allKeys.filter(
+        (k) => typeof k === 'string' && k.length > 0 && k !== user.uid,
+      )
+
+      console.log(`[subscribeToSharedRoom] derived memberIds:`, memberIds)
+
+      selectedFriends.value = memberIds.map((uid) => {
+        const memberNode = membersObj[uid] || {}
+        return {
+          id: uid,
+          name: memberNode.name || 'Unknown',
+          image: memberNode.image || defaultImage,
+          timeLeft: 0,
+          status: (memberNode.status as any) || 'OFFLINE',
+          sessionDuration: 0,
+        } as FriendItem
+      })
+
+      // ensure friend session listeners are attached for these members
       memberIds.forEach((uid) => subscribeToFriendSession(uid))
 
       startFriendsTimer()
-    })
+    }
+
+    // attach listener and store unsubscribe in a way that off(roomRef, 'value', handler) works
+    onValue(roomRef, handleRoomSnapshot)
+    roomUnsubscribe = () => off(roomRef, 'value', handleRoomSnapshot)
   }
 
   async function autoDetectSharedRoom() {
     const user = await getCurrentUser()
-    if (!user) return
+    if (!user) {
+      console.warn('[autoDetectSharedRoom] No user logged in')
+      return
+    }
 
-    // cleanup previous user listener if re-run
+    console.log('[autoDetectSharedRoom] Current user:', user.uid)
+
     if (userUnsubscribe) {
+      console.log('[autoDetectSharedRoom] Cleaning old user listener')
       userUnsubscribe()
       userUnsubscribe = null
     }
 
     const userRef = dbRef(db, `activeUsers/${user.uid}`)
-    onValue(userRef, (snapshot) => {
+    console.log('[autoDetectSharedRoom] Listening at:', userRef.toString())
+
+    const handleUserSnapshot = async (snapshot: DataSnapshot) => {
+      console.log('[autoDetectSharedRoom] user snapshot exists:', snapshot.exists())
       const userData = snapshot.val()
-      if (!userData) return
+      console.log('[autoDetectSharedRoom] userData:', userData)
+
+      if (!userData) {
+        console.warn('[autoDetectSharedRoom] No user data found, clearing state')
+        selectedFriends.value = []
+        activeSession.value = null
+        return
+      }
 
       const { inSharedRoom, sharedRoomId } = userData
+      console.log('[autoDetectSharedRoom] Flags:', { inSharedRoom, sharedRoomId })
 
-      // cleanup old room listener if room changes
       if (roomUnsubscribe) {
+        console.log('[autoDetectSharedRoom] Cleaning old room listener')
         roomUnsubscribe()
         roomUnsubscribe = null
       }
 
       if (inSharedRoom && sharedRoomId) {
-        // verify that user is actually a member of this shared room
-        const roomRef = dbRef(db, `sharedRooms/${sharedRoomId}/${user.uid}`)
-        onValue(roomRef, (roomSnap) => {
+        const roomRef = dbRef(db, `sharedRooms/${sharedRoomId}`)
+        console.log('[autoDetectSharedRoom] Checking shared room at:', roomRef.toString())
+
+        const handleRoomSnapshot = async (roomSnap: DataSnapshot) => {
+          console.log('[autoDetectSharedRoom] Room snapshot exists:', roomSnap.exists())
           if (roomSnap.exists()) {
-            console.log('Auto-joining shared room:', sharedRoomId)
+            console.log('✅ Auto-joining shared room:', sharedRoomId)
             subscribeToSharedRoom(sharedRoomId)
           } else {
-            console.log('User not found in room members → clearing selectedFriends')
+            console.log('❌ Shared room not found → clearing state')
             selectedFriends.value = []
             activeSession.value = null
+            await update(userRef, {
+              inSharedRoom: false,
+              sharedRoomId: null,
+            })
           }
-        })
+        }
+
+        console.log('Attaching listener to shared room:', roomRef.toString())
+        try {
+          onValue(roomRef, handleRoomSnapshot, (err) => {
+            console.error('Firebase onValue error:', err)
+          })
+        } catch (err) {
+          console.error('Error attaching listener:', err)
+        }
       } else {
-        console.log('User not in shared room, clearing selectedFriends')
+        console.log('User not in shared room → clearing state')
         selectedFriends.value = []
         activeSession.value = null
       }
-    })
+    }
+
+    onValue(userRef, handleUserSnapshot)
+    userUnsubscribe = () => off(userRef, 'value', handleUserSnapshot)
   }
 
   async function joinRoom(roomId: string) {
@@ -357,11 +387,18 @@ export const useFriends = defineStore('focus', () => {
 
   async function subscribeToInvitations() {
     const user = await getCurrentUser()
-    if (!user) return
+    if (!user) {
+      console.error('[subscribeToInvitations] No current user')
+      return
+    }
 
     const invitesRef = dbRef(db, `invitations/${user.uid}`)
+    console.log('[subscribeToInvitations] Listening at:', invitesRef.toString())
+
     onValue(invitesRef, (snapshot) => {
       const data = snapshot.val() || {}
+      console.log('[subscribeToInvitations] Snapshot:', data)
+
       const parsed: Invitation[] = Object.entries(data).map(([id, val]: any) => ({
         id,
         from: val.from,
@@ -370,6 +407,7 @@ export const useFriends = defineStore('focus', () => {
         timestamp: val.timestamp,
       }))
       invitations.value = parsed
+      console.log('[subscribeToInvitations] Parsed invitations:', parsed)
     })
   }
 

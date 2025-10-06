@@ -125,8 +125,9 @@ onMounted(async () => {
     await focusStore.fetchActiveFocusSession()
     if (!focusSession.value) return router.push({ name: 'todo' })
 
-    const currentUserId = (await getCurrentUser())?.uid
-    if (!currentUserId) return router.push({ name: 'todo' })
+    const currentUser = await getCurrentUser()
+    if (!currentUser?.uid) return router.push({ name: 'todo' })
+    const currentUserId = currentUser.uid
 
     // Subscribe to session updates
     const mySessionRef = dbRef(db, `focusSessions/${focusSession.value.id}`)
@@ -155,21 +156,8 @@ onMounted(async () => {
       }
     })
 
-    // Subscribe to friends
-    const userRef = dbRef(db, `activeUsers/${currentUserId}`)
-    const userSnap = await get(userRef)
-    if (userSnap.exists()) {
-      const groupsData = userSnap.val().groups
-      let groupIds: string[] = []
-      if (Array.isArray(groupsData)) {
-        groupIds = groupsData
-          .map((val, idx) => (val === true ? idx.toString() : null))
-          .filter((v): v is string => v !== null)
-      } else if (typeof groupsData === 'object') {
-        groupIds = Object.keys(groupsData)
-      }
-      if (groupIds.length > 0) friendsStore.subscribeToFriends(groupIds, currentUserId)
-    }
+    // Subscribe to friends (new friendship model)
+    friendsStore.subscribeToFriends(currentUserId)
   } catch (e) {
     console.error('Failed to fetch focus session or user data', e)
     router.push({ name: 'todo' })
