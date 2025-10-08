@@ -11,6 +11,7 @@ import type { User } from '@/types'
 import { auth, storage } from '@/firebase/firebase' // Import Firebase storage
 import { ref as firebaseStorageRef, uploadBytes, getDownloadURL } from 'firebase/storage' // For image upload
 import { updateProfile, type User as FirebaseUser } from 'firebase/auth' // Import Firebase User type
+import { registerFcmToken } from '@/firebase/messaging'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -29,6 +30,9 @@ export const useAuthStore = defineStore('auth', {
         const idToken = await auth.currentUser.getIdToken()
         this.setAuth(user, idToken)
         await apiClient.get('/ping')
+
+        // Register FCM token after successful login
+        await registerFcmToken()
       } else {
         console.error('Login successful but auth.currentUser is null.')
         throw new Error('Could not finalize login session.')
@@ -83,6 +87,8 @@ export const useAuthStore = defineStore('auth', {
         const idToken = await auth.currentUser.getIdToken()
         this.setAuth(user, idToken)
         await apiClient.get('/ping')
+
+        await registerFcmToken()
       } else {
         console.error('Google sign-in successful but auth.currentUser is null.')
         throw new Error('Could not finalize Google login session.')
@@ -93,7 +99,7 @@ export const useAuthStore = defineStore('auth', {
       // 1. Get the current authenticated Firebase user.
       const firebaseUser = auth.currentUser
       if (!firebaseUser) {
-        throw new Error("No user is currently logged in to update.")
+        throw new Error('No user is currently logged in to update.')
       }
 
       let newPhotoURL: string | null = null

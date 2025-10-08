@@ -255,3 +255,9 @@ export interface Invitation {
   roomId: string
   timestamp: number
 }
+
+export interface Notification {
+  token: string
+  title: string
+  body: string
+}
