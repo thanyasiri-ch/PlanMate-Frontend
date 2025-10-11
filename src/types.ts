@@ -257,7 +257,6 @@ export interface Invitation {
 }
 
 export interface Notification {
-  token: string
   title: string
   body: string
 }
