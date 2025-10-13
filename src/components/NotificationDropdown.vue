@@ -1,72 +1,46 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { useNotificationStore } from '@/stores/notificationStore'
+import type { NotificationType } from '@/types'
 
 const router = useRouter()
-
-type NotificationType = 'General' | 'Deadline' | 'Ranking' | 'Streak'
-
-interface Notification {
-  id: number
-  type: NotificationType
-  message: string
-  time: string
-  read: boolean
-}
+const store = useNotificationStore()
+const { notifications, unreadCount, loading } = storeToRefs(store)
 
 const showNotifications = ref(false)
 
-const notifications = ref<Notification[]>([
-  // Unread Items
-  { id: 1, type: 'Deadline', message: 'Assignment for CS204 is due tomorrow!', time: '1h ago', read: false },
-  { id: 2, type: 'Ranking', message: 'You moved up to rank #3 in your group!', time: '5h ago', read: false },
-  { id: 3, type: 'General', message: 'Focus session completed!', time: '2m ago', read: false },
-
-  // Read Items
-  { id: 6, type: 'General', message: 'New member joined your study group', time: '10m ago', read: true },
-  { id: 4, type: 'Streak', message: 'Don’t lose your 5-day streak! Keep going!', time: '2d ago', read: true },
-  { id: 5, type: 'Deadline', message: 'You have 2 unfinished topics in AI101', time: '3h ago', read: true },
-])
-
-const sortedNotifications = computed(() => {
-  const sorted = [...notifications.value]
-  return sorted.sort((a, b) => {
-    if (!a.read && b.read) return -1
-    if (a.read && !b.read) return 1
-    return b.id - a.id
-  })
+onMounted(() => {
+  store.fetchNotifications()
 })
-
-const unreadCount = computed(() =>
-  notifications.value.filter(n => !n.read).length
-)
 
 function getIcon(type: NotificationType): string {
   switch (type) {
-    case 'General': return '💬'
-    case 'Deadline': return '🗓️'
-    case 'Ranking': return '🏅'
-    case 'Streak': return '⚡'
+    case 'GENERAL': return '💬'
+    case 'DEADLINE': return '🗓️'
+    case 'RANKING': return '🏅'
+    case 'STREAK': return '⚡'
     default: return '💬'
   }
 }
 
 function getColor(type: NotificationType): string {
   switch (type) {
-    case 'General': return 'text-blue-500'
-    case 'Deadline': return 'text-red-500'
-    case 'Ranking': return 'text-yellow-500'
-    case 'Streak': return 'text-orange-500'
+    case 'GENERAL': return 'text-blue-500'
+    case 'DEADLINE': return 'text-red-500'
+    case 'RANKING': return 'text-yellow-500'
+    case 'STREAK': return 'text-orange-500'
     default: return 'text-gray-500'
   }
 }
 
 function getUrgencyBorder(type: NotificationType): string {
   switch (type) {
-    case 'Deadline': return 'border-red-400 bg-red-50 hover:bg-red-100'
-    case 'Streak': return 'border-orange-400 bg-orange-50 hover:bg-orange-100'
-    case 'Ranking': return 'border-yellow-400 bg-yellow-50 hover:bg-yellow-100'
-    case 'General': return 'border-blue-400 bg-blue-50 hover:bg-blue-100'
+    case 'DEADLINE': return 'border-red-400 bg-red-50 hover:bg-red-100'
+    case 'STREAK': return 'border-orange-400 bg-orange-50 hover:bg-orange-100'
+    case 'RANKING': return 'border-yellow-400 bg-yellow-50 hover:bg-yellow-100'
+    case 'GENERAL': return 'border-blue-400 bg-blue-50 hover:bg-blue-100'
     default: return 'border-gray-400 bg-gray-50 hover:bg-gray-100'
   }
 }
@@ -79,18 +53,10 @@ function closeDropdown() {
   showNotifications.value = false
 }
 
-function markAsRead(id: number) {
-  const item = notifications.value.find(n => n.id === id)
-  if (!item) return
-
-  item.read = true
-  closeDropdown()
-
-  if (item.type === 'Deadline' || item.type === 'Streak') {
-    router.push('/focus-mode')
-  } else if (item.type === 'Ranking') {
-    router.push('/group')
-  }
+function markAsRead(id: number, type: string) {
+  store.markAsRead(id)
+  if (type === 'DEADLINE' || type === 'STREAK') router.push('/focus-mode')
+  else if (type === 'RANKING') router.push('/group')
 }
 </script>
 
@@ -136,7 +102,12 @@ function markAsRead(id: number) {
               aria-label="Close notifications"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -144,15 +115,15 @@ function markAsRead(id: number) {
           <!-- Notification List -->
           <ul class="space-y-2 max-h-80 overflow-y-auto pr-1">
             <li
-              v-for="item in sortedNotifications"
+              v-for="item in notifications"
               :key="item.id"
-              @click="markAsRead(item.id)"
+              @click="markAsRead(item.id, item.type)"
               class="p-3 rounded-lg flex items-start space-x-3 transition-all cursor-pointer"
               :class="{
-                'border-l-4 shadow-sm': !item.read,
-                [getUrgencyBorder(item.type)]: !item.read,
-                'hover:bg-gray-100 text-gray-600 bg-white': item.read,
-                'border-gray-200 border': item.read,
+                'border-l-4 shadow-sm': !item.isRead,
+                [getUrgencyBorder(item.type)]: !item.isRead,
+                'hover:bg-gray-100 text-gray-600 bg-white': item.isRead,
+                'border-gray-200 border': item.isRead,
               }"
             >
               <div class="flex-shrink-0 pt-0.5 text-xl" :class="getColor(item.type)">
@@ -160,24 +131,30 @@ function markAsRead(id: number) {
               </div>
 
               <div class="flex-grow">
-                <p
-                  class="text-sm text-gray-800 leading-snug"
-                  :class="{
-                    'font-semibold': !item.read,
-                    'font-bold': item.type === 'Deadline' && item.read,
-                    'font-medium': item.read && item.type !== 'Deadline'
-                  }"
-                >
-                  {{ item.message }}
+                <p class="text-sm text-gray-800 leading-snug font-medium">
+                  {{ item.title }}
                 </p>
-                <span class="text-xs text-gray-500 mt-0.5 block">{{ item.time }}</span>
+                <p class="text-xs text-gray-500 mt-0.5">{{ item.content }}</p>
+                <span class="text-xs text-gray-400 mt-0.5 block">
+                  {{ new Date(item.time).toLocaleString() }}
+                </span>
               </div>
 
-              <div v-if="!item.read" class="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full"></div>
+              <div
+                v-if="!item.isRead"
+                class="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full"
+              ></div>
             </li>
 
-            <li v-if="sortedNotifications.length === 0" class="text-center text-gray-400 text-sm p-4">
+            <li
+              v-if="notifications.length === 0 && !loading"
+              class="text-center text-gray-400 text-sm p-4"
+            >
               You're all caught up! 🎉
+            </li>
+
+            <li v-if="loading" class="text-center text-gray-400 text-sm p-4">
+              Loading notifications...
             </li>
           </ul>
         </div>

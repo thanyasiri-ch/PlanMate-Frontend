@@ -256,7 +256,25 @@ export interface Invitation {
   timestamp: number
 }
 
-export interface Notification {
+export interface NotificationRequest {
+  userUid: string
   title: string
-  body: string
+  content: string
+  type: string
+}
+
+export interface Notification {
+  id: number
+  title: string
+  content: string
+  isRead: boolean
+  type: NotificationType
+  time: string
+}
+
+export enum NotificationType {
+  GENERAL = 'GENERAL',
+  DEADLINE = 'DEADLINE',
+  RANKING = 'RANKING',
+  STREAK = 'STREAK'
 }

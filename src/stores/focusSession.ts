@@ -2,15 +2,23 @@
 import { defineStore } from 'pinia'
 import { db } from '@/firebase/firebase'
 import { ref as dbRef, get } from 'firebase/database'
-import { FocusStatus, type FocusSessionDTO } from '@/types'
+import { FocusStatus, SessionType, type FocusSessionDTO } from '@/types'
 import FocusSessionService from '@/services/FocusSessionService'
 import { getCurrentUser } from '@/services/auth'
+import { notificationService } from '@/services/NotificationService'
 
 interface FocusSessionState {
   activeSession: FocusSessionDTO | null
   enrichedFocusSession: any | null
   isLoading: boolean
   error: string | null
+}
+
+export const SessionTypeLabel: Record<SessionType, string> = {
+  [SessionType.FINAL_REVIEW]: 'Final Review',
+  [SessionType.OVERVIEW]: 'Overview',
+  [SessionType.CORE_STUDY]: 'Core Study',
+  [SessionType.ASSIGNMENT]: 'Assignment',
 }
 
 export const useFocusSessionStore = defineStore('focusSessionStore', {
@@ -122,6 +130,17 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
             console.warn('Failed to leave shared room:', leaveErr.message)
           }
         }
+
+        const taskName = this.activeSession?.displayName
+        const taskType = this.activeSession?.sessionType
+        const readableType = taskType ? SessionTypeLabel[taskType] : 'Unknown Type'
+
+        await notificationService.sendNotification({
+          userUid: currentUserId || '',
+          type: 'GENERAL',
+          title: 'Focus Session Complete!',
+          content: `Nice work — your ${readableType} "${taskName}" just ended.`,
+        })
       } catch (err: any) {
         this.error = err.message || 'Failed to stop focus session.'
       } finally {

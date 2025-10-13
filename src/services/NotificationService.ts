@@ -1,12 +1,16 @@
 import apiClient from './AxiosClient'
-import type { Notification } from '@/types'
+import type { NotificationRequest } from '@/types'
 
 export const notificationService = {
+  getNotifications: () => {
+    return apiClient.get('/notification')
+  },
+
   saveToken: (token: string) => {
     return apiClient.post('/notification/token', { token })
   },
 
-  sendNotification: (request: Notification) => {
+  sendNotification: (request: NotificationRequest) => {
     return apiClient.post('/notification/send', request)
   },
 }

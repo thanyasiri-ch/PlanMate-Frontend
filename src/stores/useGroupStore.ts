@@ -5,6 +5,8 @@ import { ref } from 'vue'
 import type { GroupMemberProgressDTO, StudyGroupResponseDTO } from '@/types'
 import { groupService } from '@/services/GroupService'
 import defaultGroupImage from '@/assets/images/group.png'
+import { getCurrentUser } from '@/services/auth'
+import { notificationService } from '@/services/NotificationService'
 
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<StudyGroupResponseDTO[]>([])
@@ -57,8 +59,49 @@ export const useGroupStore = defineStore('group', () => {
 
     try {
       const res = await groupService.joinGroup(joinCode)
-      joinSuccess.value = res.data
+      joinSuccess.value = res.data.message
+
+      const joinedGroupId = res.data.groupId
+      if (!joinedGroupId) {
+        console.warn('No groupId returned from joinGroup response')
+        return
+      }
+
       await fetchGroup()
+
+      const currentUser = await getCurrentUser()
+      const currentUserId = currentUser?.uid
+
+      const joinedGroup = groups.value.find((g) => g.id === joinedGroupId)
+      if (!joinedGroup) {
+        console.warn('Joined group not found in fetched list')
+        return
+      }
+
+      if (!joinedGroup) {
+        console.warn('Could not identify joined group from fetched data')
+        return
+      }
+
+      // Notify all group members about the new joiner
+      for (const member of joinedGroup.members) {
+        if (!member.user.uid) continue
+
+        const isCurrentUser = member.user.uid === currentUserId
+        const title = isCurrentUser
+          ? 'Welcome to your new group! 🎉'
+          : 'A new member just joined your group 👋'
+        const content = isCurrentUser
+          ? `You’ve successfully joined ${joinedGroup.name}.`
+          : `${currentUser?.displayName || 'Someone'} has joined ${joinedGroup.name}!.`
+
+        await notificationService.sendNotification({
+          userUid: member.user.uid,
+          type: 'GENERAL',
+          title,
+          content,
+        })
+      }
     } catch (err: any) {
       if (err.response?.status === 400) {
         joinError.value = err.response.data || 'Invalid join code.'

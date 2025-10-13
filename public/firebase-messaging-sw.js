@@ -18,7 +18,7 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.data?.title || payload.notification?.title
   const notificationOptions = {
     body: payload.data?.body || payload.notification?.body,
-    icon: '/firebase-logo.png',
+    icon: '/logo-small.png',
   }
 
   if (notificationTitle) {
