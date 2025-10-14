@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useNotificationStore } from '@/stores/notificationStore'
-import type { NotificationType } from '@/types'
+import type { NotificationType, Notification } from '@/types'
 
 const router = useRouter()
 const store = useNotificationStore()
@@ -17,31 +17,46 @@ onMounted(() => {
 
 function getIcon(type: NotificationType): string {
   switch (type) {
-    case 'GENERAL': return '💬'
-    case 'DEADLINE': return '🗓️'
-    case 'RANKING': return '🏅'
-    case 'STREAK': return '⚡'
-    default: return '💬'
+    case 'GENERAL':
+      return '💬'
+    case 'DEADLINE':
+      return '🗓️'
+    case 'RANKING':
+      return '🏅'
+    case 'STREAK':
+      return '⚡'
+    default:
+      return '💬'
   }
 }
 
 function getColor(type: NotificationType): string {
   switch (type) {
-    case 'GENERAL': return 'text-blue-500'
-    case 'DEADLINE': return 'text-red-500'
-    case 'RANKING': return 'text-yellow-500'
-    case 'STREAK': return 'text-orange-500'
-    default: return 'text-gray-500'
+    case 'GENERAL':
+      return 'text-blue-500'
+    case 'DEADLINE':
+      return 'text-red-500'
+    case 'RANKING':
+      return 'text-yellow-500'
+    case 'STREAK':
+      return 'text-orange-500'
+    default:
+      return 'text-gray-500'
   }
 }
 
 function getUrgencyBorder(type: NotificationType): string {
   switch (type) {
-    case 'DEADLINE': return 'border-red-400 bg-red-50 hover:bg-red-100'
-    case 'STREAK': return 'border-orange-400 bg-orange-50 hover:bg-orange-100'
-    case 'RANKING': return 'border-yellow-400 bg-yellow-50 hover:bg-yellow-100'
-    case 'GENERAL': return 'border-blue-400 bg-blue-50 hover:bg-blue-100'
-    default: return 'border-gray-400 bg-gray-50 hover:bg-gray-100'
+    case 'DEADLINE':
+      return 'border-red-400 bg-red-50 hover:bg-red-100'
+    case 'STREAK':
+      return 'border-orange-400 bg-orange-50 hover:bg-orange-100'
+    case 'RANKING':
+      return 'border-yellow-400 bg-yellow-50 hover:bg-yellow-100'
+    case 'GENERAL':
+      return 'border-blue-400 bg-blue-50 hover:bg-blue-100'
+    default:
+      return 'border-gray-400 bg-gray-50 hover:bg-gray-100'
   }
 }
 
@@ -53,10 +68,43 @@ function closeDropdown() {
   showNotifications.value = false
 }
 
-function markAsRead(id: number, type: string) {
-  store.markAsRead(id)
-  if (type === 'DEADLINE' || type === 'STREAK') router.push('/focus-mode')
-  else if (type === 'RANKING') router.push('/group')
+function markAsRead(notification: Notification) {
+  // Mark the notification as read in the store
+  store.markAsRead(notification.id)
+
+  const { type, title } = notification
+  let path = ''
+
+  switch (type) {
+    case 'DEADLINE':
+    case 'STREAK':
+      // For DEADLINE and STREAK types, navigate to the To-Do page.
+      path = '/todo'
+      break
+    case 'RANKING':
+      // For RANKING types, navigate to the Group page.
+      path = '/group'
+      break
+    case 'GENERAL':
+      // For GENERAL types, check the title for specific keywords.
+      if (title.includes('Focus Session Complete')) {
+        path = '/focus-mode'
+      } else if (
+        title.includes('Welcome to your new group') ||
+        title.includes('A new member just joined your group')
+      ) {
+        path = '/group'
+      }
+      break
+  }
+
+  // If a valid path was determined, navigate to it.
+  if (path) {
+    router.push(path)
+  }
+
+  // Close the dropdown after handling the click.
+  closeDropdown()
 }
 </script>
 
@@ -117,7 +165,7 @@ function markAsRead(id: number, type: string) {
             <li
               v-for="item in notifications"
               :key="item.id"
-              @click="markAsRead(item.id, item.type)"
+              @click="markAsRead(item)"
               class="p-3 rounded-lg flex items-start space-x-3 transition-all cursor-pointer"
               :class="{
                 'border-l-4 shadow-sm': !item.isRead,
