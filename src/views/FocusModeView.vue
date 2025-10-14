@@ -48,8 +48,8 @@ const totalSeconds = computed(() => {
 })
 
 // --- Points Calculations ---
-const TASK_WEIGHT = 10
-const HOUR_WEIGHT = 5
+const TASK_WEIGHT = 50
+const HOUR_WEIGHT = 30
 
 const earnedPoints = computed(() => {
   if (isShortSession.value) return 0

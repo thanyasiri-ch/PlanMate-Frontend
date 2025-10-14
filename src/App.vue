@@ -5,17 +5,22 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMessaging, onMessage } from 'firebase/messaging'
 import { app as firebaseApp } from '@/firebase/firebase'
+import { useGroupStore } from '@/stores/useGroupStore'
 
 const isLoading = ref(false)
-const router = useRouter()
 const latestNotification = ref<string | null>(null)
+
+const router = useRouter()
+const groupStore = useGroupStore()
+let progressInterval: ReturnType<typeof setInterval> | null = null
 
 function getBaseRoute(path: string) {
   const segments = path.split('/').filter(Boolean)
   return '/' + (segments[0] ?? '')
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Router loading transitions
   router.beforeEach((to, from, next) => {
     if (getBaseRoute(to.path) !== getBaseRoute(from.path)) {
       isLoading.value = true
@@ -31,7 +36,7 @@ onMounted(() => {
     }
   })
 
-  // FCM Foreground listener
+  // Firebase Foreground Notification Listener
   const messaging = getMessaging(firebaseApp)
   const unsubscribe = onMessage(messaging, (payload) => {
     console.log('FCM received in Vue component:', payload)
@@ -43,8 +48,25 @@ onMounted(() => {
     }
   })
 
-  // Cleanup when component unmounts
-  onUnmounted(() => unsubscribe())
+  // --- Rank Change Auto-Detection ---
+  await groupStore.fetchGroup()
+  if (groupStore.groups.length > 0) {
+    // You can loop through multiple groups if you want
+    const groupIds = groupStore.groups.map((g) => g.id)
+
+    // Poll every 60s
+    progressInterval = setInterval(async () => {
+      for (const id of groupIds) {
+        await groupStore.fetchGroupProgress(id)
+      }
+    }, 60000)
+  }
+
+  // Cleanup
+  onUnmounted(() => {
+    unsubscribe()
+    if (progressInterval) clearInterval(progressInterval)
+  })
 })
 </script>
 <template>

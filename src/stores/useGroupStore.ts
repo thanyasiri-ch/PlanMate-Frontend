@@ -8,6 +8,55 @@ import defaultGroupImage from '@/assets/images/group.png'
 import { getCurrentUser } from '@/services/auth'
 import { notificationService } from '@/services/NotificationService'
 
+const previousProgress = ref<GroupMemberProgressDTO[]>([])
+
+// Keep a record of each member’s last rank per group
+const lastKnownRanks = new Map<string, number>()
+
+const detectRankChanges = async (
+  groupId: number,
+  oldProgress: GroupMemberProgressDTO[],
+  newProgress: GroupMemberProgressDTO[],
+) => {
+  if (!oldProgress.length || !newProgress.length) return
+
+  for (const [index, newEntry] of newProgress.entries()) {
+    const userUid = newEntry.member.memberId
+    const newRank = index + 1
+    const key = `${groupId}-${userUid}`
+    const oldRank = lastKnownRanks.get(key)
+
+    // Store current rank for next comparison
+    lastKnownRanks.set(key, newRank)
+
+    // If first time seeing this user, skip (no comparison)
+    if (oldRank === undefined) continue
+    if (oldRank === newRank) continue
+
+    // Determine rank change
+    if (newRank < oldRank) {
+      // Rank up notification
+      await notificationService.sendNotification({
+        userUid,
+        type: 'RANKING',
+        title: '🏆 Rank Up!',
+        content: `You’ve moved up to rank #${newRank} in your group.`,
+      })
+
+      // Notify the person they overtook
+      const overtaken = newProgress[newRank] // the one just below
+      if (overtaken?.member?.memberId) {
+        await notificationService.sendNotification({
+          userUid: overtaken.member.memberId,
+          type: 'RANKING',
+          title: '⚠️ Rank Drop!',
+          content: `${newEntry.member.displayName || 'Someone'} just overtook you! You’re now rank #${newRank + 1}.`,
+        })
+      }
+    }
+  }
+}
+
 export const useGroupStore = defineStore('group', () => {
   const groups = ref<StudyGroupResponseDTO[]>([])
   const groupProgress = ref<GroupMemberProgressDTO[]>([])
@@ -43,7 +92,14 @@ export const useGroupStore = defineStore('group', () => {
     fetchProgressError.value = ''
     try {
       const res = await groupService.getGroupProgress(groupId)
-      groupProgress.value = Array.isArray(res.data) ? res.data : []
+      const newProgress = Array.isArray(res.data) ? res.data : []
+
+      // Detect ranking changes
+      detectRankChanges(groupId, previousProgress.value, newProgress)
+
+      // Update store
+      groupProgress.value = newProgress
+      previousProgress.value = JSON.parse(JSON.stringify(newProgress))
     } catch (err) {
       fetchProgressError.value = 'Failed to fetch group progress.'
       groupProgress.value = []

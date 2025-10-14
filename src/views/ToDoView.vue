@@ -19,8 +19,8 @@ const router = useRouter()
 
 const selectedTaskId = ref<string | null>(null)
 const isFocusing = ref(false)
-const TASK_WEIGHT = 10
-const HOUR_WEIGHT = 5
+const TASK_WEIGHT = 50
+const HOUR_WEIGHT = 30
 
 type EnrichedSession = SessionDTO & {
   courseCode: string
