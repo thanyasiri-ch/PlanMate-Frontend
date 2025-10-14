@@ -9,9 +9,7 @@ export const useNotificationStore = defineStore('notification', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
-  const unreadCount = computed(() =>
-    notifications.value.filter(n => !n.isRead).length
-  )
+  const unreadCount = computed(() => notifications.value.filter((n) => !n.isRead).length)
 
   async function fetchNotifications() {
     loading.value = true
@@ -19,7 +17,7 @@ export const useNotificationStore = defineStore('notification', () => {
       const res = await notificationService.getNotifications()
       notifications.value = res.data.sort(
         (a: Notification, b: Notification) =>
-          new Date(b.time).getTime() - new Date(a.time).getTime()
+          new Date(b.time).getTime() - new Date(a.time).getTime(),
       )
       error.value = null
     } catch (err: any) {
@@ -30,9 +28,17 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   }
 
-  function markAsRead(id: number) {
-    const target = notifications.value.find(n => n.id === id)
-    if (target) target.isRead = true
+  async function markAsRead(id: number) {
+    try {
+      await notificationService.markAsRead(id)
+
+      // update local state
+      const target = notifications.value.find((n) => n.id === id)
+      if (target) target.isRead = true
+    } catch (err: any) {
+      console.error('Error marking notification as read', err)
+      error.value = 'Failed to mark as read'
+    }
   }
 
   return {
@@ -41,6 +47,6 @@ export const useNotificationStore = defineStore('notification', () => {
     loading,
     error,
     fetchNotifications,
-    markAsRead
+    markAsRead,
   }
 })

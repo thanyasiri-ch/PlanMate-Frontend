@@ -13,4 +13,8 @@ export const notificationService = {
   sendNotification: (request: NotificationRequest) => {
     return apiClient.post('/notification/send', request)
   },
+
+  markAsRead: (id: number) => {
+    return apiClient.patch(`/notification/${id}/read`)
+  },
 }
