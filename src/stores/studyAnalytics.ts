@@ -4,6 +4,8 @@ import { defineStore } from 'pinia'
 import type { StudyAnalyticsDTO } from '@/types'
 import StudyAnalyticsService from '@/services/StudyAnalyticsService'
 import { formatSeconds } from '@/utils/time'
+import { notificationService } from '@/services/NotificationService'
+import { getCurrentUser } from '@/services/auth'
 
 interface StudyAnalyticsState {
   analytics: StudyAnalyticsDTO | null
@@ -40,7 +42,6 @@ export function getColorFromClass(colorClass: string): string {
 }
 
 // helper
-// helper
 function getSubjectColor(subject: string, map: Record<string, string>): string {
   if (!map[subject]) {
     // Try to find an unused color first
@@ -57,6 +58,36 @@ function getSubjectColor(subject: string, map: Record<string, string>): string {
     localStorage.setItem('subjectColorMap', JSON.stringify(map))
   }
   return map[subject]
+}
+
+function getTodayKey(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function calculateCurrentStreak(focusSessions: any[]): number {
+  if (!focusSessions || focusSessions.length === 0) return 0
+
+  // Normalize all session dates
+  const daysSet = new Set(
+    focusSessions.map((s) => new Date(s.focusStart).toISOString().slice(0, 10)),
+  )
+
+  let streak = 0
+  const today = new Date()
+
+  // Start from today, count backwards while each previous day exists
+  for (let i = 0; ; i++) {
+    const checkDate = new Date(today)
+    checkDate.setDate(today.getDate() - i)
+    const key = checkDate.toISOString().slice(0, 10)
+    if (daysSet.has(key)) {
+      streak++
+    } else {
+      break
+    }
+  }
+
+  return streak
 }
 
 export const useStudyAnalyticsStore = defineStore('studyAnalytics', {
@@ -265,6 +296,53 @@ export const useStudyAnalyticsStore = defineStore('studyAnalytics', {
           localDateString,
         )
         this.analytics = data
+
+        // --- Detect streak and send notifications (once per day) ---
+        try {
+          const currentUser = await getCurrentUser()
+          const currentUid = currentUser?.uid
+          if (!currentUid) return
+
+          const focusSessions = data?.focusSessions || []
+          const streak = calculateCurrentStreak(focusSessions)
+
+          // Only trigger if streak is meaningful (2+ days)
+          if (streak >= 2) {
+            const todayKey = getTodayKey()
+            const lastSentKey = localStorage.getItem(`lastStreakNoti_${currentUid}`)
+
+            // Avoid duplicate sends
+            if (lastSentKey === todayKey) return
+
+            const lastSession = focusSessions[focusSessions.length - 1]
+            const planName = lastSession?.courseName || 'your plan'
+
+            // Check if user has studied today
+            const hasSessionToday = focusSessions.some((s) => s.focusStart.startsWith(todayKey))
+
+            // Send notification
+            if (hasSessionToday) {
+              await notificationService.sendNotification({
+                userUid: currentUid,
+                type: 'STREAK',
+                title: '🔥 Maintain Your Streak!',
+                content: `You’re on a ${streak}-day streak! Great job staying consistent with ${planName}.`,
+              })
+            } else {
+              await notificationService.sendNotification({
+                userUid: currentUid,
+                type: 'STREAK',
+                title: '⚠️ High Risk of Loss',
+                content: `Quick reminder: finish ${planName} today to maintain your impressive ${streak}-day streak!`,
+              })
+            }
+
+            // Mark as sent for today
+            localStorage.setItem(`lastStreakNoti_${currentUid}`, todayKey)
+          }
+        } catch (err) {
+          console.warn('Streak detection/notification failed:', err)
+        }
       } catch (err: any) {
         console.error('Failed to fetch study analytics:', err)
         this.error = err.message || 'Failed to load analytics.'
