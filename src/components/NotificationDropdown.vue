@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useNotificationStore } from '@/stores/notificationStore'
-import type { NotificationType, Notification } from '@/types'
+import type { Notification } from '@/types'
 
 const router = useRouter()
 const store = useNotificationStore()
@@ -15,57 +15,27 @@ onMounted(() => {
   store.fetchNotifications()
 })
 
-function getIcon(type: NotificationType): string {
-  switch (type) {
-    case 'GENERAL':
-      return '💬'
-    case 'DEADLINE':
-      return '🗓️'
-    case 'RANKING':
-      return '🏅'
-    case 'STREAK':
-      return '⚡'
-    default:
-      return '💬'
-  }
-}
-
-function getColor(type: NotificationType): string {
-  switch (type) {
-    case 'GENERAL':
-      return 'text-blue-500'
-    case 'DEADLINE':
-      return 'text-red-500'
-    case 'RANKING':
-      return 'text-yellow-500'
-    case 'STREAK':
-      return 'text-orange-500'
-    default:
-      return 'text-gray-500'
-  }
-}
-
-function getUrgencyBorder(type: NotificationType): string {
-  switch (type) {
-    case 'DEADLINE':
-      return 'border-red-400 bg-red-50 hover:bg-red-100'
-    case 'STREAK':
-      return 'border-orange-400 bg-orange-50 hover:bg-orange-100'
-    case 'RANKING':
-      return 'border-yellow-400 bg-yellow-50 hover:bg-yellow-100'
-    case 'GENERAL':
-      return 'border-blue-400 bg-blue-50 hover:bg-blue-100'
-    default:
-      return 'border-gray-400 bg-gray-50 hover:bg-gray-100'
-  }
-}
-
 function toggleNotifications() {
   showNotifications.value = !showNotifications.value
 }
 
 function closeDropdown() {
   showNotifications.value = false
+}
+
+function getDeadlineColor(item: Notification) {
+  if (item.type !== 'DEADLINE') return ''
+  console.log('Determining color for deadline notification:', item.title)
+  console.log('Notification type:', item.type)
+
+  if (item.title.includes('Stay on Track')) {
+    return 'text-yellow-400'
+  } else if (item.title.includes('Upcoming Deadline Reminder')) {
+    return 'text-orange-500'
+  } else if (item.title.includes('Deadline Approaching Soon')) {
+    return 'text-red-600'
+  }
+  return ''
 }
 
 function markAsRead(notification: Notification) {
@@ -183,23 +153,24 @@ function markAllAsRead() {
               v-for="item in notifications"
               :key="item.id"
               @click="markAsRead(item)"
-              class="p-3 rounded-lg flex items-start space-x-3 transition-all cursor-pointer"
-              :class="{
-                'border-l-4 shadow-sm': !item.isRead,
-                [getUrgencyBorder(item.type)]: !item.isRead,
-                'hover:bg-gray-100 text-gray-600 bg-white': item.isRead,
-                'border-gray-200 border': item.isRead,
-              }"
+              class="p-3 rounded-lg flex items-start space-x-3 transition-all cursor-pointer hover:bg-gray-100 text-gray-600 bg-white"
             >
-              <div class="flex-shrink-0 pt-0.5 text-xl" :class="getColor(item.type)">
-                {{ getIcon(item.type) }}
-              </div>
-
               <div class="flex-grow">
-                <p class="text-sm text-gray-800 leading-snug font-medium">
+                <p
+                  class="text-sm leading-snug"
+                  :class="[
+                    !item.isRead ? 'font-bold' : '',
+                    item.type === 'DEADLINE' && !item.isRead
+                      ? getDeadlineColor(item)
+                      : 'text-gray-800',
+                  ]"
+                >
                   {{ item.title }}
                 </p>
-                <p class="text-xs text-gray-500 mt-0.5">{{ item.content }}</p>
+
+                <p class="text-xs text-gray-500 mt-0.5" :class="{ 'font-semibold': !item.isRead }">
+                  {{ item.content }}
+                </p>
                 <span class="text-xs text-gray-400 mt-0.5 block">
                   {{ new Date(item.time).toLocaleString() }}
                 </span>
@@ -207,7 +178,7 @@ function markAllAsRead() {
 
               <div
                 v-if="!item.isRead"
-                class="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full"
+                class="flex-shrink-0 w-2 h-2 mt-2 bg-red-400 rounded-full"
               ></div>
             </li>
 
