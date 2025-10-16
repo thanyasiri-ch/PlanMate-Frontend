@@ -131,16 +131,19 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
           }
         }
 
-        const taskName = this.activeSession?.displayName
-        const taskType = this.activeSession?.sessionType
-        const readableType = taskType ? SessionTypeLabel[taskType] : 'Unknown Type'
+        const elapsedSeconds = this.activeSession?.elapsedSeconds ?? 0
+        if (elapsedSeconds > 300) {
+          const taskName = this.activeSession?.displayName
+          const taskType = this.activeSession?.sessionType
+          const readableType = taskType ? SessionTypeLabel[taskType] : 'Unknown Type'
 
-        await notificationService.sendNotification({
-          userUid: currentUserId || '',
-          type: 'GENERAL',
-          title: 'Focus Session Complete!',
-          content: `Nice work — your ${readableType} "${taskName}" just ended.`,
-        })
+          await notificationService.sendNotification({
+            userUid: currentUserId || '',
+            type: 'GENERAL',
+            title: 'Focus Session Complete!',
+            content: `Nice work — your ${readableType} "${taskName}" just ended.`,
+          })
+        }
       } catch (err: any) {
         this.error = err.message || 'Failed to stop focus session.'
       } finally {
