@@ -385,10 +385,12 @@ const timeRangeLabel = computed(() => {
 </script>
 <template>
   <DefaultLayout>
-    <div class="grid flex-1 place-items-center m-8 px-6 pb-8 overflow-hidden">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+    <div class="flex h-full overflow-hidden p-6 pt-0">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full h-full">
         <!-- Left 2/3 section -->
-        <section class="lg:col-span-2 bg-white rounded-2xl p-5 flex flex-col h-full">
+        <section
+          class="lg:col-span-2 bg-white rounded-2xl p-5 flex flex-col h-full overflow-y-auto"
+        >
           <!-- Top controls -->
           <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
             <!-- Year controls -->
@@ -548,7 +550,9 @@ const timeRangeLabel = computed(() => {
         </section>
 
         <!-- Right profile section -->
-        <section class="bg-white rounded-2xl p-5 flex flex-col h-full">
+        <section
+          class="bg-white rounded-2xl p-5 flex flex-col justify-between h-full overflow-hidden"
+        >
           <div
             class="bg-[#E2EAFC] border-[0.5px] border-[#DCD7FF] p-5 rounded-xl text-center min-h-62"
             v-if="!isEditingStudyPreferences"
