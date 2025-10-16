@@ -10,6 +10,7 @@ export const useNotificationStore = defineStore('notification', () => {
   const error = ref<string | null>(null)
 
   const unreadCount = computed(() => notifications.value.filter((n) => !n.isRead).length)
+  const markingAll = ref(false)
 
   async function fetchNotifications() {
     loading.value = true
@@ -41,6 +42,21 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   }
 
+  async function markAllAsRead() {
+    if (markingAll.value) return
+    markingAll.value = true
+
+    const unread = notifications.value.filter((n) => !n.isRead)
+    if (unread.length === 0) return
+
+    unread.forEach((n) => (n.isRead = true))
+    try {
+      await Promise.all(unread.map((n) => notificationService.markAsRead(n.id)))
+    } finally {
+      markingAll.value = false
+    }
+  }
+
   return {
     notifications,
     unreadCount,
@@ -48,5 +64,7 @@ export const useNotificationStore = defineStore('notification', () => {
     error,
     fetchNotifications,
     markAsRead,
+    markAllAsRead,
+    markingAll,
   }
 })

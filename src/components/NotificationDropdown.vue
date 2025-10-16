@@ -106,6 +106,12 @@ function markAsRead(notification: Notification) {
   // Close the dropdown after handling the click.
   closeDropdown()
 }
+
+function markAllAsRead() {
+  if (notifications.value.length === 0) return
+  store.markAllAsRead()
+  closeDropdown()
+}
 </script>
 
 <template>
@@ -144,20 +150,31 @@ function markAsRead(notification: Notification) {
                 ({{ unreadCount }} new)
               </span>
             </h3>
-            <button
-              @click="closeDropdown"
-              class="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors"
-              aria-label="Close notifications"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+
+            <div class="flex items-center space-x-2">
+              <button
+                v-if="unreadCount > 0"
+                :disabled="store.markingAll"
+                @click.stop="markAllAsRead"
+                class="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Mark all as read
+              </button>
+              <button
+                @click="closeDropdown"
+                class="text-gray-400 hover:text-gray-600 p-1 rounded-full transition-colors"
+                aria-label="Close notifications"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <!-- Notification List -->
