@@ -4,8 +4,8 @@ import { defineStore } from 'pinia'
 import type { StudyAnalyticsDTO } from '@/types'
 import StudyAnalyticsService from '@/services/StudyAnalyticsService'
 import { formatSeconds } from '@/utils/time'
-import { notificationService } from '@/services/NotificationService'
 import { getCurrentUser } from '@/services/auth'
+import { useNotificationStore } from './notificationStore'
 
 interface StudyAnalyticsState {
   analytics: StudyAnalyticsDTO | null
@@ -299,6 +299,7 @@ export const useStudyAnalyticsStore = defineStore('studyAnalytics', {
 
         // --- Detect streak and send notifications (once per day) ---
         try {
+          const notificationStore = useNotificationStore()
           const currentUser = await getCurrentUser()
           const currentUid = currentUser?.uid
           if (!currentUid) return
@@ -322,14 +323,14 @@ export const useStudyAnalyticsStore = defineStore('studyAnalytics', {
 
             // Send notification
             if (hasSessionToday) {
-              await notificationService.sendNotification({
+              await notificationStore.sendNotification({
                 userUid: currentUid,
                 type: 'STREAK',
                 title: '🔥 Maintain Your Streak!',
                 content: `You’re on a ${streak}-day streak! Great job staying consistent with ${planName}.`,
               })
             } else {
-              await notificationService.sendNotification({
+              await notificationStore.sendNotification({
                 userUid: currentUid,
                 type: 'STREAK',
                 title: '⚠️ High Risk of Loss',

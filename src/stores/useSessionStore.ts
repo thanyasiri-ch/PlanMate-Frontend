@@ -3,8 +3,8 @@ import { defineStore } from 'pinia'
 import SessionService from '@/services/SessionService'
 import { useStudySetupStore } from '@/stores/studySetup'
 import type { SessionDTO, ToDoListResponseDTO } from '@/types'
-import { notificationService } from '@/services/NotificationService'
 import { getCurrentUser } from '@/services/auth'
+import { useNotificationStore } from './notificationStore'
 
 type EnrichedSession = SessionDTO & {
   courseCode: string
@@ -95,6 +95,8 @@ export const useSessionStore = defineStore('sessionStore', {
           upcoming: enrichList(upcoming),
         }
 
+        const notificationStore = useNotificationStore()
+
         try {
           const currentUser = await getCurrentUser()
           const currentUid = currentUser?.uid
@@ -154,7 +156,7 @@ export const useSessionStore = defineStore('sessionStore', {
                   : `You’re pacing well in ${nearest.courseName}. Keep studying to stay ahead!`
 
             // Send notification
-            await notificationService.sendNotification({
+            await notificationStore.sendNotification({
               userUid: currentUid,
               type: 'DEADLINE',
               title,

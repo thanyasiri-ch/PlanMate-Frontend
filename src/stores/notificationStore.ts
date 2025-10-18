@@ -2,7 +2,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { notificationService } from '@/services/NotificationService'
-import type { Notification } from '@/types'
+import type { Notification, NotificationRequest } from '@/types'
 
 export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref<Notification[]>([])
@@ -26,6 +26,16 @@ export const useNotificationStore = defineStore('notification', () => {
       error.value = 'Failed to load notifications'
     } finally {
       loading.value = false
+    }
+  }
+
+  async function sendNotification(request: NotificationRequest) {
+    try {
+      await notificationService.sendNotification(request)
+      fetchNotifications()
+    } catch (err: any) {
+      console.error('Error sending notification', err)
+      error.value = 'Failed to send notification'
     }
   }
 
@@ -62,9 +72,10 @@ export const useNotificationStore = defineStore('notification', () => {
     unreadCount,
     loading,
     error,
+    markingAll,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
-    markingAll,
+    sendNotification,
   }
 })

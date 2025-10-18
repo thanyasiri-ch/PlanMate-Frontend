@@ -6,7 +6,7 @@ import type { GroupMemberProgressDTO, StudyGroupResponseDTO } from '@/types'
 import { groupService } from '@/services/GroupService'
 import defaultGroupImage from '@/assets/images/group.png'
 import { getCurrentUser } from '@/services/auth'
-import { notificationService } from '@/services/NotificationService'
+import { useNotificationStore } from './notificationStore'
 
 const previousProgress = ref<GroupMemberProgressDTO[]>([])
 
@@ -17,6 +17,7 @@ const detectRankChanges = async (
   groupId: number,
   oldProgress: GroupMemberProgressDTO[],
   newProgress: GroupMemberProgressDTO[],
+  notificationStore: ReturnType<typeof useNotificationStore>
 ) => {
   if (!oldProgress.length || !newProgress.length) return
 
@@ -36,7 +37,7 @@ const detectRankChanges = async (
     // Determine rank change
     if (newRank < oldRank) {
       // Rank up notification
-      await notificationService.sendNotification({
+      await notificationStore.sendNotification({
         userUid,
         type: 'RANKING',
         title: '🏆 Rank Up!',
@@ -46,7 +47,7 @@ const detectRankChanges = async (
       // Notify the person they overtook
       const overtaken = newProgress[newRank] // the one just below
       if (overtaken?.member?.memberId) {
-        await notificationService.sendNotification({
+        await notificationStore.sendNotification({
           userUid: overtaken.member.memberId,
           type: 'RANKING',
           title: '⚠️ Rank Drop!',
@@ -73,6 +74,8 @@ export const useGroupStore = defineStore('group', () => {
   const isJoiningGroup = ref(false)
   const isFetchingProgress = ref(false)
 
+  const notificationStore = useNotificationStore()
+
   const fetchGroup = async () => {
     isFetchingGroups.value = true
     fetchGroupsError.value = ''
@@ -95,7 +98,7 @@ export const useGroupStore = defineStore('group', () => {
       const newProgress = Array.isArray(res.data) ? res.data : []
 
       // Detect ranking changes
-      detectRankChanges(groupId, previousProgress.value, newProgress)
+      detectRankChanges(groupId, previousProgress.value, newProgress, notificationStore)
 
       // Update store
       groupProgress.value = newProgress
@@ -151,7 +154,7 @@ export const useGroupStore = defineStore('group', () => {
           ? `You’ve successfully joined ${joinedGroup.name}.`
           : `${currentUser?.displayName || 'Someone'} has joined ${joinedGroup.name}!.`
 
-        await notificationService.sendNotification({
+        await notificationStore.sendNotification({
           userUid: member.user.uid,
           type: 'GENERAL',
           title,

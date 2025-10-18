@@ -455,7 +455,7 @@ const handleGroupSubmit = async (payload: { name: string; image: File | null }) 
   <PopupRanking
     v-if="currentUserData && userRank"
     :currentScore="currentUserData.points"
-    :nextRankScore="nextRankScore"
+    :nextRankScore="nextRankScore ?? 0"
     :userRank="userRank"
   />
 </template>

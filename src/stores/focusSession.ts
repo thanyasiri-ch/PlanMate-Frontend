@@ -5,7 +5,7 @@ import { ref as dbRef, get } from 'firebase/database'
 import { FocusStatus, SessionType, type FocusSessionDTO } from '@/types'
 import FocusSessionService from '@/services/FocusSessionService'
 import { getCurrentUser } from '@/services/auth'
-import { notificationService } from '@/services/NotificationService'
+import { useNotificationStore } from './notificationStore'
 
 interface FocusSessionState {
   activeSession: FocusSessionDTO | null
@@ -137,7 +137,8 @@ export const useFocusSessionStore = defineStore('focusSessionStore', {
           const taskType = this.activeSession?.sessionType
           const readableType = taskType ? SessionTypeLabel[taskType] : 'Unknown Type'
 
-          await notificationService.sendNotification({
+          const notificationStore = useNotificationStore()
+          await notificationStore.sendNotification({
             userUid: currentUserId || '',
             type: 'GENERAL',
             title: 'Focus Session Complete!',
