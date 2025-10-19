@@ -279,6 +279,66 @@ function scrollToSession(item: SessionDTO) {
     }, 2500)
   }
 }
+
+function getSwappableSessionsOnDay(dateKey: string) {
+  if (!activeGroupedStudyPlan.value[dateKey]) return []
+  // Filter for only SESSION types that aren't completed or suggested
+  return activeGroupedStudyPlan.value[dateKey].filter(
+    (s: any) => s.displayType === 'SESSION' && !s.isCompleted && !s.isSuggested,
+  )
+}
+
+function canSwap(item: any, dateKey: string, direction: 'up' | 'down') {
+  const swappableSessions = getSwappableSessionsOnDay(dateKey)
+  const currentIndex = swappableSessions.findIndex((s) => s.sessionId === item.sessionId)
+
+  if (currentIndex === -1) return false // Not a swappable item
+
+  if (direction === 'up') {
+    return currentIndex > 0 // Can swap up if not the first item
+  } else {
+    return currentIndex < swappableSessions.length - 1 // Can swap down if not the last
+  }
+}
+
+function swapSessionTime(item: any, dateKey: string, direction: 'up' | 'down') {
+  const swappableSessions = getSwappableSessionsOnDay(dateKey)
+  const currentIndex = swappableSessions.findIndex((s) => s.sessionId === item.sessionId)
+
+  const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+
+  // Safety check, though 'disabled' attribute should prevent this
+  if (targetIndex < 0 || targetIndex >= swappableSessions.length) {
+    return
+  }
+
+  const sessionA = swappableSessions[currentIndex]
+  const sessionB = swappableSessions[targetIndex]
+
+  // Call the existing store action twice to swap the times.
+  // This will mark the plan as "dirty" and update the UI.
+  planStore.updateSessionTime({
+    sessionId: sessionA.sessionId,
+    date: sessionB.date, // Use B's date (should be same, but safe)
+    start: sessionB.start,
+  })
+
+  planStore.updateSessionTime({
+    sessionId: sessionB.sessionId,
+    date: sessionA.date,
+    start: sessionA.start,
+  })
+}
+
+const scheduledSessionsForOverlapCheck = computed(() => {
+  if (!planStore.schedule?.study_plan) return []
+
+  // Only use regular scheduled sessions from the study_plan array
+  return (planStore.schedule.study_plan || []).map((s) => ({
+    ...enrichSession(s),
+    isSuggested: false,
+  }))
+})
 </script>
 <template>
   <DefaultLayout>
@@ -429,6 +489,49 @@ function scrollToSession(item: SessionDTO) {
 
                           <!-- Normal sessions: edit + delete -->
                           <template v-else-if="!item.isCompleted && !item.isSuggested">
+                            <div class="flex flex-col mr-1">
+                              <button
+                                @click.stop="swapSessionTime(item, date, 'up')"
+                                title="Move up"
+                                class="text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                :disabled="!canSwap(item, date, 'up')"
+                              >
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  stroke-width="3"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M5 15l7-7 7 7"
+                                  />
+                                </svg>
+                              </button>
+                              <button
+                                @click.stop="swapSessionTime(item, date, 'down')"
+                                title="Move down"
+                                class="text-gray-400 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                                :disabled="!canSwap(item, date, 'down')"
+                              >
+                                <svg
+                                  class="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  stroke-width="3"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+
                             <button
                               @click="openEditModal(item)"
                               class="text-[#4454C0]/70 hover:text-[#4454C0]/80 transition-colors"
@@ -557,7 +660,7 @@ function scrollToSession(item: SessionDTO) {
         <SessionEditModal
           :is-open="isEditModalOpen"
           :item="editingSession"
-          :existing-sessions="enrichedStudyPlan"
+          :existing-sessions="scheduledSessionsForOverlapCheck"
           @close="closeEditModal"
           @save="handleSave"
         />
